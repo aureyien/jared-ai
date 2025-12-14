@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -50,7 +51,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import com.music.sttnotes.ui.components.EInkCard
+import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.EInkDivider
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
@@ -65,7 +69,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun KnowledgeBaseScreen(
     onFileClick: (folder: String, filename: String) -> Unit,
@@ -75,6 +79,11 @@ fun KnowledgeBaseScreen(
     val allFolders by viewModel.filteredFolders.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val allTags by viewModel.allTags.collectAsState()
+    val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
+
+    // Tag filter visibility
+    var showTagFilter by remember { mutableStateOf(false) }
 
     // Undo deletion state for folders
     var pendingFolderDeletion by remember { mutableStateOf<PendingDeletion<String>?>(null) }
@@ -150,31 +159,64 @@ fun KnowledgeBaseScreen(
                 Column(
                     modifier = Modifier.fillMaxSize().padding(padding)
                 ) {
-                    // Search bar
-                    EInkTextField(
-                        value = searchQuery,
-                        onValueChange = viewModel::onSearchQueryChange,
+                    // Search bar with tag filter button
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
-                        placeholder = "Rechercher...",
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = null,
-                                tint = EInkBlack
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        EInkTextField(
+                            value = searchQuery,
+                            onValueChange = viewModel::onSearchQueryChange,
+                            modifier = Modifier.weight(1f),
+                            placeholder = "Rechercher...",
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = EInkBlack
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    EInkIconButton(
+                                        onClick = { viewModel.onSearchQueryChange("") },
+                                        icon = Icons.Default.Close,
+                                        contentDescription = "Effacer"
+                                    )
+                                }
+                            }
+                        )
+                        // Tag filter button (only show if there are tags)
+                        if (allTags.isNotEmpty()) {
+                            Spacer(Modifier.width(8.dp))
+                            EInkIconButton(
+                                onClick = { showTagFilter = !showTagFilter },
+                                icon = Icons.Default.LocalOffer,
+                                contentDescription = "Filtrer par tags"
                             )
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                EInkIconButton(
-                                    onClick = { viewModel.onSearchQueryChange("") },
-                                    icon = Icons.Default.Close,
-                                    contentDescription = "Effacer"
+                        }
+                    }
+
+                    // Tag filter chips (show when toggled and tags exist)
+                    if (showTagFilter && allTags.isNotEmpty()) {
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            allTags.forEach { tag ->
+                                EInkChip(
+                                    label = tag,
+                                    selected = tag in selectedTagFilters,
+                                    onClick = { viewModel.toggleTagFilter(tag) }
                                 )
                             }
                         }
-                    )
+                    }
 
                     EInkDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
@@ -255,7 +297,7 @@ fun KnowledgeBaseScreen(
     pendingFolderDeletion?.let { deletion ->
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.TopCenter
         ) {
             UndoSnackbar(
                 message = deletion.message,

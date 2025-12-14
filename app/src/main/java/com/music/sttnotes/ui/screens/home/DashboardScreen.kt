@@ -96,7 +96,7 @@ fun DashboardScreen(
             EInkBottomActionBar(
                 onAddNote = onNewNote,
                 onAddNoteWithRecording = onNewNoteWithRecording,
-                onChat = onConversationsClick,
+                onChat = onNewConversation,  // Opens new conversation directly (ChatList accessible from card)
                 onChatLongPress = onNewConversationWithRecording,
                 onKnowledgeBase = onKnowledgeBaseClick,
                 showChat = state.isLlmConfigured

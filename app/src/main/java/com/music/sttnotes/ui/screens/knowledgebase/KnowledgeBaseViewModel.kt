@@ -17,7 +17,8 @@ import javax.inject.Inject
 data class FilePreview(
     val file: File,
     val preview: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val tags: List<String> = emptyList()
 )
 
 data class FolderWithFiles(
@@ -63,11 +64,29 @@ class KnowledgeBaseViewModel @Inject constructor(
     private val _tagInput = MutableStateFlow("")
     val tagInput: StateFlow<String> = _tagInput
 
+    // Tag filter for KB list
+    private val _selectedTagFilters = MutableStateFlow<Set<String>>(emptySet())
+    val selectedTagFilters: StateFlow<Set<String>> = _selectedTagFilters
+
     private var currentMeta: KbFileMeta? = null
 
     init {
         loadFolders()
         loadAllTags()
+    }
+
+    fun toggleTagFilter(tag: String) {
+        _selectedTagFilters.value = if (_selectedTagFilters.value.contains(tag)) {
+            _selectedTagFilters.value - tag
+        } else {
+            _selectedTagFilters.value + tag
+        }
+        filterFolders()
+    }
+
+    fun clearTagFilters() {
+        _selectedTagFilters.value = emptySet()
+        filterFolders()
     }
 
     private fun loadAllTags() {
@@ -83,17 +102,25 @@ class KnowledgeBaseViewModel @Inject constructor(
 
     private fun filterFolders() {
         val query = _searchQuery.value.lowercase().trim()
-        if (query.isEmpty()) {
+        val tagFilter = _selectedTagFilters.value
+
+        if (query.isEmpty() && tagFilter.isEmpty()) {
             _filteredFolders.value = _folders.value
         } else {
             _filteredFolders.value = _folders.value.mapNotNull { folder ->
                 val matchingFiles = folder.files.filter { file ->
-                    file.file.nameWithoutExtension.lowercase().contains(query) ||
-                    file.preview.lowercase().contains(query)
+                    val matchesQuery = query.isEmpty() ||
+                        file.file.nameWithoutExtension.lowercase().contains(query) ||
+                        file.preview.lowercase().contains(query)
+                    val matchesTags = tagFilter.isEmpty() ||
+                        file.tags.any { it in tagFilter }
+                    matchesQuery && matchesTags
                 }
-                if (matchingFiles.isNotEmpty() || folder.name.lowercase().contains(query)) {
+                if (matchingFiles.isNotEmpty() || (folder.name.lowercase().contains(query) && tagFilter.isEmpty())) {
                     folder.copy(
-                        files = if (folder.name.lowercase().contains(query)) folder.files else matchingFiles,
+                        files = if (folder.name.lowercase().contains(query) && tagFilter.isEmpty()) folder.files.filter { file ->
+                            tagFilter.isEmpty() || file.tags.any { it in tagFilter }
+                        } else matchingFiles,
                         isExpanded = true // Auto-expand folders with matches
                     )
                 } else {
@@ -126,10 +153,13 @@ class KnowledgeBaseViewModel @Inject constructor(
             } catch (e: Exception) {
                 ""
             }
+            // Parse tags from frontmatter
+            val (meta, _) = FrontmatterParser.parse(content)
             FilePreview(
                 file = file,
                 preview = extractPreview(content),
-                createdAt = file.lastModified()
+                createdAt = file.lastModified(),
+                tags = meta.tags
             )
         }
     }

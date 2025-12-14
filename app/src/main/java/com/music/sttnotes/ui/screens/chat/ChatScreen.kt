@@ -33,6 +33,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -109,6 +110,7 @@ fun ChatScreen(
     val currentLlmProvider by viewModel.currentLlmProvider.collectAsState()
     val availableLlmProviders by viewModel.availableLlmProviders.collectAsState()
     val chatFontSize by viewModel.chatFontSize.collectAsState()
+    val isEphemeral by viewModel.isEphemeral.collectAsState()
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -221,6 +223,17 @@ fun ChatScreen(
                         .weight(1f)
                         .clickable { showRenameDialog = true }
                 )
+                // Ephemeral toggle (only show when messages are empty - new conversation)
+                if (messages.isEmpty()) {
+                    IconButton(onClick = { viewModel.toggleEphemeral() }) {
+                        Icon(
+                            if (isEphemeral) Icons.Default.CloudOff else Icons.Default.Cloud,
+                            contentDescription = if (isEphemeral) "Mode ephemere actif" else "Mode normal",
+                            tint = if (isEphemeral) EInkBlack else EInkGrayMedium,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
                 // LLM selector (only show if there are available providers)
                 if (availableLlmProviders.isNotEmpty()) {
                     Box {
@@ -386,7 +399,7 @@ fun ChatScreen(
     pendingClearMessages?.let { clearedMessages ->
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.TopCenter
         ) {
             UndoSnackbar(
                 message = "Conversation effacée",

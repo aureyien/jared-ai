@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -67,6 +68,7 @@ fun EInkButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     filled: Boolean = true,
+    shape: RoundedCornerShape = RoundedCornerShape(4.dp),
     content: @Composable RowScope.() -> Unit
 ) {
     if (filled) {
@@ -74,7 +76,7 @@ fun EInkButton(
             onClick = onClick,
             modifier = modifier.height(52.dp),
             enabled = enabled,
-            shape = RoundedCornerShape(4.dp),
+            shape = shape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = EInkBlack,
                 contentColor = EInkWhite,
@@ -89,7 +91,7 @@ fun EInkButton(
             onClick = onClick,
             modifier = modifier.height(52.dp),
             enabled = enabled,
-            shape = RoundedCornerShape(4.dp),
+            shape = shape,
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = EInkBlack
             ),
@@ -311,23 +313,34 @@ fun EInkBottomActionBar(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Knowledge Base button
-            OutlinedButton(
-                onClick = onKnowledgeBase,
+            // Bottom button shape with rounded bottom corners
+            val bottomButtonShape = RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = 4.dp,
+                bottomEnd = 4.dp
+            )
+
+            // Knowledge Base button - BLACK background (filled)
+            Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = EInkBlack
-                ),
-                border = BorderStroke(2.dp, EInkBlack)
+                    .height(52.dp)
+                    .combinedClickable(onClick = onKnowledgeBase),
+                shape = bottomButtonShape,
+                color = EInkBlack
             ) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("KB")
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkWhite)
+                    Spacer(Modifier.width(4.dp))
+                    Text("KB", color = EInkWhite)
+                }
             }
-            // Chat button with long press support - only show if showChat is true
+            // Chat button with long press support - only show if showChat is true - WHITE background (outlined)
             if (showChat) {
                 Spacer(Modifier.width(8.dp))
                 Surface(
@@ -338,7 +351,7 @@ fun EInkBottomActionBar(
                             onClick = onChat,
                             onLongClick = onChatLongPress
                         ),
-                    shape = RoundedCornerShape(4.dp),
+                    shape = bottomButtonShape,
                     color = EInkWhite,
                     border = BorderStroke(2.dp, EInkBlack)
                 ) {
@@ -354,7 +367,7 @@ fun EInkBottomActionBar(
                 }
             }
             Spacer(Modifier.width(8.dp))
-            // New Note button with long press for recording
+            // Notes button with long press for recording - WHITE background (outlined)
             Surface(
                 modifier = Modifier
                     .weight(1f)
@@ -363,17 +376,18 @@ fun EInkBottomActionBar(
                         onClick = onAddNote,
                         onLongClick = onAddNoteWithRecording
                     ),
-                shape = RoundedCornerShape(4.dp),
-                color = EInkBlack
+                shape = bottomButtonShape,
+                color = EInkWhite,
+                border = BorderStroke(2.dp, EInkBlack)
             ) {
                 Row(
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkWhite)
+                    Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkBlack)
                     Spacer(Modifier.width(4.dp))
-                    Text("Notes", color = EInkWhite)
+                    Text("Notes", color = EInkBlack)
                 }
             }
         }
@@ -432,8 +446,8 @@ data class PendingDeletion<T>(
 )
 
 /**
- * Undo Snackbar with countdown timer (e-ink optimized - no animations)
- * Shows at the bottom of the screen with UNDO button and countdown text
+ * Undo button with countdown timer and progress bar (e-ink optimized)
+ * Shows at the top of the screen with message, UNDO button and 1px progress bar inside
  * Updates once per second to minimize e-ink screen refreshes
  */
 @Composable
@@ -446,10 +460,11 @@ fun UndoSnackbar(
 ) {
     // Use countdown seconds instead of animated progress (better for e-ink)
     var secondsRemaining by remember { mutableIntStateOf((durationMs / 1000).toInt()) }
+    val totalSeconds = (durationMs / 1000).toInt()
 
     // Countdown once per second (not 50ms) - much better for e-ink displays
     LaunchedEffect(message) {
-        secondsRemaining = (durationMs / 1000).toInt()
+        secondsRemaining = totalSeconds
         while (secondsRemaining > 0) {
             delay(1000)
             secondsRemaining--
@@ -464,39 +479,45 @@ fun UndoSnackbar(
         color = EInkBlack,
         shape = RoundedCornerShape(4.dp)
     ) {
-        // Content row with countdown
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = message,
-                color = EInkWhite,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
+        Box {
+            // 1px white progress bar at 1dp from top edge (inside button)
+            val progress = secondsRemaining.toFloat() / totalSeconds.toFloat()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(1.dp)
+                    .padding(start = 1.dp, end = 1.dp)
+                    .offset(y = 1.dp)
+                    .background(EInkWhite)
+                    .align(Alignment.TopStart)
             )
 
-            // Static countdown text instead of animated progress
-            Text(
-                text = "${secondsRemaining}s",
-                color = EInkGrayLight,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-
-            TextButton(
-                onClick = onUndo,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = EInkWhite
-                )
+            // Content row with countdown
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "UNDO",
-                    style = MaterialTheme.typography.labelLarge
+                    text = message,
+                    color = EInkWhite,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
                 )
+
+                TextButton(
+                    onClick = onUndo,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = EInkWhite
+                    )
+                ) {
+                    Text(
+                        text = "UNDO",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             }
         }
     }
