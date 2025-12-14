@@ -38,8 +38,41 @@ class KnowledgeBaseViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    private val _filteredFolders = MutableStateFlow<List<FolderWithFiles>>(emptyList())
+    val filteredFolders: StateFlow<List<FolderWithFiles>> = _filteredFolders
+
     init {
         loadFolders()
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+        filterFolders()
+    }
+
+    private fun filterFolders() {
+        val query = _searchQuery.value.lowercase().trim()
+        if (query.isEmpty()) {
+            _filteredFolders.value = _folders.value
+        } else {
+            _filteredFolders.value = _folders.value.mapNotNull { folder ->
+                val matchingFiles = folder.files.filter { file ->
+                    file.file.nameWithoutExtension.lowercase().contains(query) ||
+                    file.preview.lowercase().contains(query)
+                }
+                if (matchingFiles.isNotEmpty() || folder.name.lowercase().contains(query)) {
+                    folder.copy(
+                        files = if (folder.name.lowercase().contains(query)) folder.files else matchingFiles,
+                        isExpanded = true // Auto-expand folders with matches
+                    )
+                } else {
+                    null
+                }
+            }
+        }
     }
 
     fun loadFolders() {
@@ -53,6 +86,7 @@ class KnowledgeBaseViewModel @Inject constructor(
                     isExpanded = false
                 )
             }
+            filterFolders() // Apply current search filter
             _isLoading.value = false
         }
     }
@@ -108,6 +142,17 @@ class KnowledgeBaseViewModel @Inject constructor(
             llmOutputRepository.deleteFile(folder, filename)
             loadFolders()
         }
+    }
+
+    /**
+     * Rename a file and return the new filename
+     */
+    suspend fun renameFile(folder: String, oldFilename: String, newFilename: String): Result<String> {
+        val result = llmOutputRepository.renameFile(folder, oldFilename, newFilename)
+        if (result.isSuccess) {
+            loadFolders()
+        }
+        return result
     }
 
     fun deleteFolder(folder: String) {

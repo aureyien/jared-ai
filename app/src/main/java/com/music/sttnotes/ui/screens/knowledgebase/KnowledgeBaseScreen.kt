@@ -1,5 +1,6 @@
 package com.music.sttnotes.ui.screens.knowledgebase
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,10 +50,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.layout.Box
-import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkCard
+import com.music.sttnotes.ui.components.EInkDivider
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
+import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
 import com.music.sttnotes.ui.components.UndoSnackbar
 import com.music.sttnotes.ui.theme.EInkBlack
@@ -68,14 +72,29 @@ fun KnowledgeBaseScreen(
     onNavigateBack: () -> Unit,
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
-    val folders by viewModel.folders.collectAsState()
+    val allFolders by viewModel.filteredFolders.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
     // Undo deletion state for folders
     var pendingFolderDeletion by remember { mutableStateOf<PendingDeletion<String>?>(null) }
 
+    // Filter out pending deletion folders from display
+    val folders = remember(allFolders, pendingFolderDeletion) {
+        allFolders.filter { folder -> pendingFolderDeletion?.item != folder.name }
+    }
+
+    // Handle system back button - commit pending deletion before leaving
+    BackHandler {
+        pendingFolderDeletion?.let { deletion ->
+            viewModel.deleteFolder(deletion.item)
+        }
+        pendingFolderDeletion = null
+        onNavigateBack()
+    }
+
     // Refresh list when screen becomes visible
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
@@ -124,40 +143,106 @@ fun KnowledgeBaseScreen(
                     EInkLoadingIndicator(text = "Chargement...")
                 }
             }
-            folders.isEmpty() -> {
+            folders.isEmpty() && searchQuery.isEmpty() -> {
                 EmptyState(modifier = Modifier.fillMaxSize().padding(padding))
             }
             else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(padding)
                 ) {
-                    folders.forEach { folder ->
-                        item(key = "folder_${folder.name}") {
-                            FolderHeader(
-                                name = folder.name,
-                                fileCount = folder.files.size,
-                                isExpanded = folder.isExpanded,
-                                onClick = { viewModel.toggleFolder(folder.name) },
-                                onDelete = {
-                                    pendingFolderDeletion = PendingDeletion(
-                                        item = folder.name,
-                                        message = "Dossier supprimé"
-                                    )
-                                }
+                    // Search bar
+                    EInkTextField(
+                        value = searchQuery,
+                        onValueChange = viewModel::onSearchQueryChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        placeholder = "Rechercher...",
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = EInkBlack
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                EInkIconButton(
+                                    onClick = { viewModel.onSearchQueryChange("") },
+                                    icon = Icons.Default.Close,
+                                    contentDescription = "Effacer"
+                                )
+                            }
+                        }
+                    )
+
+                    EInkDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                    if (folders.isEmpty()) {
+                        // No results
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "Aucun resultat",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Essayez une autre recherche",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        if (folder.isExpanded) {
-                            items(folder.files, key = { "file_${folder.name}_${it.file.name}" }) { filePreview ->
-                                FileItem(
-                                    file = filePreview,
-                                    folderName = folder.name,
-                                    onClick = { onFileClick(folder.name, filePreview.file.name) },
-                                    onCopyContent = {
-                                        viewModel.getFileContent(folder.name, filePreview.file.name)
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            folders.forEach { folder ->
+                                item(key = "folder_${folder.name}") {
+                                    FolderHeader(
+                                        name = folder.name,
+                                        fileCount = folder.files.size,
+                                        isExpanded = folder.isExpanded,
+                                        onClick = { viewModel.toggleFolder(folder.name) },
+                                        onDelete = {
+                                            // Commit previous pending deletion first
+                                            pendingFolderDeletion?.let { previousDeletion ->
+                                                viewModel.deleteFolder(previousDeletion.item)
+                                            }
+                                            // Set new pending deletion
+                                            pendingFolderDeletion = PendingDeletion(
+                                                item = folder.name,
+                                                message = "Dossier supprimé"
+                                            )
+                                        }
+                                    )
+                                }
+                                if (folder.isExpanded) {
+                                    items(folder.files, key = { "file_${folder.name}_${it.file.name}" }) { filePreview ->
+                                        FileItem(
+                                            file = filePreview,
+                                            folderName = folder.name,
+                                            onClick = {
+                                                // Commit any pending deletion before navigating
+                                                pendingFolderDeletion?.let { deletion ->
+                                                    viewModel.deleteFolder(deletion.item)
+                                                }
+                                                pendingFolderDeletion = null
+                                                onFileClick(folder.name, filePreview.file.name)
+                                            },
+                                            onCopyContent = {
+                                                viewModel.getFileContent(folder.name, filePreview.file.name)
+                                            }
+                                        )
                                     }
-                                )
+                                }
                             }
                         }
                     }

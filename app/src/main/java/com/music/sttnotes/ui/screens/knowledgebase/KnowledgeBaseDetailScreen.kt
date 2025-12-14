@@ -1,5 +1,6 @@
 package com.music.sttnotes.ui.screens.knowledgebase
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.Alignment
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -23,17 +25,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mikepenz.markdown.m3.Markdown
+import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
+import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.UndoSnackbar
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkWhite
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,9 +51,14 @@ fun KnowledgeBaseDetailScreen(
 ) {
     val fileContent by viewModel.fileContent.collectAsState()
     var showUndoSnackbar by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var currentFilename by remember { mutableStateOf(filename) }
+    var renameError by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(folder, filename) {
         viewModel.loadFileContent(folder, filename)
+        currentFilename = filename
     }
 
     Scaffold(
@@ -55,10 +66,11 @@ fun KnowledgeBaseDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = filename.removeSuffix(".md"),
+                        text = currentFilename.removeSuffix(".md"),
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable { showRenameDialog = true }
                     )
                 },
                 navigationIcon = {
@@ -66,7 +78,7 @@ fun KnowledgeBaseDetailScreen(
                         onClick = {
                             // Commit pending deletion before navigating back
                             if (showUndoSnackbar) {
-                                viewModel.deleteFile(folder, filename)
+                                viewModel.deleteFile(folder, currentFilename)
                                 showUndoSnackbar = false
                             }
                             viewModel.clearFileContent()
@@ -126,11 +138,89 @@ fun KnowledgeBaseDetailScreen(
                     showUndoSnackbar = false
                 },
                 onTimeout = {
-                    viewModel.deleteFile(folder, filename)
+                    viewModel.deleteFile(folder, currentFilename)
                     showUndoSnackbar = false
                     onNavigateBack()
                 }
             )
         }
     }
+
+    // Rename Dialog
+    if (showRenameDialog) {
+        RenameDialog(
+            currentName = currentFilename.removeSuffix(".md"),
+            error = renameError,
+            onDismiss = {
+                showRenameDialog = false
+                renameError = null
+            },
+            onConfirm = { newName ->
+                coroutineScope.launch {
+                    val result = viewModel.renameFile(folder, currentFilename, newName)
+                    result.fold(
+                        onSuccess = { newFilename ->
+                            currentFilename = newFilename
+                            showRenameDialog = false
+                            renameError = null
+                        },
+                        onFailure = { error ->
+                            renameError = error.message
+                        }
+                    )
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun RenameDialog(
+    currentName: String,
+    error: String?,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var newName by remember { mutableStateOf(currentName) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Renommer le fichier") },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                EInkTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    placeholder = "Nouveau nom",
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (error != null) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            EInkButton(
+                onClick = { onConfirm(newName) },
+                filled = true,
+                enabled = newName.isNotBlank() && newName != currentName
+            ) {
+                Text("Renommer")
+            }
+        },
+        dismissButton = {
+            EInkButton(
+                onClick = onDismiss,
+                filled = false
+            ) {
+                Text("Annuler")
+            }
+        },
+        containerColor = EInkWhite
+    )
 }

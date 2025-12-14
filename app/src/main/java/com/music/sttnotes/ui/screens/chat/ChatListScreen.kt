@@ -1,5 +1,6 @@
 package com.music.sttnotes.ui.screens.chat
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -76,7 +77,7 @@ fun ChatListScreen(
     val conversations by viewModel.conversations.collectAsState()
 
     // Refresh list when screen becomes visible (returning from conversation)
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
@@ -89,10 +90,13 @@ fun ChatListScreen(
         }
     }
 
+    // Undo deletion state
+    var pendingDeletion by remember { mutableStateOf<PendingDeletion<ChatConversation>?>(null) }
+
     // Search state
     var searchQuery by remember { mutableStateOf("") }
-    val filteredConversations = remember(conversations, searchQuery) {
-        if (searchQuery.isBlank()) {
+    val filteredConversations = remember(conversations, searchQuery, pendingDeletion) {
+        val baseList = if (searchQuery.isBlank()) {
             conversations
         } else {
             conversations.filter { conv ->
@@ -100,13 +104,21 @@ fun ChatListScreen(
                 conv.messages.any { it.content.contains(searchQuery, ignoreCase = true) }
             }
         }
+        // Filter out pending deletion items from display
+        baseList.filter { conv -> pendingDeletion?.item?.id != conv.id }
     }
 
     // Dialog states
     var showRenameDialog by remember { mutableStateOf<ChatConversation?>(null) }
 
-    // Undo deletion state
-    var pendingDeletion by remember { mutableStateOf<PendingDeletion<ChatConversation>?>(null) }
+    // Handle system back button - commit pending deletion before leaving
+    BackHandler {
+        pendingDeletion?.let { deletion ->
+            viewModel.deleteConversation(deletion.item.id)
+        }
+        pendingDeletion = null
+        onNavigateBack()
+    }
 
     Scaffold(
         topBar = {
@@ -204,9 +216,21 @@ fun ChatListScreen(
                     items(filteredConversations, key = { it.id }) { conversation ->
                         ConversationCard(
                             conversation = conversation,
-                            onClick = { onConversationClick(conversation.id) },
+                            onClick = {
+                                // Commit any pending deletion before navigating
+                                pendingDeletion?.let { deletion ->
+                                    viewModel.deleteConversation(deletion.item.id)
+                                }
+                                pendingDeletion = null
+                                onConversationClick(conversation.id)
+                            },
                             onRename = { showRenameDialog = conversation },
                             onDelete = {
+                                // Commit previous pending deletion first
+                                pendingDeletion?.let { previousDeletion ->
+                                    viewModel.deleteConversation(previousDeletion.item.id)
+                                }
+                                // Set new pending deletion
                                 pendingDeletion = PendingDeletion(
                                     item = conversation,
                                     message = "Conversation supprimée"
