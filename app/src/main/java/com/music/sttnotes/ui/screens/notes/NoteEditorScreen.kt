@@ -14,11 +14,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
@@ -139,6 +143,11 @@ fun NoteEditorScreen(
             viewModel.saveNote()
         }
     }
+
+    // Detect keyboard visibility
+    val density = LocalDensity.current
+    val imeInsets = WindowInsets.ime
+    val isKeyboardVisible = imeInsets.getBottom(density) > 0
 
     Scaffold(
         topBar = {
@@ -329,37 +338,48 @@ fun NoteEditorScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Content editor
+            // Content editor with toolbar overlay
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .then(
-                        if (isPreviewMode) Modifier.border(1.dp, EInkBlack, RoundedCornerShape(4.dp))
-                        else Modifier
-                    )
+                modifier = Modifier.weight(1f)
             ) {
-                RichTextEditor(
-                    state = viewModel.richTextState,
-                    modifier = Modifier.fillMaxSize(),
-                    readOnly = isPreviewMode,
-                    colors = RichTextEditorDefaults.richTextEditorColors(
-                        containerColor = EInkWhite,
-                        textColor = EInkBlack,
-                        cursorColor = EInkBlack
-                    ),
-                    placeholder = { Text("Start writing or record voice...", color = EInkGrayMedium) }
-                )
+                // Editor takes full space
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (isPreviewMode) Modifier.border(1.dp, EInkBlack, RoundedCornerShape(4.dp))
+                            else Modifier
+                        )
+                ) {
+                    RichTextEditor(
+                        state = viewModel.richTextState,
+                        modifier = Modifier.fillMaxSize(),
+                        readOnly = isPreviewMode,
+                        colors = RichTextEditorDefaults.richTextEditorColors(
+                            containerColor = EInkWhite,
+                            textColor = EInkBlack,
+                            cursorColor = EInkBlack
+                        ),
+                        placeholder = { Text("Start writing or record voice...", color = EInkGrayMedium) }
+                    )
+                }
+
+                // Markdown toolbar - visible only when keyboard is shown in edit mode
+                if (!isPreviewMode && isKeyboardVisible) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .imePadding()
+                    ) {
+                        MarkdownToolbar(richTextState = viewModel.richTextState)
+                    }
+                }
             }
 
-            // Markdown toolbar - visible in edit mode (not preview)
-            if (!isPreviewMode) {
-                MarkdownToolbar(richTextState = viewModel.richTextState)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Recording controls - hide in preview mode
-            if (!isPreviewMode) {
+            // Recording controls - hide in preview mode and when keyboard is visible
+            if (!isPreviewMode && !isKeyboardVisible) {
+                Spacer(modifier = Modifier.height(16.dp))
                 RecordingControls(
                     recordingState = recordingState,
                     onStartRecording = {
