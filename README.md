@@ -1,6 +1,10 @@
-# Whisper Notes
+# Jared AI
+
+> **Jared** = **Jarvis** + **Alfred** — Your personal AI assistant combining the intelligence of Jarvis with the reliability of Alfred.
 
 A privacy-focused Android note-taking app with **offline voice transcription** powered by [whisper.cpp](https://github.com/ggerganov/whisper.cpp) and optional **AI-powered chat** integration.
+
+> **Note**: This entire codebase was generated exclusively by [Claude Code](https://claude.ai/claude-code) (Anthropic's AI coding assistant).
 
 ## Overview
 

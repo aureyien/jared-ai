@@ -103,6 +103,67 @@ class LlmOutputRepository @Inject constructor(
     }
 
     /**
+     * Write/update file content
+     */
+    suspend fun writeFile(folder: String, filename: String, content: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val file = File(File(rootDir, sanitizePath(folder)), sanitizeFilename(filename))
+            file.writeText(content)
+            Log.d(TAG, "Updated file: ${file.absolutePath}")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write file", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Read file content and parse metadata
+     */
+    suspend fun readFileWithMeta(folder: String, filename: String): Result<Pair<KbFileMeta, String>> = withContext(Dispatchers.IO) {
+        try {
+            val file = File(File(rootDir, sanitizePath(folder)), sanitizeFilename(filename))
+            val content = file.readText()
+            Result.success(FrontmatterParser.parse(content))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Write file with metadata
+     */
+    suspend fun writeFileWithMeta(folder: String, filename: String, meta: KbFileMeta, content: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val file = File(File(rootDir, sanitizePath(folder)), sanitizeFilename(filename))
+            file.writeText(FrontmatterParser.combine(meta, content))
+            Log.d(TAG, "Updated file with meta: ${file.absolutePath}")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write file", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get all unique tags across all files
+     */
+    suspend fun getAllTags(): List<String> = withContext(Dispatchers.IO) {
+        val tags = mutableSetOf<String>()
+        listFolders().forEach { folder ->
+            listFiles(folder).forEach { file ->
+                try {
+                    val (meta, _) = FrontmatterParser.parse(file.readText())
+                    tags.addAll(meta.tags)
+                } catch (e: Exception) {
+                    // Ignore parsing errors
+                }
+            }
+        }
+        tags.toList().sorted()
+    }
+
+    /**
      * Delete file
      */
     suspend fun deleteFile(folder: String, filename: String): Result<Unit> = withContext(Dispatchers.IO) {

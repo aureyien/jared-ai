@@ -96,6 +96,10 @@ class ChatViewModel @Inject constructor(
     private val _availableLlmProviders = MutableStateFlow<List<LlmProvider>>(emptyList())
     val availableLlmProviders: StateFlow<List<LlmProvider>> = _availableLlmProviders
 
+    // Chat font size from settings
+    private val _chatFontSize = MutableStateFlow(ApiConfig.DEFAULT_CHAT_FONT_SIZE)
+    val chatFontSize: StateFlow<Float> = _chatFontSize
+
     init {
         viewModelScope.launch {
             // Initialize repository
@@ -103,6 +107,14 @@ class ChatViewModel @Inject constructor(
 
             // Load LLM provider from settings
             _currentLlmProvider.value = apiConfig.llmProvider.first()
+
+            // Collect chat font size changes
+            apiConfig.chatFontSize.collect { size ->
+                _chatFontSize.value = size
+            }
+        }
+
+        viewModelScope.launch {
 
             // Load available providers (with API keys configured)
             refreshAvailableProviders()

@@ -2,6 +2,8 @@ package com.music.sttnotes.ui.screens.knowledgebase
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.music.sttnotes.data.llm.FrontmatterParser
+import com.music.sttnotes.data.llm.KbFileMeta
 import com.music.sttnotes.data.llm.LlmOutputRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -44,8 +46,34 @@ class KnowledgeBaseViewModel @Inject constructor(
     private val _filteredFolders = MutableStateFlow<List<FolderWithFiles>>(emptyList())
     val filteredFolders: StateFlow<List<FolderWithFiles>> = _filteredFolders
 
+    // Edit mode state
+    private val _isEditMode = MutableStateFlow(false)
+    val isEditMode: StateFlow<Boolean> = _isEditMode
+
+    private val _editedContent = MutableStateFlow<String?>(null)
+    val editedContent: StateFlow<String?> = _editedContent
+
+    // Tags state
+    private val _fileTags = MutableStateFlow<List<String>>(emptyList())
+    val fileTags: StateFlow<List<String>> = _fileTags
+
+    private val _allTags = MutableStateFlow<List<String>>(emptyList())
+    val allTags: StateFlow<List<String>> = _allTags
+
+    private val _tagInput = MutableStateFlow("")
+    val tagInput: StateFlow<String> = _tagInput
+
+    private var currentMeta: KbFileMeta? = null
+
     init {
         loadFolders()
+        loadAllTags()
+    }
+
+    private fun loadAllTags() {
+        viewModelScope.launch {
+            _allTags.value = llmOutputRepository.getAllTags()
+        }
     }
 
     fun onSearchQueryChange(query: String) {
@@ -132,8 +160,17 @@ class KnowledgeBaseViewModel @Inject constructor(
 
     fun loadFileContent(folder: String, filename: String) {
         viewModelScope.launch {
-            llmOutputRepository.readFile(folder, filename).onSuccess { content ->
-                _fileContent.value = content
+            llmOutputRepository.readFileWithMeta(folder, filename).onSuccess { (meta, content) ->
+                currentMeta = meta
+                _fileTags.value = meta.tags
+                _fileContent.value = FrontmatterParser.combine(meta, content)
+            }.onFailure {
+                // Fallback to simple read
+                llmOutputRepository.readFile(folder, filename).onSuccess { content ->
+                    _fileContent.value = content
+                    currentMeta = null
+                    _fileTags.value = emptyList()
+                }
             }
         }
     }
@@ -165,6 +202,53 @@ class KnowledgeBaseViewModel @Inject constructor(
 
     fun clearFileContent() {
         _fileContent.value = null
+        _isEditMode.value = false
+        _editedContent.value = null
+        _fileTags.value = emptyList()
+        _tagInput.value = ""
+        currentMeta = null
+    }
+
+    // Edit mode functions
+    fun toggleEditMode() {
+        _isEditMode.value = !_isEditMode.value
+    }
+
+    fun updateEditedContent(content: String) {
+        _editedContent.value = content
+    }
+
+    fun saveFileContent(folder: String, filename: String, content: String) {
+        viewModelScope.launch {
+            // Parse content to separate frontmatter from body
+            val (existingMeta, bodyContent) = FrontmatterParser.parse(content)
+            // Use existing meta if available, or create new one with current tags
+            val meta = currentMeta?.copy(tags = _fileTags.value) ?: existingMeta.copy(tags = _fileTags.value)
+
+            llmOutputRepository.writeFileWithMeta(folder, filename, meta, bodyContent).onSuccess {
+                _fileContent.value = FrontmatterParser.combine(meta, bodyContent)
+                _editedContent.value = null
+                currentMeta = meta
+                loadAllTags() // Refresh all tags after save
+            }
+        }
+    }
+
+    // Tag management functions
+    fun updateTagInput(input: String) {
+        _tagInput.value = input
+    }
+
+    fun addTag(tag: String) {
+        val trimmedTag = tag.trim()
+        if (trimmedTag.isNotEmpty() && !_fileTags.value.contains(trimmedTag)) {
+            _fileTags.value = _fileTags.value + trimmedTag
+            _tagInput.value = ""
+        }
+    }
+
+    fun removeTag(tag: String) {
+        _fileTags.value = _fileTags.value.filter { it != tag }
     }
 
     fun getFile(folder: String, filename: String): File {

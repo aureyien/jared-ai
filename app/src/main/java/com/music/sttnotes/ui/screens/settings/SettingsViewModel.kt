@@ -22,7 +22,8 @@ data class SettingsUiState(
     val openaiApiKey: String = "",
     val xaiApiKey: String = "",
     val llmSystemPrompt: String = ApiConfig.DEFAULT_SYSTEM_PROMPT,
-    val sttLanguage: SttLanguage = SttLanguage.FRENCH
+    val sttLanguage: SttLanguage = SttLanguage.FRENCH,
+    val chatFontSize: Float = ApiConfig.DEFAULT_CHAT_FONT_SIZE
 )
 
 @HiltViewModel
@@ -43,7 +44,8 @@ class SettingsViewModel @Inject constructor(
                 apiConfig.openaiApiKey,
                 apiConfig.xaiApiKey,
                 apiConfig.llmSystemPrompt,
-                sttPreferences.selectedLanguage
+                sttPreferences.selectedLanguage,
+                apiConfig.chatFontSize
             ) { values ->
                 @Suppress("UNCHECKED_CAST")
                 SettingsUiState(
@@ -53,7 +55,8 @@ class SettingsViewModel @Inject constructor(
                     openaiApiKey = (values[3] as? String) ?: "",
                     xaiApiKey = (values[4] as? String) ?: "",
                     llmSystemPrompt = values[5] as String,
-                    sttLanguage = values[6] as SttLanguage
+                    sttLanguage = values[6] as SttLanguage,
+                    chatFontSize = values[7] as Float
                 )
             }.collect { _uiState.value = it }
         }
@@ -85,5 +88,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setSttLanguage(language: SttLanguage) {
         viewModelScope.launch { sttPreferences.setLanguage(language) }
+    }
+
+    fun setChatFontSize(size: Float) {
+        viewModelScope.launch { apiConfig.setChatFontSize(size) }
     }
 }

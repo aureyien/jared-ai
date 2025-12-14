@@ -76,6 +76,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkChip
@@ -107,6 +108,7 @@ fun ChatScreen(
     val existingFolders by viewModel.existingFolders.collectAsState()
     val currentLlmProvider by viewModel.currentLlmProvider.collectAsState()
     val availableLlmProviders by viewModel.availableLlmProviders.collectAsState()
+    val chatFontSize by viewModel.chatFontSize.collectAsState()
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -271,6 +273,7 @@ fun ChatScreen(
                 ) { message ->
                     ChatBubble(
                         message = message,
+                        fontSize = chatFontSize,
                         onSaveClick = if (message.role == "assistant" && message.content.isNotBlank()) {
                             { messageToSave = message }
                         } else null
@@ -484,6 +487,7 @@ private fun EmptyState() {
 @Composable
 private fun ChatBubble(
     message: UiChatMessage,
+    fontSize: Float = 14f,
     onSaveClick: (() -> Unit)? = null
 ) {
     val isUser = message.role == "user"
@@ -519,13 +523,13 @@ private fun ChatBubble(
                     Text(
                         text = message.content,
                         color = EInkWhite,
-                        style = MaterialTheme.typography.bodySmall
+                        fontSize = fontSize.sp
                     )
                 } else {
                     Markdown(
                         content = message.content,
                         colors = einkMarkdownColors(),
-                        typography = chatMarkdownTypography(),
+                        typography = chatMarkdownTypography(baseFontSize = fontSize),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
