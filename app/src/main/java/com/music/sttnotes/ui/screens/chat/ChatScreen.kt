@@ -137,6 +137,9 @@ fun ChatScreen(
     // Save dialog state
     var messageToSave by remember { mutableStateOf<UiChatMessage?>(null) }
 
+    // Rename dialog state
+    var showRenameDialog by remember { mutableStateOf(false) }
+
     // Clear chat undo state (store messages before clear)
     var pendingClearMessages by remember { mutableStateOf<List<UiChatMessage>?>(null) }
 
@@ -196,7 +199,7 @@ fun ChatScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(end = 16.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onNavigateBack) {
@@ -212,7 +215,9 @@ fun ChatScreen(
                     color = EInkBlack,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showRenameDialog = true }
                 )
                 // LLM selector (only show if there are available providers)
                 if (availableLlmProviders.isNotEmpty()) {
@@ -392,6 +397,65 @@ fun ChatScreen(
             )
         }
     }
+
+    // Rename dialog
+    if (showRenameDialog) {
+        RenameConversationDialog(
+            currentTitle = conversationTitle,
+            onDismiss = { showRenameDialog = false },
+            onConfirm = { newTitle ->
+                viewModel.renameConversation(newTitle)
+                showRenameDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun RenameConversationDialog(
+    currentTitle: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var newTitle by remember { mutableStateOf(currentTitle) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Renommer la conversation") },
+        text = {
+            com.music.sttnotes.ui.components.EInkTextField(
+                value = newTitle,
+                onValueChange = { newTitle = it },
+                placeholder = "Nouveau titre",
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(newTitle) },
+                enabled = newTitle.isNotBlank() && newTitle != currentTitle,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EInkBlack,
+                    contentColor = EInkWhite
+                )
+            ) {
+                Text("Renommer")
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EInkWhite,
+                    contentColor = EInkBlack
+                ),
+                border = BorderStroke(1.dp, EInkBlack)
+            ) {
+                Text("Annuler")
+            }
+        },
+        containerColor = EInkWhite
+    )
 }
 
 @Composable
