@@ -36,9 +36,9 @@ class ApiConfig @Inject constructor(
         private val LLM_SYSTEM_PROMPT = stringPreferencesKey("llm_system_prompt")
         private val CHAT_FONT_SIZE = floatPreferencesKey("chat_font_size")
 
-        const val DEFAULT_CHAT_FONT_SIZE = 16f
-        const val MIN_CHAT_FONT_SIZE = 12f
-        const val MAX_CHAT_FONT_SIZE = 24f
+        const val DEFAULT_CHAT_FONT_SIZE = 14f
+        const val MIN_CHAT_FONT_SIZE = 10f
+        const val MAX_CHAT_FONT_SIZE = 20f
 
         const val GROQ_BASE_URL = "https://api.groq.com/openai/v1/"
         const val OPENAI_BASE_URL = "https://api.openai.com/v1/"

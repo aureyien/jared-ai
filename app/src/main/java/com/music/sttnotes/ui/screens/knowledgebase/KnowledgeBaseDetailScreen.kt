@@ -214,7 +214,8 @@ fun KnowledgeBaseDetailScreen(
                     }
                     else -> {
                         // Editor or Preview based on mode
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        // imePadding on edit mode so content scrolls up when keyboard shows
+                        Box(modifier = Modifier.fillMaxSize().then(if (isEditMode) Modifier.imePadding() else Modifier)) {
                             if (isEditMode) {
                                 // Edit mode: RichTextEditor
                                 RichTextEditor(
@@ -250,7 +251,6 @@ fun KnowledgeBaseDetailScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .align(Alignment.BottomCenter)
-                                        .imePadding()
                                 ) {
                                     MarkdownToolbar(richTextState = richTextState)
                                 }
@@ -266,7 +266,7 @@ fun KnowledgeBaseDetailScreen(
     if (showUndoSnackbar) {
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.TopCenter
         ) {
             UndoSnackbar(
                 message = "Fichier supprimé",

@@ -352,9 +352,9 @@ private fun ChatFontSizeSelector(
         ) {
             Slider(
                 value = currentSize,
-                onValueChange = onSizeChange,
+                onValueChange = { onSizeChange(kotlin.math.round(it)) },
                 valueRange = ApiConfig.MIN_CHAT_FONT_SIZE..ApiConfig.MAX_CHAT_FONT_SIZE,
-                steps = ((ApiConfig.MAX_CHAT_FONT_SIZE - ApiConfig.MIN_CHAT_FONT_SIZE) / 2 - 1).toInt(),
+                steps = 9,  // 10 values (10-20) = 9 intermediate steps for 1sp increments
                 modifier = Modifier.weight(1f)
             )
             Spacer(modifier = Modifier.width(12.dp))

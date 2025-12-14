@@ -100,6 +100,14 @@ class ChatViewModel @Inject constructor(
     private val _chatFontSize = MutableStateFlow(ApiConfig.DEFAULT_CHAT_FONT_SIZE)
     val chatFontSize: StateFlow<Float> = _chatFontSize
 
+    // Ephemeral mode - conversation not saved to history
+    private val _isEphemeral = MutableStateFlow(false)
+    val isEphemeral: StateFlow<Boolean> = _isEphemeral
+
+    fun toggleEphemeral() {
+        _isEphemeral.value = !_isEphemeral.value
+    }
+
     init {
         viewModelScope.launch {
             // Initialize repository
@@ -198,6 +206,8 @@ class ChatViewModel @Inject constructor(
     }
 
     private suspend fun ensureConversation(firstMessage: String) {
+        // Skip creating conversation in ephemeral mode
+        if (_isEphemeral.value) return
         if (currentConversationId == null) {
             val conversation = chatHistoryRepository.createConversation(firstMessage)
             currentConversationId = conversation.id
@@ -206,6 +216,8 @@ class ChatViewModel @Inject constructor(
     }
 
     private suspend fun persistMessage(uiMessage: UiChatMessage) {
+        // Skip persisting messages in ephemeral mode
+        if (_isEphemeral.value) return
         currentConversationId?.let { convId ->
             val entity = ChatMessageEntity(
                 id = uiMessage.id,

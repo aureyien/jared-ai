@@ -340,8 +340,9 @@ fun NoteEditorScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Content editor with toolbar overlay
+            // imePadding on edit mode so content scrolls up when keyboard shows
             Box(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).then(if (!isPreviewMode) Modifier.imePadding() else Modifier)
             ) {
                 // Editor takes full space
                 Box(
@@ -371,7 +372,6 @@ fun NoteEditorScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .align(Alignment.BottomCenter)
-                            .imePadding()
                     ) {
                         MarkdownToolbar(richTextState = viewModel.richTextState)
                     }

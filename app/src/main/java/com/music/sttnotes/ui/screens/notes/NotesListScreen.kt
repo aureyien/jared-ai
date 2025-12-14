@@ -152,7 +152,7 @@ fun NotesListScreen(
                         .fillMaxWidth()
                         .padding(12.dp)
                         .height(44.dp),
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 4.dp, bottomEnd = 4.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EInkBlack,
                         contentColor = EInkWhite
@@ -318,7 +318,7 @@ fun NotesListScreen(
     pendingDeletion?.let { deletion ->
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.TopCenter
         ) {
             UndoSnackbar(
                 message = deletion.message,
