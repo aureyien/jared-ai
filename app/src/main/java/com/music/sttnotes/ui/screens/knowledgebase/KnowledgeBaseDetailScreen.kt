@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mikepenz.markdown.m3.Markdown
 import com.music.sttnotes.ui.components.EInkButton
+import com.music.sttnotes.ui.components.einkMarkdownColors
+import com.music.sttnotes.ui.components.einkMarkdownTypography
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
@@ -111,14 +113,16 @@ fun KnowledgeBaseDetailScreen(
                 )
             }
             else -> {
-                // Render markdown content with proper formatting and text selection
+                // Render markdown content with e-ink optimized formatting and text selection
                 SelectionContainer {
                     Markdown(
                         content = fileContent ?: "",
+                        colors = einkMarkdownColors(),
+                        typography = einkMarkdownTypography(),
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
-                            .padding(16.dp)
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
                             .verticalScroll(rememberScrollState())
                     )
                 }
