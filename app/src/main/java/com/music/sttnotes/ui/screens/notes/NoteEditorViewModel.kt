@@ -64,11 +64,15 @@ class NoteEditorViewModel @Inject constructor(
         }
     }
 
+    // Track if this is a new note (for empty note check on save)
+    private var isNewNote = true
+
     fun loadNote(noteId: String?) {
         if (noteId != null) {
             notesRepository.getNote(noteId)?.let { existingNote ->
                 _note.value = existingNote
                 richTextState.setMarkdown(existingNote.content)
+                isNewNote = false
             }
         }
     }
@@ -188,9 +192,12 @@ class NoteEditorViewModel @Inject constructor(
 
     fun saveNote() {
         viewModelScope.launch {
-            val currentNote = _note.value.copy(
-                content = richTextState.toMarkdown()
-            )
+            val content = richTextState.toMarkdown()
+            // Don't save empty notes (new notes with no content)
+            if (content.isBlank() && isNewNote) {
+                return@launch
+            }
+            val currentNote = _note.value.copy(content = content)
             notesRepository.saveNote(currentNote)
         }
     }

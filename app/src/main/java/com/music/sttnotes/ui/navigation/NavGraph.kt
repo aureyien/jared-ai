@@ -11,6 +11,7 @@ import com.music.sttnotes.ui.screens.chat.ChatListScreen
 import com.music.sttnotes.ui.screens.chat.ChatScreen
 import com.music.sttnotes.ui.screens.home.DashboardScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseDetailScreen
+import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseFolderScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseScreen
 import com.music.sttnotes.ui.screens.notes.NoteEditorScreen
 import com.music.sttnotes.ui.screens.notes.NotesListScreen
@@ -30,6 +31,9 @@ sealed class Screen(val route: String) {
             "chat/${conversationId ?: "new"}?startRecording=$startRecording"
     }
     data object KnowledgeBase : Screen("knowledge_base")
+    data object KnowledgeBaseFolder : Screen("knowledge_base/folder/{folderName}") {
+        fun createRoute(folderName: String) = "knowledge_base/folder/$folderName"
+    }
     data object KnowledgeBaseDetail : Screen("knowledge_base/{folder}/{filename}") {
         fun createRoute(folder: String, filename: String) =
             "knowledge_base/$folder/$filename"
@@ -140,8 +144,24 @@ fun NavGraph(
         // Knowledge Base screens
         composable(Screen.KnowledgeBase.route) {
             KnowledgeBaseScreen(
-                onFileClick = { folder, filename ->
-                    navController.navigate(Screen.KnowledgeBaseDetail.createRoute(folder, filename))
+                onFolderClick = { folderName ->
+                    navController.navigate(Screen.KnowledgeBaseFolder.createRoute(folderName))
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.KnowledgeBaseFolder.route,
+            arguments = listOf(
+                navArgument("folderName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val folderName = backStackEntry.arguments?.getString("folderName") ?: ""
+            KnowledgeBaseFolderScreen(
+                folderName = folderName,
+                onFileClick = { filename ->
+                    navController.navigate(Screen.KnowledgeBaseDetail.createRoute(folderName, filename))
                 },
                 onNavigateBack = { navController.popBackStack() }
             )

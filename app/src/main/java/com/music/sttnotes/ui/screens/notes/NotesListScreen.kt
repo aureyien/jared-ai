@@ -65,7 +65,7 @@ import com.music.sttnotes.ui.components.EInkDivider
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
-import com.music.sttnotes.ui.components.UndoSnackbar
+import com.music.sttnotes.ui.components.UndoButton
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkWhite
 import java.text.SimpleDateFormat
@@ -127,6 +127,17 @@ fun NotesListScreen(
                     )
                 },
                 actions = {
+                    // Undo button in TopAppBar
+                    pendingDeletion?.let { deletion ->
+                        UndoButton(
+                            onUndo = { pendingDeletion = null },
+                            onTimeout = {
+                                viewModel.deleteNote(deletion.item.id)
+                                pendingDeletion = null
+                            }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
                     EInkIconButton(
                         onClick = { isListView = !isListView },
                         icon = if (isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
@@ -152,7 +163,7 @@ fun NotesListScreen(
                         .fillMaxWidth()
                         .padding(12.dp)
                         .height(44.dp),
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 4.dp, bottomEnd = 4.dp),
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 24.dp, bottomEnd = 24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EInkBlack,
                         contentColor = EInkWhite
@@ -311,25 +322,6 @@ fun NotesListScreen(
                     }
                 }
             }
-        }
-    }
-
-    // Undo Snackbar for deletion
-    pendingDeletion?.let { deletion ->
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            UndoSnackbar(
-                message = deletion.message,
-                onUndo = {
-                    pendingDeletion = null
-                },
-                onTimeout = {
-                    viewModel.deleteNote(deletion.item.id)
-                    pendingDeletion = null
-                }
-            )
         }
     }
 }

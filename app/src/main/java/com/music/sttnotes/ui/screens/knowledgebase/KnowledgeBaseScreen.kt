@@ -1,10 +1,11 @@
 package com.music.sttnotes.ui.screens.knowledgebase
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,14 +19,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
@@ -45,14 +42,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import com.music.sttnotes.ui.components.EInkCard
 import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.EInkDivider
@@ -60,19 +51,15 @@ import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
-import com.music.sttnotes.ui.components.UndoSnackbar
+import com.music.sttnotes.ui.components.UndoButton
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun KnowledgeBaseScreen(
-    onFileClick: (folder: String, filename: String) -> Unit,
+    onFolderClick: (folderName: String) -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
@@ -133,6 +120,18 @@ fun KnowledgeBaseScreen(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Retour"
                     )
+                },
+                actions = {
+                    // Undo button in TopAppBar
+                    pendingFolderDeletion?.let { deletion ->
+                        UndoButton(
+                            onUndo = { pendingFolderDeletion = null },
+                            onTimeout = {
+                                viewModel.deleteFolder(deletion.item)
+                                pendingFolderDeletion = null
+                            }
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = EInkWhite,
@@ -246,69 +245,35 @@ fun KnowledgeBaseScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            folders.forEach { folder ->
-                                item(key = "folder_${folder.name}") {
-                                    FolderHeader(
-                                        name = folder.name,
-                                        fileCount = folder.files.size,
-                                        isExpanded = folder.isExpanded,
-                                        onClick = { viewModel.toggleFolder(folder.name) },
-                                        onDelete = {
-                                            // Commit previous pending deletion first
-                                            pendingFolderDeletion?.let { previousDeletion ->
-                                                viewModel.deleteFolder(previousDeletion.item)
-                                            }
-                                            // Set new pending deletion
-                                            pendingFolderDeletion = PendingDeletion(
-                                                item = folder.name,
-                                                message = "Dossier supprimé"
-                                            )
+                            items(folders, key = { "folder_${it.name}" }) { folder ->
+                                FolderCard(
+                                    name = folder.name,
+                                    fileCount = folder.files.size,
+                                    onClick = {
+                                        // Commit any pending deletion before navigating
+                                        pendingFolderDeletion?.let { deletion ->
+                                            viewModel.deleteFolder(deletion.item)
                                         }
-                                    )
-                                }
-                                if (folder.isExpanded) {
-                                    items(folder.files, key = { "file_${folder.name}_${it.file.name}" }) { filePreview ->
-                                        FileItem(
-                                            file = filePreview,
-                                            folderName = folder.name,
-                                            onClick = {
-                                                // Commit any pending deletion before navigating
-                                                pendingFolderDeletion?.let { deletion ->
-                                                    viewModel.deleteFolder(deletion.item)
-                                                }
-                                                pendingFolderDeletion = null
-                                                onFileClick(folder.name, filePreview.file.name)
-                                            },
-                                            onCopyContent = {
-                                                viewModel.getFileContent(folder.name, filePreview.file.name)
-                                            }
+                                        pendingFolderDeletion = null
+                                        onFolderClick(folder.name)
+                                    },
+                                    onDelete = {
+                                        // Commit previous pending deletion first
+                                        pendingFolderDeletion?.let { previousDeletion ->
+                                            viewModel.deleteFolder(previousDeletion.item)
+                                        }
+                                        // Set new pending deletion
+                                        pendingFolderDeletion = PendingDeletion(
+                                            item = folder.name,
+                                            message = "Dossier supprimé"
                                         )
                                     }
-                                }
+                                )
                             }
                         }
                     }
                 }
             }
-        }
-    }
-
-    // Undo Snackbar for folder deletion
-    pendingFolderDeletion?.let { deletion ->
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            UndoSnackbar(
-                message = deletion.message,
-                onUndo = {
-                    pendingFolderDeletion = null
-                },
-                onTimeout = {
-                    viewModel.deleteFolder(deletion.item)
-                    pendingFolderDeletion = null
-                }
-            )
         }
     }
 }
@@ -342,10 +307,9 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun FolderHeader(
+private fun FolderCard(
     name: String,
     fileCount: Int,
-    isExpanded: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -379,7 +343,7 @@ private fun FolderHeader(
                 )
             }
 
-            // Context menu
+            // Delete button with menu
             EInkIconButton(
                 onClick = { showMenu = true },
                 icon = Icons.Default.Delete,
@@ -398,110 +362,6 @@ private fun FolderHeader(
                     leadingIcon = { Icon(Icons.Default.Delete, null) }
                 )
             }
-
-            Icon(
-                if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (isExpanded) "Reduire" else "Etendre",
-                tint = EInkBlack
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun FileItem(
-    file: FilePreview,
-    folderName: String,
-    onClick: () -> Unit,
-    onCopyContent: () -> String?
-) {
-    var showMenu by remember { mutableStateOf(false) }
-    val clipboardManager = LocalClipboardManager.current
-
-    EInkCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = { showMenu = true }
-            )
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Description,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = EInkGrayMedium
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = file.file.nameWithoutExtension,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = EInkBlack,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = formatRelativeTime(file.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = EInkGrayMedium
-                )
-            }
-            if (file.preview.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = file.preview,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = EInkGrayMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        // Context menu for copy
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text("Copier le contenu") },
-                onClick = {
-                    showMenu = false
-                    val content = onCopyContent()
-                    if (content != null) {
-                        clipboardManager.setText(AnnotatedString(content))
-                    }
-                },
-                leadingIcon = {
-                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(20.dp))
-                }
-            )
-        }
-    }
-}
-
-private fun formatRelativeTime(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-
-    val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
-    val hours = TimeUnit.MILLISECONDS.toHours(diff)
-    val days = TimeUnit.MILLISECONDS.toDays(diff)
-
-    return when {
-        minutes < 1 -> "maintenant"
-        minutes < 60 -> "il y a ${minutes}min"
-        hours < 24 -> "il y a ${hours}h"
-        days < 2 -> "hier"
-        days < 7 -> "il y a ${days}j"
-        else -> {
-            val format = SimpleDateFormat("d MMM", Locale.FRENCH)
-            format.format(Date(timestamp))
         }
     }
 }

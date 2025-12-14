@@ -356,13 +356,17 @@ fun EInkBottomActionBar(
                     border = BorderStroke(2.dp, EInkBlack)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxSize().padding(start = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkBlack)
-                        Spacer(Modifier.width(4.dp))
-                        Text("Chat", color = EInkBlack)
+                        // Text centered in remaining space
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
+                                Text("Chat", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
                     }
                 }
             }
@@ -381,13 +385,17 @@ fun EInkBottomActionBar(
                 border = BorderStroke(2.dp, EInkBlack)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize().padding(start = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkBlack)
-                    Spacer(Modifier.width(4.dp))
-                    Text("Notes", color = EInkBlack)
+                    // Text centered in remaining space
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
+                            Text("Note", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
                 }
             }
         }
@@ -446,79 +454,81 @@ data class PendingDeletion<T>(
 )
 
 /**
- * Undo button with countdown timer and progress bar (e-ink optimized)
- * Shows at the top of the screen with message, UNDO button and 1px progress bar inside
- * Updates once per second to minimize e-ink screen refreshes
+ * Compact UNDO button with 5 dots countdown (e-ink optimized)
+ * Designed to be placed in TopAppBar actions
+ * Shows 5 dots that disappear one by one each second
  */
 @Composable
 fun UndoSnackbar(
     message: String,
     onUndo: () -> Unit,
     onTimeout: () -> Unit,
-    durationMs: Long = 7000L,
+    durationMs: Long = 5000L,
     modifier: Modifier = Modifier
 ) {
-    // Use countdown seconds instead of animated progress (better for e-ink)
-    var secondsRemaining by remember { mutableIntStateOf((durationMs / 1000).toInt()) }
-    val totalSeconds = (durationMs / 1000).toInt()
+    UndoButton(
+        onUndo = onUndo,
+        onTimeout = onTimeout,
+        modifier = modifier
+    )
+}
 
-    // Countdown once per second (not 50ms) - much better for e-ink displays
-    LaunchedEffect(message) {
-        secondsRemaining = totalSeconds
-        while (secondsRemaining > 0) {
+/**
+ * Compact UNDO button with 5 dots countdown for TopAppBar
+ * Shows 5 dots on top of "UNDO" text, one dot disappears each second
+ */
+@Composable
+fun UndoButton(
+    onUndo: () -> Unit,
+    onTimeout: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // 5 dots countdown - one disappears each second
+    var dotsRemaining by remember { mutableIntStateOf(5) }
+
+    // Countdown once per second
+    LaunchedEffect(Unit) {
+        dotsRemaining = 5
+        while (dotsRemaining > 0) {
             delay(1000)
-            secondsRemaining--
+            dotsRemaining--
         }
         onTimeout()
     }
 
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier,
         color = EInkBlack,
-        shape = RoundedCornerShape(4.dp)
+        shape = RoundedCornerShape(4.dp),
+        onClick = onUndo
     ) {
-        Box {
-            // 1px white progress bar at 1dp from top edge (inside button)
-            val progress = secondsRemaining.toFloat() / totalSeconds.toFloat()
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(progress)
-                    .height(1.dp)
-                    .padding(start = 1.dp, end = 1.dp)
-                    .offset(y = 1.dp)
-                    .background(EInkWhite)
-                    .align(Alignment.TopStart)
-            )
-
-            // Content row with countdown
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 5 dots row - disappear from left to right
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Text(
-                    text = message,
-                    color = EInkWhite,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-
-                TextButton(
-                    onClick = onUndo,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = EInkWhite
-                    )
-                ) {
-                    Text(
-                        text = "UNDO",
-                        style = MaterialTheme.typography.labelLarge
+                repeat(5) { index ->
+                    // Dots disappear left to right: index 0 disappears first when dotsRemaining=4
+                    val dotsGone = 5 - dotsRemaining
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(
+                                color = if (index >= dotsGone) EInkWhite else EInkBlack,
+                                shape = RoundedCornerShape(3.dp)
+                            )
                     )
                 }
             }
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "UNDO",
+                color = EInkWhite,
+                style = MaterialTheme.typography.labelSmall
+            )
         }
     }
 }

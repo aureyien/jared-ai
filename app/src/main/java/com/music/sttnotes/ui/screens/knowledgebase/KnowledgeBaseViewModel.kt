@@ -142,6 +142,8 @@ class KnowledgeBaseViewModel @Inject constructor(
                 )
             }
             filterFolders() // Apply current search filter
+            // Refresh tags from all files
+            _allTags.value = llmOutputRepository.getAllTags()
             _isLoading.value = false
         }
     }
