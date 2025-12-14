@@ -3,9 +3,6 @@ package com.music.sttnotes.ui.screens.chat
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -161,20 +158,17 @@ fun ChatScreen(
         }
     }
 
-    // Auto-scroll to bottom when new message or on initial load
+    // Auto-scroll to bottom when new message or on initial load (no animation for e-ink)
     var isInitialLoad by remember { mutableStateOf(true) }
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             if (isInitialLoad) {
-                // Instant scroll on initial load (no animation)
                 // Use a small delay to ensure list is composed
                 kotlinx.coroutines.delay(100)
-                listState.scrollToItem(messages.size - 1)
                 isInitialLoad = false
-            } else {
-                // Animated scroll for new messages
-                listState.animateScrollToItem(messages.size - 1)
             }
+            // Instant scroll for all cases (better for e-ink displays)
+            listState.scrollToItem(messages.size - 1)
         }
     }
 
@@ -257,11 +251,15 @@ fun ChatScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                 if (messages.isEmpty()) {
-                    item {
+                    item(contentType = "empty_state") {
                         EmptyState()
                     }
                 }
-                items(messages, key = { it.id }) { message ->
+                items(
+                    items = messages,
+                    key = { it.id },
+                    contentType = { it.role } // Different types for user vs assistant messages
+                ) { message ->
                     ChatBubble(
                         message = message,
                         onSaveClick = if (message.role == "assistant" && message.content.isNotBlank()) {
@@ -271,7 +269,7 @@ fun ChatScreen(
                 }
                 // Loading indicator
                 if (chatState is ChatState.SendingToLlm) {
-                    item {
+                    item(contentType = "loading") {
                         Box(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.CenterStart
@@ -282,22 +280,15 @@ fun ChatScreen(
                 }
             }
 
-                // Single scroll FAB - direction changes based on position
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = showScrollFab,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp)
-                ) {
+                // Single scroll FAB - no animation for e-ink displays
+                if (showScrollFab) {
                     FloatingActionButton(
                         onClick = {
                             coroutineScope.launch {
                                 if (scrollDirection == "down") {
-                                    listState.animateScrollToItem(messages.size)
+                                    listState.scrollToItem(messages.size)
                                 } else {
-                                    listState.animateScrollToItem(0)
+                                    listState.scrollToItem(0)
                                 }
                             }
                         },
@@ -305,7 +296,10 @@ fun ChatScreen(
                         contentColor = EInkWhite,
                         shape = CircleShape,
                         elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp)
+                            .size(40.dp)
                     ) {
                         Icon(
                             if (scrollDirection == "down") Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
@@ -315,13 +309,16 @@ fun ChatScreen(
                 }
             }
 
-            // Status bar
+            // Status bar - shows all processing states for e-ink visibility
             when (val state = chatState) {
                 is ChatState.Recording -> {
                     StatusBar(text = "Enregistrement en cours...", showMic = true)
                 }
                 is ChatState.Transcribing -> {
-                    StatusBar(text = "Transcription...", showMic = false)
+                    StatusBar(text = "Transcription en cours...", showMic = false)
+                }
+                is ChatState.SendingToLlm -> {
+                    StatusBar(text = "Sending...", showMic = false)
                 }
                 is ChatState.Error -> {
                     StatusBar(text = state.message, isError = true, onDismiss = { viewModel.dismissError() })
