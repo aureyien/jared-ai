@@ -127,6 +127,7 @@ class KnowledgeBaseViewModel @Inject constructor(
             if (folder.name == folderName) folder.copy(isExpanded = !folder.isExpanded)
             else folder
         }
+        filterFolders() // Update filtered list to reflect expansion state
     }
 
     fun loadFileContent(folder: String, filename: String) {
