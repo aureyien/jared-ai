@@ -82,6 +82,10 @@ import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.UndoSnackbar
+import com.music.sttnotes.ui.components.chatMarkdownTypography
+import com.music.sttnotes.ui.components.einkMarkdownColors
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayLight
 import com.music.sttnotes.ui.theme.EInkGrayMedium
@@ -420,6 +424,7 @@ private fun ChatBubble(
 ) {
     val isUser = message.role == "user"
     val isSaved = message.savedToFile != null
+    val cornerRadius = 8.dp
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -427,15 +432,18 @@ private fun ChatBubble(
     ) {
         Box(
             modifier = Modifier
-                .widthIn(max = 300.dp)
+                .then(
+                    if (isUser) Modifier.widthIn(max = 300.dp)
+                    else Modifier.fillMaxWidth()
+                )
                 .background(
                     if (isUser) EInkBlack else EInkWhite,
-                    RoundedCornerShape(12.dp)
+                    RoundedCornerShape(cornerRadius)
                 )
                 .border(
                     1.dp,
                     EInkBlack,
-                    RoundedCornerShape(12.dp)
+                    RoundedCornerShape(cornerRadius)
                 )
                 .padding(12.dp)
         ) {
@@ -445,11 +453,13 @@ private fun ChatBubble(
                     Text(
                         text = message.content,
                         color = EInkWhite,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodySmall
                     )
                 } else {
                     Markdown(
                         content = message.content,
+                        colors = einkMarkdownColors(),
+                        typography = chatMarkdownTypography(),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -460,9 +470,9 @@ private fun ChatBubble(
         val clipboardManager = LocalClipboardManager.current
 
         Row(
-            modifier = Modifier.padding(top = 2.dp, end = 4.dp, start = 4.dp),
+            modifier = Modifier.padding(top = 6.dp, end = 4.dp, start = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // Cloud indicator with processing time
             if (message.isCloud && message.processingTimeMs != null) {
@@ -482,45 +492,55 @@ private fun ChatBubble(
                 }
             }
 
-            // Copy button for all messages
+            // Copy button with thin border
             if (message.content.isNotBlank()) {
-                Icon(
-                    Icons.Default.ContentCopy,
+                MiniIconButton(
+                    icon = Icons.Default.ContentCopy,
                     contentDescription = "Copier",
-                    tint = EInkBlack,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clickable {
-                            clipboardManager.setText(AnnotatedString(message.content))
-                        }
+                    onClick = { clipboardManager.setText(AnnotatedString(message.content)) }
                 )
             }
 
-            // Save button for assistant messages
+            // Save button with thin border
             if (onSaveClick != null) {
-                Row(
-                    modifier = Modifier
-                        .clickable(onClick = onSaveClick)
-                        .padding(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        if (isSaved) Icons.Default.Check else Icons.Default.Save,
-                        contentDescription = if (isSaved) "Sauvegarde" else "Sauvegarder",
-                        tint = if (isSaved) EInkBlack else EInkGrayMedium,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    if (isSaved) {
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text(
-                            text = "Sauvegarde",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = EInkBlack
-                        )
-                    }
-                }
+                MiniIconButton(
+                    icon = if (isSaved) Icons.Default.Check else Icons.Default.Save,
+                    contentDescription = if (isSaved) "Sauvegardé" else "Sauvegarder",
+                    tint = if (isSaved) EInkBlack else EInkGrayMedium,
+                    onClick = onSaveClick
+                )
             }
         }
+    }
+}
+
+/**
+ * Mini icon button with thin border for action icons
+ */
+@Composable
+private fun MiniIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    tint: Color = EInkBlack,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .border(
+                width = 0.5.dp,
+                color = EInkGrayMedium,
+                shape = RoundedCornerShape(4.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(4.dp)
+    ) {
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
 
