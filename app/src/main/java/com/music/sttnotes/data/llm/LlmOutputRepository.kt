@@ -116,6 +116,33 @@ class LlmOutputRepository @Inject constructor(
     }
 
     /**
+     * Rename file
+     * @return Result with the new filename (sanitized) on success
+     */
+    suspend fun renameFile(folder: String, oldFilename: String, newFilename: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val folderDir = File(rootDir, sanitizePath(folder))
+            val oldFile = File(folderDir, sanitizeFilename(oldFilename))
+            val sanitizedNewName = sanitizeFilename(newFilename)
+            val newFile = File(folderDir, sanitizedNewName)
+
+            if (newFile.exists() && oldFile.canonicalPath != newFile.canonicalPath) {
+                return@withContext Result.failure(Exception("Un fichier avec ce nom existe déjà"))
+            }
+
+            if (oldFile.renameTo(newFile)) {
+                Log.d(TAG, "Renamed file from $oldFilename to $sanitizedNewName")
+                Result.success(sanitizedNewName)
+            } else {
+                Result.failure(Exception("Échec du renommage"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to rename file", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Delete folder and all its contents
      */
     suspend fun deleteFolder(folder: String): Result<Unit> = withContext(Dispatchers.IO) {

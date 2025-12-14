@@ -25,10 +25,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import android.util.Log
+import androidx.compose.runtime.Immutable
 import javax.inject.Inject
 
 private const val TAG = "ChatViewModel"
 
+@Immutable
 data class UiChatMessage(
     val id: String = java.util.UUID.randomUUID().toString(),
     val role: String, // "user" or "assistant"
@@ -219,6 +221,9 @@ class ChatViewModel @Inject constructor(
             if (audioData != null && audioData.isNotEmpty()) {
                 _chatState.value = ChatState.Transcribing
 
+                // Yield to allow UI to update (important for e-ink displays)
+                kotlinx.coroutines.yield()
+
                 val startTime = System.currentTimeMillis()
                 val isCloud = apiConfig.sttProvider.first() != SttProvider.LOCAL
 
@@ -240,6 +245,9 @@ class ChatViewModel @Inject constructor(
                             )
                             addMessage(userMessage)
                             persistMessage(userMessage)
+
+                            // Yield to allow UI to update with new message (important for e-ink)
+                            kotlinx.coroutines.yield()
 
                             // Send to LLM
                             sendToLlm(transcription)
@@ -264,6 +272,9 @@ class ChatViewModel @Inject constructor(
 
     private suspend fun sendToLlm(userMessage: String) {
         _chatState.value = ChatState.SendingToLlm
+
+        // Yield to allow UI to update (important for e-ink displays)
+        kotlinx.coroutines.yield()
 
         val llmProvider = _currentLlmProvider.value
         if (llmProvider == LlmProvider.NONE) {
