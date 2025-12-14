@@ -218,11 +218,13 @@ fun KnowledgeBaseDetailScreen(
                         Box(modifier = Modifier.fillMaxSize().then(if (isEditMode) Modifier.imePadding() else Modifier)) {
                             if (isEditMode) {
                                 // Edit mode: RichTextEditor
+                                // Add bottom padding when keyboard is visible to prevent content from being hidden by toolbar
+                                val bottomPadding = if (isKeyboardVisible) 56.dp else 16.dp
                                 RichTextEditor(
                                     state = richTextState,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                                        .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = bottomPadding),
                                     colors = RichTextEditorDefaults.richTextEditorColors(
                                         containerColor = EInkWhite,
                                         textColor = EInkBlack,
