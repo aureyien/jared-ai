@@ -429,6 +429,14 @@ class ChatViewModel @Inject constructor(
         _messages.value = messages
     }
 
+    fun renameConversation(newTitle: String) {
+        val convId = currentConversationId ?: return
+        viewModelScope.launch {
+            chatHistoryRepository.updateConversationTitle(convId, newTitle)
+            _conversationTitle.value = newTitle.trim()
+        }
+    }
+
     fun hasAudioPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
