@@ -1,0 +1,774 @@
+package com.music.sttnotes.ui.screens.chat
+
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import com.music.sttnotes.data.api.LlmProvider
+import com.music.sttnotes.data.api.displayName
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import com.mikepenz.markdown.m3.Markdown
+import kotlinx.coroutines.launch
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.music.sttnotes.ui.components.EInkButton
+import com.music.sttnotes.ui.components.EInkChip
+import com.music.sttnotes.ui.components.EInkLoadingIndicator
+import com.music.sttnotes.ui.components.EInkTextField
+import com.music.sttnotes.ui.components.UndoSnackbar
+import com.music.sttnotes.ui.theme.EInkBlack
+import com.music.sttnotes.ui.theme.EInkGrayLight
+import com.music.sttnotes.ui.theme.EInkGrayMedium
+import com.music.sttnotes.ui.theme.EInkWhite
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatScreen(
+    conversationId: String? = null,
+    startRecording: Boolean = false,
+    onNavigateBack: () -> Unit,
+    viewModel: ChatViewModel = hiltViewModel()
+) {
+    val messages by viewModel.messages.collectAsState()
+    val chatState by viewModel.chatState.collectAsState()
+    val inputText by viewModel.inputText.collectAsState()
+    val whisperReady by viewModel.whisperReady.collectAsState()
+    val conversationTitle by viewModel.conversationTitle.collectAsState()
+    val existingFolders by viewModel.existingFolders.collectAsState()
+    val currentLlmProvider by viewModel.currentLlmProvider.collectAsState()
+    val availableLlmProviders by viewModel.availableLlmProviders.collectAsState()
+
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    var showPermissionDenied by remember { mutableStateOf(false) }
+    var autoRecordTriggered by remember { mutableStateOf(false) }
+    var showLlmSelector by remember { mutableStateOf(false) }
+
+    // Scroll FAB: show when there's content to scroll to
+    val canScrollUp by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
+    }
+    val canScrollDown by remember {
+        derivedStateOf {
+            messages.size > 3 && listState.firstVisibleItemIndex < messages.size - 3
+        }
+    }
+    // Show FAB when there's somewhere to scroll
+    val showScrollFab by remember {
+        derivedStateOf { canScrollUp || canScrollDown }
+    }
+    // Direction: down arrow if can scroll down, up arrow if at bottom
+    val scrollDirection by remember {
+        derivedStateOf { if (canScrollDown) "down" else "up" }
+    }
+
+    // Save dialog state
+    var messageToSave by remember { mutableStateOf<UiChatMessage?>(null) }
+
+    // Clear chat undo state (store messages before clear)
+    var pendingClearMessages by remember { mutableStateOf<List<UiChatMessage>?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.startRecording()
+        } else {
+            showPermissionDenied = true
+        }
+    }
+
+    // Auto-start recording if requested via long press
+    LaunchedEffect(startRecording) {
+        if (startRecording && !autoRecordTriggered) {
+            autoRecordTriggered = true
+            if (viewModel.hasPermission()) {
+                viewModel.startRecording()
+            } else {
+                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
+
+    // Auto-scroll to bottom when new message or on initial load
+    var isInitialLoad by remember { mutableStateOf(true) }
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            if (isInitialLoad) {
+                // Instant scroll on initial load (no animation)
+                // Use a small delay to ensure list is composed
+                kotlinx.coroutines.delay(100)
+                listState.scrollToItem(messages.size - 1)
+                isInitialLoad = false
+            } else {
+                // Animated scroll for new messages
+                listState.animateScrollToItem(messages.size - 1)
+            }
+        }
+    }
+
+    // Refresh folders when opening dialog
+    LaunchedEffect(messageToSave) {
+        if (messageToSave != null) {
+            viewModel.refreshFolders()
+        }
+    }
+
+    // Full-screen layout without TopAppBar for maximum real estate
+    Scaffold(
+        containerColor = EInkWhite
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Pinned header (stays fixed at top)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Retour",
+                        tint = EInkBlack
+                    )
+                }
+                Text(
+                    text = conversationTitle.ifEmpty { "Chat" },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = EInkBlack,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                // LLM selector (only show if there are available providers)
+                if (availableLlmProviders.isNotEmpty()) {
+                    Box {
+                        Text(
+                            text = currentLlmProvider.displayName(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = EInkGrayMedium,
+                            modifier = Modifier
+                                .clickable { showLlmSelector = true }
+                                .border(1.dp, EInkGrayLight, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                        DropdownMenu(
+                            expanded = showLlmSelector,
+                            onDismissRequest = { showLlmSelector = false }
+                        ) {
+                            availableLlmProviders.forEach { provider ->
+                                DropdownMenuItem(
+                                    text = { Text(provider.displayName()) },
+                                    onClick = {
+                                        viewModel.setLlmProvider(provider)
+                                        showLlmSelector = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Messages list with scroll FABs
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                if (messages.isEmpty()) {
+                    item {
+                        EmptyState()
+                    }
+                }
+                items(messages, key = { it.id }) { message ->
+                    ChatBubble(
+                        message = message,
+                        onSaveClick = if (message.role == "assistant" && message.content.isNotBlank()) {
+                            { messageToSave = message }
+                        } else null
+                    )
+                }
+                // Loading indicator
+                if (chatState is ChatState.SendingToLlm) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            EInkLoadingIndicator(text = "Reflexion...")
+                        }
+                    }
+                }
+            }
+
+                // Single scroll FAB - direction changes based on position
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showScrollFab,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                ) {
+                    FloatingActionButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                if (scrollDirection == "down") {
+                                    listState.animateScrollToItem(messages.size)
+                                } else {
+                                    listState.animateScrollToItem(0)
+                                }
+                            }
+                        },
+                        containerColor = EInkBlack,
+                        contentColor = EInkWhite,
+                        shape = CircleShape,
+                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            if (scrollDirection == "down") Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                            contentDescription = if (scrollDirection == "down") "Scroll to bottom" else "Scroll to top"
+                        )
+                    }
+                }
+            }
+
+            // Status bar
+            when (val state = chatState) {
+                is ChatState.Recording -> {
+                    StatusBar(text = "Enregistrement en cours...", showMic = true)
+                }
+                is ChatState.Transcribing -> {
+                    StatusBar(text = "Transcription...", showMic = false)
+                }
+                is ChatState.Error -> {
+                    StatusBar(text = state.message, isError = true, onDismiss = { viewModel.dismissError() })
+                }
+                else -> {}
+            }
+
+            if (showPermissionDenied) {
+                Text(
+                    "Permission micro requise",
+                    color = EInkBlack,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
+            // Input area
+            InputArea(
+                inputText = inputText,
+                onInputChange = viewModel::updateInputText,
+                onSend = viewModel::sendMessage,
+                onMicClick = {
+                    if (chatState is ChatState.Recording) {
+                        viewModel.stopRecording()
+                    } else {
+                        if (viewModel.hasAudioPermission()) {
+                            viewModel.startRecording()
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
+                },
+                isRecording = chatState is ChatState.Recording,
+                isLoading = chatState is ChatState.Transcribing || chatState is ChatState.SendingToLlm,
+                whisperReady = whisperReady
+            )
+        }
+    }
+
+    // Save Response Dialog
+    messageToSave?.let { message ->
+        SaveResponseDialog(
+            message = message,
+            existingFolders = existingFolders,
+            onSave = { filename, folder ->
+                viewModel.saveResponseToFile(message.id, filename, folder)
+                messageToSave = null
+            },
+            onDismiss = { messageToSave = null }
+        )
+    }
+
+    // Undo Snackbar for clear chat
+    pendingClearMessages?.let { clearedMessages ->
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            UndoSnackbar(
+                message = "Conversation effacée",
+                onUndo = {
+                    viewModel.restoreMessages(clearedMessages)
+                    pendingClearMessages = null
+                },
+                onTimeout = {
+                    pendingClearMessages = null
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyState() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Commencez une conversation",
+            style = MaterialTheme.typography.titleMedium,
+            color = EInkGrayMedium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Tapez un message ou utilisez le micro pour dicter",
+            style = MaterialTheme.typography.bodyMedium,
+            color = EInkGrayMedium,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun ChatBubble(
+    message: UiChatMessage,
+    onSaveClick: (() -> Unit)? = null
+) {
+    val isUser = message.role == "user"
+    val isSaved = message.savedToFile != null
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
+    ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 300.dp)
+                .background(
+                    if (isUser) EInkBlack else EInkWhite,
+                    RoundedCornerShape(12.dp)
+                )
+                .border(
+                    1.dp,
+                    EInkBlack,
+                    RoundedCornerShape(12.dp)
+                )
+                .padding(12.dp)
+        ) {
+            // SelectionContainer allows text selection within the bubble
+            SelectionContainer {
+                if (isUser) {
+                    Text(
+                        text = message.content,
+                        color = EInkWhite,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Markdown(
+                        content = message.content,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        // Bottom row with cloud indicator, copy button, and save button
+        val clipboardManager = LocalClipboardManager.current
+
+        Row(
+            modifier = Modifier.padding(top = 2.dp, end = 4.dp, start = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Cloud indicator with processing time
+            if (message.isCloud && message.processingTimeMs != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Cloud,
+                        contentDescription = "Cloud",
+                        tint = EInkGrayMedium,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = "%.1fs".format(message.processingTimeMs / 1000f),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = EInkGrayMedium
+                    )
+                }
+            }
+
+            // Copy button for all messages
+            if (message.content.isNotBlank()) {
+                Icon(
+                    Icons.Default.ContentCopy,
+                    contentDescription = "Copier",
+                    tint = EInkBlack,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable {
+                            clipboardManager.setText(AnnotatedString(message.content))
+                        }
+                )
+            }
+
+            // Save button for assistant messages
+            if (onSaveClick != null) {
+                Row(
+                    modifier = Modifier
+                        .clickable(onClick = onSaveClick)
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (isSaved) Icons.Default.Check else Icons.Default.Save,
+                        contentDescription = if (isSaved) "Sauvegarde" else "Sauvegarder",
+                        tint = if (isSaved) EInkBlack else EInkGrayMedium,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    if (isSaved) {
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = "Sauvegarde",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = EInkBlack
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SaveResponseDialog(
+    message: UiChatMessage,
+    existingFolders: List<String>,
+    onSave: (filename: String, folder: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // Generate default filename from content
+    val defaultFilename = message.content
+        .take(40)
+        .replace(Regex("[^a-zA-Z0-9\\s]"), "")
+        .trim()
+        .replace(Regex("\\s+"), "-")
+        .lowercase()
+        .ifEmpty { "reponse" }
+
+    var filename by remember { mutableStateOf(defaultFilename) }
+    var selectedFolder by remember { mutableStateOf(existingFolders.firstOrNull() ?: "") }
+    var showNewFolderInput by remember { mutableStateOf(existingFolders.isEmpty()) }
+    var newFolderName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Sauvegarder la reponse") },
+        text = {
+            Column {
+                // Filename input
+                Text(
+                    text = "Nom du fichier:",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = EInkBlack
+                )
+                Spacer(Modifier.height(4.dp))
+                EInkTextField(
+                    value = filename,
+                    onValueChange = { filename = it },
+                    placeholder = "Nom du fichier",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = "Dossier:",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = EInkBlack
+                )
+                Spacer(Modifier.height(8.dp))
+
+                // Folder selection with chips
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // New folder chip
+                    EInkChip(
+                        label = "+ Nouveau",
+                        selected = showNewFolderInput,
+                        onClick = {
+                            showNewFolderInput = true
+                            selectedFolder = ""
+                        }
+                    )
+
+                    // Existing folders
+                    existingFolders.forEach { folder ->
+                        EInkChip(
+                            label = folder,
+                            selected = selectedFolder == folder && !showNewFolderInput,
+                            onClick = {
+                                selectedFolder = folder
+                                showNewFolderInput = false
+                            }
+                        )
+                    }
+                }
+
+                // New folder input
+                if (showNewFolderInput) {
+                    Spacer(Modifier.height(8.dp))
+                    EInkTextField(
+                        value = newFolderName,
+                        onValueChange = { newFolderName = it },
+                        placeholder = "Nom du nouveau dossier",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            val finalFolder = if (showNewFolderInput) newFolderName else selectedFolder
+            EInkButton(
+                onClick = { onSave(filename, finalFolder) },
+                filled = true,
+                enabled = filename.isNotBlank() && finalFolder.isNotBlank()
+            ) {
+                Text("Sauvegarder")
+            }
+        },
+        dismissButton = {
+            EInkButton(
+                onClick = onDismiss,
+                filled = false
+            ) {
+                Text("Annuler")
+            }
+        },
+        containerColor = EInkWhite
+    )
+}
+
+@Composable
+private fun StatusBar(
+    text: String,
+    showMic: Boolean = false,
+    isError: Boolean = false,
+    onDismiss: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (isError) EInkGrayLight else EInkWhite)
+            .border(1.dp, EInkBlack)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showMic) {
+            Icon(
+                Icons.Default.Mic,
+                contentDescription = null,
+                tint = EInkBlack,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = EInkBlack,
+            modifier = Modifier.weight(1f)
+        )
+        if (onDismiss != null) {
+            IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                Text("OK", color = EInkBlack)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InputArea(
+    inputText: String,
+    onInputChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onMicClick: () -> Unit,
+    isRecording: Boolean,
+    isLoading: Boolean,
+    whisperReady: Boolean
+) {
+    // Border radius on bottom-left corner to match Palma 2 Pro screen curve
+    val textFieldShape = RoundedCornerShape(
+        topStart = 8.dp,
+        topEnd = 8.dp,
+        bottomStart = 24.dp,  // Wider curve for Palma 2 Pro screen corner
+        bottomEnd = 8.dp
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Horizontal divider above input area
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = EInkGrayMedium
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(EInkWhite)
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+        // Text input with custom border radius
+        OutlinedTextField(
+            value = inputText,
+            onValueChange = onInputChange,
+            modifier = Modifier.weight(1f),
+            placeholder = { Text("Message...", color = EInkGrayMedium) },
+            shape = textFieldShape,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = EInkBlack,
+                unfocusedBorderColor = EInkGrayMedium,
+                focusedTextColor = EInkBlack,
+                unfocusedTextColor = EInkBlack,
+                cursorColor = EInkBlack
+            ),
+            maxLines = 4,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Mic button
+        Button(
+            onClick = onMicClick,
+            modifier = Modifier.size(48.dp),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isRecording) EInkBlack else EInkWhite,
+                contentColor = if (isRecording) EInkWhite else EInkBlack
+            ),
+            border = BorderStroke(2.dp, EInkBlack),
+            contentPadding = PaddingValues(0.dp),
+            enabled = whisperReady && !isLoading
+        ) {
+            Icon(
+                if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                contentDescription = if (isRecording) "Stop" else "Dicter",
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Send button
+        Button(
+            onClick = onSend,
+            modifier = Modifier.size(48.dp),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = EInkBlack,
+                contentColor = EInkWhite
+            ),
+            contentPadding = PaddingValues(0.dp),
+            enabled = inputText.isNotBlank() && !isLoading
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.Send,
+                contentDescription = "Envoyer",
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        }
+    }
+}
