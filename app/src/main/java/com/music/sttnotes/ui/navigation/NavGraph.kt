@@ -147,7 +147,11 @@ fun NavGraph(
                 onFolderClick = { folderName ->
                     navController.navigate(Screen.KnowledgeBaseFolder.createRoute(folderName))
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNewNote = { navController.navigate(Screen.NoteEditor.createRoute(null)) },
+                onNewNoteWithRecording = { navController.navigate(Screen.NoteEditor.createRoute(null, autoRecord = true)) },
+                onNewChat = { navController.navigate(Screen.Chat.createRoute(null)) },
+                onNewChatWithRecording = { navController.navigate(Screen.Chat.createRoute(null, startRecording = true)) }
             )
         }
 

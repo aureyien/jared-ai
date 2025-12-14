@@ -48,6 +48,7 @@ import com.music.sttnotes.ui.components.EInkCard
 import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.EInkDivider
 import com.music.sttnotes.ui.components.EInkIconButton
+import com.music.sttnotes.ui.components.EInkKBBottomActionBar
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
@@ -61,6 +62,10 @@ import com.music.sttnotes.ui.theme.EInkWhite
 fun KnowledgeBaseScreen(
     onFolderClick: (folderName: String) -> Unit,
     onNavigateBack: () -> Unit,
+    onNewNote: () -> Unit,
+    onNewNoteWithRecording: () -> Unit,
+    onNewChat: () -> Unit,
+    onNewChatWithRecording: () -> Unit,
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
     val allFolders by viewModel.filteredFolders.collectAsState()
@@ -68,6 +73,7 @@ fun KnowledgeBaseScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
     val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
+    val isLlmConfigured by viewModel.isLlmConfigured.collectAsState()
 
     // Tag filter visibility
     var showTagFilter by remember { mutableStateOf(false) }
@@ -129,7 +135,8 @@ fun KnowledgeBaseScreen(
                             onTimeout = {
                                 viewModel.deleteFolder(deletion.item)
                                 pendingFolderDeletion = null
-                            }
+                            },
+                            itemKey = deletion.item // Restart countdown when different folder deleted
                         )
                     }
                 },
@@ -137,6 +144,23 @@ fun KnowledgeBaseScreen(
                     containerColor = EInkWhite,
                     titleContentColor = EInkBlack
                 )
+            )
+        },
+        bottomBar = {
+            EInkKBBottomActionBar(
+                onHome = {
+                    // Commit pending deletion before navigating back
+                    pendingFolderDeletion?.let { deletion ->
+                        viewModel.deleteFolder(deletion.item)
+                    }
+                    pendingFolderDeletion = null
+                    onNavigateBack()
+                },
+                onChat = onNewChat,
+                onChatLongPress = onNewChatWithRecording,
+                onAddNote = onNewNote,
+                onAddNoteWithRecording = onNewNoteWithRecording,
+                showChat = isLlmConfigured
             )
         },
         containerColor = EInkWhite

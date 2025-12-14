@@ -2,6 +2,8 @@ package com.music.sttnotes.ui.screens.knowledgebase
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.music.sttnotes.data.api.ApiConfig
+import com.music.sttnotes.data.api.LlmProvider
 import com.music.sttnotes.data.llm.FrontmatterParser
 import com.music.sttnotes.data.llm.KbFileMeta
 import com.music.sttnotes.data.llm.LlmOutputRepository
@@ -9,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -29,10 +32,14 @@ data class FolderWithFiles(
 
 @HiltViewModel
 class KnowledgeBaseViewModel @Inject constructor(
-    private val llmOutputRepository: LlmOutputRepository
+    private val llmOutputRepository: LlmOutputRepository,
+    private val apiConfig: ApiConfig
 ) : ViewModel() {
 
     private val _folders = MutableStateFlow<List<FolderWithFiles>>(emptyList())
+
+    private val _isLlmConfigured = MutableStateFlow(false)
+    val isLlmConfigured: StateFlow<Boolean> = _isLlmConfigured
     val folders: StateFlow<List<FolderWithFiles>> = _folders
 
     private val _fileContent = MutableStateFlow<String?>(null)
@@ -69,10 +76,25 @@ class KnowledgeBaseViewModel @Inject constructor(
     val selectedTagFilters: StateFlow<Set<String>> = _selectedTagFilters
 
     private var currentMeta: KbFileMeta? = null
+    private var currentFolder: String? = null
+    private var currentFilename: String? = null
 
     init {
         loadFolders()
         loadAllTags()
+        checkLlmConfiguration()
+    }
+
+    private fun checkLlmConfiguration() {
+        viewModelScope.launch {
+            val llmProvider = apiConfig.llmProvider.first()
+            _isLlmConfigured.value = when (llmProvider) {
+                LlmProvider.GROQ -> apiConfig.groqApiKey.first()?.isNotEmpty() == true
+                LlmProvider.OPENAI -> apiConfig.openaiApiKey.first()?.isNotEmpty() == true
+                LlmProvider.XAI -> apiConfig.xaiApiKey.first()?.isNotEmpty() == true
+                LlmProvider.NONE -> false
+            }
+        }
     }
 
     fun toggleTagFilter(tag: String) {
@@ -195,13 +217,15 @@ class KnowledgeBaseViewModel @Inject constructor(
             llmOutputRepository.readFileWithMeta(folder, filename).onSuccess { (meta, content) ->
                 currentMeta = meta
                 _fileTags.value = meta.tags
-                _fileContent.value = FrontmatterParser.combine(meta, content)
+                // Only store the body content, not the frontmatter
+                _fileContent.value = content
             }.onFailure {
-                // Fallback to simple read
-                llmOutputRepository.readFile(folder, filename).onSuccess { content ->
-                    _fileContent.value = content
-                    currentMeta = null
-                    _fileTags.value = emptyList()
+                // Fallback to simple read - parse to extract body without frontmatter
+                llmOutputRepository.readFile(folder, filename).onSuccess { rawContent ->
+                    val (meta, bodyContent) = FrontmatterParser.parse(rawContent)
+                    _fileContent.value = bodyContent
+                    currentMeta = meta
+                    _fileTags.value = meta.tags
                 }
             }
         }
@@ -252,13 +276,11 @@ class KnowledgeBaseViewModel @Inject constructor(
 
     fun saveFileContent(folder: String, filename: String, content: String) {
         viewModelScope.launch {
-            // Parse content to separate frontmatter from body
-            val (existingMeta, bodyContent) = FrontmatterParser.parse(content)
-            // Use existing meta if available, or create new one with current tags
-            val meta = currentMeta?.copy(tags = _fileTags.value) ?: existingMeta.copy(tags = _fileTags.value)
+            // Content is now pure body (no frontmatter), use currentMeta for metadata
+            val meta = currentMeta?.copy(tags = _fileTags.value) ?: KbFileMeta(tags = _fileTags.value)
 
-            llmOutputRepository.writeFileWithMeta(folder, filename, meta, bodyContent).onSuccess {
-                _fileContent.value = FrontmatterParser.combine(meta, bodyContent)
+            llmOutputRepository.writeFileWithMeta(folder, filename, meta, content).onSuccess {
+                _fileContent.value = content
                 _editedContent.value = null
                 currentMeta = meta
                 loadAllTags() // Refresh all tags after save

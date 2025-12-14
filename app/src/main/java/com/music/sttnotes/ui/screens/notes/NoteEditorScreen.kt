@@ -82,11 +82,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mikepenz.markdown.m3.Markdown
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
+import com.music.sttnotes.ui.components.einkMarkdownColors
+import com.music.sttnotes.ui.components.einkMarkdownTypography
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.MarkdownToolbar
 import com.music.sttnotes.ui.theme.EInkBlack
@@ -344,7 +350,7 @@ fun NoteEditorScreen(
             Box(
                 modifier = Modifier.weight(1f).then(if (!isPreviewMode) Modifier.imePadding() else Modifier)
             ) {
-                // Editor takes full space
+                // Editor or Preview
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -353,17 +359,32 @@ fun NoteEditorScreen(
                             else Modifier
                         )
                 ) {
-                    RichTextEditor(
-                        state = viewModel.richTextState,
-                        modifier = Modifier.fillMaxSize(),
-                        readOnly = isPreviewMode,
-                        colors = RichTextEditorDefaults.richTextEditorColors(
-                            containerColor = EInkWhite,
-                            textColor = EInkBlack,
-                            cursorColor = EInkBlack
-                        ),
-                        placeholder = { Text("Start writing or record voice...", color = EInkGrayMedium) }
-                    )
+                    if (isPreviewMode) {
+                        // Preview mode: render Markdown
+                        SelectionContainer {
+                            Markdown(
+                                content = viewModel.richTextState.toMarkdown(),
+                                colors = einkMarkdownColors(),
+                                typography = einkMarkdownTypography(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp)
+                                    .verticalScroll(rememberScrollState())
+                            )
+                        }
+                    } else {
+                        // Edit mode: RichTextEditor
+                        RichTextEditor(
+                            state = viewModel.richTextState,
+                            modifier = Modifier.fillMaxSize(),
+                            colors = RichTextEditorDefaults.richTextEditorColors(
+                                containerColor = EInkWhite,
+                                textColor = EInkBlack,
+                                cursorColor = EInkBlack
+                            ),
+                            placeholder = { Text("Start writing or record voice...", color = EInkGrayMedium) }
+                        )
+                    }
                 }
 
                 // Markdown toolbar - visible only when keyboard is shown in edit mode
