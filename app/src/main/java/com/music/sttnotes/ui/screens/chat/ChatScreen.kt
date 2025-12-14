@@ -427,7 +427,9 @@ private fun ChatBubble(
     val cornerRadius = 8.dp
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = if (!isUser) 8.dp else 0.dp),  // Extra margin above assistant responses
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         Box(
