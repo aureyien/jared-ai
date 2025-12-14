@@ -46,10 +46,13 @@ Whisper Notes is designed for users who want fast, private voice-to-text capabil
 
 ### Knowledge Base
 
+- **3-Level Navigation**: Folders → Files → Detail view
 - **Organized Storage**: Save AI responses in folders
-- **Quick Access**: Browse and search saved content
-- **Clipboard Integration**: Copy content to clipboard with one tap
-- **Markdown Preview**: View formatted content
+- **Search & Filter**: Full-text search + tag filtering at both folder and file level
+- **Tag Management**: Add, remove, and filter by tags
+- **Markdown Editor**: Edit saved content with rich text toolbar
+- **Preview Mode**: View formatted markdown content
+- **Clipboard Integration**: Copy content with one tap
 
 ## Architecture
 
@@ -187,8 +190,15 @@ To use cloud services, you'll need API keys:
 
 1. Tap **KB** to access saved content
 2. Browse folders organized by date
-3. Tap a file to view full content
-4. Long-press to copy content to clipboard
+3. Use the **search bar** to find content or filter by tags
+4. Tap a folder to see its files
+5. Tap a file to view/edit content
+6. Use the **tag icon** to filter by tags
+7. Long-press to copy or delete content
+
+### Undo Deletions
+
+When deleting items (notes, chats, KB files), an **UNDO button** appears in the top bar with a 5-dot countdown. Click it to restore the item before permanent deletion.
 
 ## Project Structure
 
@@ -203,6 +213,8 @@ To use cloud services, you'll need API keys:
 | `ChatViewModel.kt` | Chat screen state management |
 | `NoteEditorViewModel.kt` | Note editor state management |
 | `EInkComponents.kt` | E-Ink optimized Compose components |
+| `KnowledgeBaseFolderScreen.kt` | KB folder files list with search and tag filter |
+| `KnowledgeBaseDetailScreen.kt` | KB file viewer/editor with markdown support |
 
 ### Build Flavors
 
