@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SmartToy
@@ -33,7 +34,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -45,7 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
@@ -284,9 +284,9 @@ fun EInkLoadingIndicator(
 }
 
 /**
- * E-Ink bottom action bar - 3 buttons
+ * E-Ink bottom action bar - 2 or 3 buttons depending on showChat
  * Knowledge: open knowledge base
- * Chat button: tap = open chat list, long press = open chat with recording started
+ * Chat button: tap = open chat list, long press = open chat with recording started (only if showChat = true)
  * New Note button: tap = new note, long press = new note with recording
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -297,7 +297,8 @@ fun EInkBottomActionBar(
     onChat: () -> Unit,
     onChatLongPress: () -> Unit,
     onKnowledgeBase: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showChat: Boolean = true
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -326,28 +327,30 @@ fun EInkBottomActionBar(
                 Spacer(Modifier.width(4.dp))
                 Text("KB")
             }
-            Spacer(Modifier.width(8.dp))
-            // Chat button with long press support
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp)
-                    .combinedClickable(
-                        onClick = onChat,
-                        onLongClick = onChatLongPress
-                    ),
-                shape = RoundedCornerShape(4.dp),
-                color = EInkWhite,
-                border = BorderStroke(2.dp, EInkBlack)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+            // Chat button with long press support - only show if showChat is true
+            if (showChat) {
+                Spacer(Modifier.width(8.dp))
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .combinedClickable(
+                            onClick = onChat,
+                            onLongClick = onChatLongPress
+                        ),
+                    shape = RoundedCornerShape(4.dp),
+                    color = EInkWhite,
+                    border = BorderStroke(2.dp, EInkBlack)
                 ) {
-                    Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkBlack)
-                    Spacer(Modifier.width(4.dp))
-                    Text("Chat", color = EInkBlack)
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkBlack)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Chat", color = EInkBlack)
+                    }
                 }
             }
             Spacer(Modifier.width(8.dp))
@@ -368,9 +371,9 @@ fun EInkBottomActionBar(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkWhite)
+                    Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkWhite)
                     Spacer(Modifier.width(4.dp))
-                    Text("Note", color = EInkWhite)
+                    Text("Notes", color = EInkWhite)
                 }
             }
         }
@@ -429,9 +432,9 @@ data class PendingDeletion<T>(
 )
 
 /**
- * Undo Snackbar with progress bar that counts down 7 seconds
- * Shows at the bottom of the screen with UNDO button
- * Progress bar animates from left to right on top of the snackbar
+ * Undo Snackbar with countdown timer (e-ink optimized - no animations)
+ * Shows at the bottom of the screen with UNDO button and countdown text
+ * Updates once per second to minimize e-ink screen refreshes
  */
 @Composable
 fun UndoSnackbar(
@@ -441,15 +444,15 @@ fun UndoSnackbar(
     durationMs: Long = 7000L,
     modifier: Modifier = Modifier
 ) {
-    var progress by remember { mutableFloatStateOf(0f) }
+    // Use countdown seconds instead of animated progress (better for e-ink)
+    var secondsRemaining by remember { mutableIntStateOf((durationMs / 1000).toInt()) }
 
-    // Animate progress and trigger timeout - use message as key to restart if shown again
+    // Countdown once per second (not 50ms) - much better for e-ink displays
     LaunchedEffect(message) {
-        val startTime = System.currentTimeMillis()
-        while (progress < 1f) {
-            delay(50)
-            val elapsed = System.currentTimeMillis() - startTime
-            progress = (elapsed.toFloat() / durationMs).coerceIn(0f, 1f)
+        secondsRemaining = (durationMs / 1000).toInt()
+        while (secondsRemaining > 0) {
+            delay(1000)
+            secondsRemaining--
         }
         onTimeout()
     }
@@ -461,43 +464,39 @@ fun UndoSnackbar(
         color = EInkBlack,
         shape = RoundedCornerShape(4.dp)
     ) {
-        Column {
-            // Progress bar on top
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(3.dp),
+        // Content row with countdown
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = message,
                 color = EInkWhite,
-                trackColor = EInkGrayMedium
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
             )
 
-            // Content row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Static countdown text instead of animated progress
+            Text(
+                text = "${secondsRemaining}s",
+                color = EInkGrayLight,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+
+            TextButton(
+                onClick = onUndo,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = EInkWhite
+                )
             ) {
                 Text(
-                    text = message,
-                    color = EInkWhite,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
+                    text = "UNDO",
+                    style = MaterialTheme.typography.labelLarge
                 )
-
-                TextButton(
-                    onClick = onUndo,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = EInkWhite
-                    )
-                ) {
-                    Text(
-                        text = "UNDO",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
             }
         }
     }

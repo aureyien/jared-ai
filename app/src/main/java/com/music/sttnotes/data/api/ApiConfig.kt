@@ -2,6 +2,7 @@ package com.music.sttnotes.data.api
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -33,6 +34,11 @@ class ApiConfig @Inject constructor(
         private val STT_PROVIDER = stringPreferencesKey("stt_provider")
         private val LLM_PROVIDER = stringPreferencesKey("llm_provider")
         private val LLM_SYSTEM_PROMPT = stringPreferencesKey("llm_system_prompt")
+        private val CHAT_FONT_SIZE = floatPreferencesKey("chat_font_size")
+
+        const val DEFAULT_CHAT_FONT_SIZE = 16f
+        const val MIN_CHAT_FONT_SIZE = 12f
+        const val MAX_CHAT_FONT_SIZE = 24f
 
         const val GROQ_BASE_URL = "https://api.groq.com/openai/v1/"
         const val OPENAI_BASE_URL = "https://api.openai.com/v1/"
@@ -67,6 +73,9 @@ class ApiConfig @Inject constructor(
     val llmSystemPrompt: Flow<String> = context.apiDataStore.data.map {
         it[LLM_SYSTEM_PROMPT] ?: DEFAULT_SYSTEM_PROMPT
     }
+    val chatFontSize: Flow<Float> = context.apiDataStore.data.map {
+        it[CHAT_FONT_SIZE] ?: DEFAULT_CHAT_FONT_SIZE
+    }
 
     suspend fun setGroqApiKey(key: String) {
         context.apiDataStore.edit { it[GROQ_API_KEY] = key }
@@ -90,5 +99,9 @@ class ApiConfig @Inject constructor(
 
     suspend fun setLlmSystemPrompt(prompt: String) {
         context.apiDataStore.edit { it[LLM_SYSTEM_PROMPT] = prompt }
+    }
+
+    suspend fun setChatFontSize(size: Float) {
+        context.apiDataStore.edit { it[CHAT_FONT_SIZE] = size.coerceIn(MIN_CHAT_FONT_SIZE, MAX_CHAT_FONT_SIZE) }
     }
 }

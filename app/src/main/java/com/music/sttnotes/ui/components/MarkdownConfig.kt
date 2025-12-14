@@ -100,77 +100,78 @@ fun einkMarkdownTypography() = markdownTypography(
 )
 
 /**
- * Chat-specific Markdown typography - smaller for compact bubbles
+ * Chat-specific Markdown typography - configurable font size
+ * @param baseFontSize The base font size in sp (default 14)
  */
 @Composable
-fun chatMarkdownTypography() = markdownTypography(
+fun chatMarkdownTypography(baseFontSize: Float = 14f) = markdownTypography(
     h1 = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Bold,
-        fontSize = 20.sp,
-        lineHeight = 26.sp
+        fontSize = (baseFontSize + 6).sp,
+        lineHeight = (baseFontSize + 12).sp
     ),
     h2 = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Bold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp
+        fontSize = (baseFontSize + 4).sp,
+        lineHeight = (baseFontSize + 10).sp
     ),
     h3 = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 22.sp
+        fontSize = (baseFontSize + 2).sp,
+        lineHeight = (baseFontSize + 8).sp
     ),
     h4 = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp,
-        lineHeight = 20.sp
+        fontSize = (baseFontSize + 1).sp,
+        lineHeight = (baseFontSize + 6).sp
     ),
     h5 = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 18.sp
+        fontSize = baseFontSize.sp,
+        lineHeight = (baseFontSize + 4).sp
     ),
     h6 = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Medium,
-        fontSize = 13.sp,
-        lineHeight = 18.sp
+        fontSize = (baseFontSize - 1).sp,
+        lineHeight = (baseFontSize + 4).sp
     ),
     paragraph = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 22.sp,
+        fontSize = baseFontSize.sp,
+        lineHeight = (baseFontSize + 8).sp,
         letterSpacing = 0.25.sp
     ),
     code = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 18.sp
+        fontSize = (baseFontSize - 2).sp,
+        lineHeight = (baseFontSize + 4).sp
     ),
     quote = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = baseFontSize.sp,
+        lineHeight = (baseFontSize + 6).sp,
         fontStyle = FontStyle.Italic
     ),
     bullet = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 22.sp
+        fontSize = baseFontSize.sp,
+        lineHeight = (baseFontSize + 8).sp
     ),
     ordered = TextStyle(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 22.sp
+        fontSize = baseFontSize.sp,
+        lineHeight = (baseFontSize + 8).sp
     )
 )
 

@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.music.sttnotes.ui.screens.chat.ChatListScreen
 import com.music.sttnotes.ui.screens.chat.ChatScreen
+import com.music.sttnotes.ui.screens.home.DashboardScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseDetailScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseScreen
 import com.music.sttnotes.ui.screens.notes.NoteEditorScreen
@@ -16,6 +17,7 @@ import com.music.sttnotes.ui.screens.notes.NotesListScreen
 import com.music.sttnotes.ui.screens.settings.SettingsScreen
 
 sealed class Screen(val route: String) {
+    data object Dashboard : Screen("dashboard")
     data object NotesList : Screen("notes_list")
     data object NoteEditor : Screen("note_editor/{noteId}?autoRecord={autoRecord}") {
         fun createRoute(noteId: String?, autoRecord: Boolean = false) =
@@ -41,9 +43,24 @@ fun NavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.NotesList.route,
+        startDestination = Screen.Dashboard.route,
         modifier = modifier
     ) {
+        // Dashboard - new home screen
+        composable(Screen.Dashboard.route) {
+            DashboardScreen(
+                onNotesClick = { navController.navigate(Screen.NotesList.route) },
+                onNewNote = { navController.navigate(Screen.NoteEditor.createRoute(null)) },
+                onNewNoteWithRecording = { navController.navigate(Screen.NoteEditor.createRoute(null, autoRecord = true)) },
+                onConversationsClick = { navController.navigate(Screen.ChatList.route) },
+                onNewConversation = { navController.navigate(Screen.Chat.createRoute(null)) },
+                onNewConversationWithRecording = { navController.navigate(Screen.Chat.createRoute(null, startRecording = true)) },
+                onKnowledgeBaseClick = { navController.navigate(Screen.KnowledgeBase.route) },
+                onSettings = { navController.navigate(Screen.Settings.route) }
+            )
+        }
+
+        // Notes list
         composable(Screen.NotesList.route) {
             NotesListScreen(
                 onNoteClick = { noteId ->
@@ -52,23 +69,7 @@ fun NavGraph(
                 onAddNote = {
                     navController.navigate(Screen.NoteEditor.createRoute(null))
                 },
-                onAddNoteWithRecording = {
-                    navController.navigate(Screen.NoteEditor.createRoute(null, autoRecord = true))
-                },
-                onSettings = {
-                    navController.navigate(Screen.Settings.route)
-                },
-                onChat = {
-                    // Normal tap: go to conversation list
-                    navController.navigate(Screen.ChatList.route)
-                },
-                onChatWithRecording = {
-                    // Long press: go directly to new conversation with recording started
-                    navController.navigate(Screen.Chat.createRoute(conversationId = null, startRecording = true))
-                },
-                onKnowledgeBase = {
-                    navController.navigate(Screen.KnowledgeBase.route)
-                }
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

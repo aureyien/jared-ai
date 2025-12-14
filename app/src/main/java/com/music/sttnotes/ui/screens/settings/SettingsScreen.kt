@@ -1,6 +1,8 @@
 package com.music.sttnotes.ui.screens.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -10,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -23,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -36,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.music.sttnotes.data.api.ApiConfig
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.music.sttnotes.data.api.LlmProvider
 import com.music.sttnotes.data.api.SttProvider
@@ -82,6 +89,14 @@ fun SettingsScreen(
                 SttLanguageSelector(
                     selected = uiState.sttLanguage,
                     onSelect = viewModel::setSttLanguage
+                )
+            }
+
+            // Chat Font Size Section
+            SettingsSection(title = "Taille de police du chat") {
+                ChatFontSizeSelector(
+                    currentSize = uiState.chatFontSize,
+                    onSizeChange = viewModel::setChatFontSize
                 )
             }
 
@@ -322,4 +337,98 @@ private fun ApiKeyField(
             }
         }
     )
+}
+
+@Composable
+private fun ChatFontSizeSelector(
+    currentSize: Float,
+    onSizeChange: (Float) -> Unit
+) {
+    Column {
+        // Slider with value display
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Slider(
+                value = currentSize,
+                onValueChange = onSizeChange,
+                valueRange = ApiConfig.MIN_CHAT_FONT_SIZE..ApiConfig.MAX_CHAT_FONT_SIZE,
+                steps = ((ApiConfig.MAX_CHAT_FONT_SIZE - ApiConfig.MIN_CHAT_FONT_SIZE) / 2 - 1).toInt(),
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "${currentSize.toInt()} sp",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.widthIn(min = 48.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Preview
+        Text(
+            text = "Aperçu:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Preview bubbles
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    RoundedCornerShape(12.dp)
+                )
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // User message preview
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = 280.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primary,
+                            RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp)
+                        )
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "Bonjour, comment ça va ?",
+                        fontSize = currentSize.sp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+
+            // Assistant message preview
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = 280.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)
+                        )
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "Je vais très bien, merci !",
+                        fontSize = currentSize.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
 }
