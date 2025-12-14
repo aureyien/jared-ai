@@ -50,7 +50,9 @@ class NoteEditorViewModel @Inject constructor(
     private val _tagInput = MutableStateFlow("")
     val tagInput: StateFlow<String> = _tagInput
 
-    val richTextState = RichTextState()
+    val richTextState = RichTextState().apply {
+        config.listIndent = 16  // Reduce from default 38 for tighter list indentation
+    }
 
     private var recordingJob: Job? = null
     private var durationJob: Job? = null

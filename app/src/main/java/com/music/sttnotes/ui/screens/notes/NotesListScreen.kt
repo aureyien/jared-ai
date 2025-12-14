@@ -134,7 +134,8 @@ fun NotesListScreen(
                             onTimeout = {
                                 viewModel.deleteNote(deletion.item.id)
                                 pendingDeletion = null
-                            }
+                            },
+                            itemKey = deletion.item.id // Restart countdown when different item deleted
                         )
                         Spacer(Modifier.width(8.dp))
                     }

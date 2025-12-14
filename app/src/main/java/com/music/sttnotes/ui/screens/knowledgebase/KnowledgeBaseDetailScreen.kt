@@ -99,6 +99,11 @@ fun KnowledgeBaseDetailScreen(
     // Rich text editor state
     val richTextState = rememberRichTextState()
 
+    // Configure list indentation
+    LaunchedEffect(Unit) {
+        richTextState.config.listIndent = 16  // Reduce from default 38
+    }
+
     // Keyboard detection
     val density = LocalDensity.current
     val imeInsets = WindowInsets.ime
@@ -191,15 +196,32 @@ fun KnowledgeBaseDetailScreen(
         containerColor = EInkWhite
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Tags section (collapsible)
-            if (showTagsSection) {
-                TagsSection(
+            // Tags display (always visible if tags exist)
+            if (fileTags.isNotEmpty()) {
+                TagsDisplay(
                     tags = fileTags,
-                    allTags = allTags,
+                    isEditMode = showTagsSection,
+                    onRemoveTag = { tag ->
+                        viewModel.removeTag(tag)
+                        viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                )
+            }
+
+            // Tag input section (only when tag icon clicked)
+            if (showTagsSection) {
+                TagInputSection(
                     tagInput = tagInput,
+                    allTags = allTags,
+                    currentTags = fileTags,
                     onTagInputChange = viewModel::updateTagInput,
-                    onAddTag = viewModel::addTag,
-                    onRemoveTag = viewModel::removeTag,
+                    onAddTag = { tag ->
+                        viewModel.addTag(tag)
+                        viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -363,38 +385,91 @@ private fun RenameDialog(
     )
 }
 
+/**
+ * Displays tags as chips - always visible if tags exist
+ * Shows delete button only in edit mode
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TagsSection(
+private fun TagsDisplay(
     tags: List<String>,
-    allTags: List<String>,
-    tagInput: String,
-    onTagInputChange: (String) -> Unit,
-    onAddTag: (String) -> Unit,
+    isEditMode: Boolean,
     onRemoveTag: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier
-            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Current tags
-        if (tags.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                tags.forEach { tag ->
-                    TagChip(
-                        tag = tag,
-                        onRemove = { onRemoveTag(tag) }
+        tags.forEach { tag ->
+            if (isEditMode) {
+                // Editable tag with delete button
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = EInkBlack
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+                    ) {
+                        Text(
+                            text = tag,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = EInkWhite
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Surface(
+                            onClick = { onRemoveTag(tag) },
+                            shape = RoundedCornerShape(12.dp),
+                            color = EInkWhite.copy(alpha = 0.2f),
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Supprimer",
+                                tint = EInkWhite,
+                                modifier = Modifier
+                                    .padding(2.dp)
+                                    .size(16.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Read-only tag chip
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = EInkBlack
+                ) {
+                    Text(
+                        text = tag,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = EInkWhite,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
         }
+    }
+}
 
+/**
+ * Tag input section - shown when tag icon is clicked
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagInputSection(
+    tagInput: String,
+    allTags: List<String>,
+    currentTags: List<String>,
+    onTagInputChange: (String) -> Unit,
+    onAddTag: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+    ) {
         // Add tag input
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -428,7 +503,7 @@ private fun TagsSection(
 
         // Suggestions from existing tags
         val suggestions = allTags.filter {
-            it.lowercase().contains(tagInput.lowercase()) && !tags.contains(it)
+            it.lowercase().contains(tagInput.lowercase()) && !currentTags.contains(it)
         }.take(5)
 
         if (suggestions.isNotEmpty() && tagInput.isNotEmpty()) {
@@ -453,46 +528,6 @@ private fun TagsSection(
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TagChip(
-    tag: String,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = EInkBlack,
-        modifier = modifier
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
-        ) {
-            Text(
-                text = tag,
-                style = MaterialTheme.typography.bodySmall,
-                color = EInkWhite
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Surface(
-                onClick = onRemove,
-                shape = RoundedCornerShape(12.dp),
-                color = EInkWhite.copy(alpha = 0.2f),
-                modifier = Modifier.size(20.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Supprimer",
-                    tint = EInkWhite,
-                    modifier = Modifier
-                        .padding(2.dp)
-                        .size(16.dp)
-                )
             }
         }
     }

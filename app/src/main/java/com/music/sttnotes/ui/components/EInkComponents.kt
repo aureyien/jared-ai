@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SmartToy
@@ -336,8 +338,11 @@ fun EInkBottomActionBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkWhite)
-                    Spacer(Modifier.width(4.dp))
-                    Text("KB", color = EInkWhite)
+                    Spacer(Modifier.width(6.dp))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Knowledge", color = EInkWhite, style = MaterialTheme.typography.labelSmall)
+                        Text("Base", color = EInkWhite, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
             // Chat button with long press support - only show if showChat is true - WHITE background (outlined)
@@ -355,17 +360,28 @@ fun EInkBottomActionBar(
                     color = EInkWhite,
                     border = BorderStroke(2.dp, EInkBlack)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize().padding(start = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkBlack)
-                        // Text centered in remaining space
-                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
-                                Text("Chat", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
-                            }
+                    // Icon on left edge, text centered in remaining space (icon width = 20dp + 12dp padding)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Icon at start
+                        Icon(
+                            Icons.Default.SmartToy,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(start = 12.dp)
+                                .size(20.dp)
+                                .align(Alignment.CenterStart),
+                            tint = EInkBlack
+                        )
+                        // Text centered in the space after the icon (offset by icon area / 2)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 32.dp), // icon (20dp) + padding (12dp) = 32dp offset
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
+                            Text("Chat", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
@@ -384,17 +400,160 @@ fun EInkBottomActionBar(
                 color = EInkWhite,
                 border = BorderStroke(2.dp, EInkBlack)
             ) {
+                // Icon on left edge, text centered in remaining space
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Icon at start
+                    Icon(
+                        Icons.Default.Description,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .size(20.dp)
+                            .align(Alignment.CenterStart),
+                        tint = EInkBlack
+                    )
+                    // Text centered in the space after the icon
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 32.dp), // icon (20dp) + padding (12dp) = 32dp offset
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
+                        Text("Note", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Bottom action bar for Knowledge Base screen - similar to home but with Home button instead of KB
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun EInkKBBottomActionBar(
+    onHome: () -> Unit,
+    onChat: () -> Unit,
+    onChatLongPress: () -> Unit,
+    onAddNote: () -> Unit,
+    onAddNoteWithRecording: () -> Unit,
+    modifier: Modifier = Modifier,
+    showChat: Boolean = true
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = EInkWhite,
+        border = BorderStroke(1.dp, EInkBlack)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            val bottomButtonShape = RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = 4.dp,
+                bottomEnd = 4.dp
+            )
+
+            // Home button - BLACK background (filled)
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp)
+                    .combinedClickable(onClick = onHome),
+                shape = bottomButtonShape,
+                color = EInkBlack
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(start = 12.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkBlack)
-                    // Text centered in remaining space
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkWhite)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Home", color = EInkWhite, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
+            // Chat button - only show if showChat is true
+            if (showChat) {
+                Spacer(Modifier.width(8.dp))
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .combinedClickable(
+                            onClick = onChat,
+                            onLongClick = onChatLongPress
+                        ),
+                    shape = bottomButtonShape,
+                    color = EInkWhite,
+                    border = BorderStroke(2.dp, EInkBlack)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            Icons.Default.SmartToy,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(start = 12.dp)
+                                .size(20.dp)
+                                .align(Alignment.CenterStart),
+                            tint = EInkBlack
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
                             Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
-                            Text("Note", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
+                            Text("Chat", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
                         }
+                    }
+                }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // Notes button
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp)
+                    .combinedClickable(
+                        onClick = onAddNote,
+                        onLongClick = onAddNoteWithRecording
+                    ),
+                shape = bottomButtonShape,
+                color = EInkWhite,
+                border = BorderStroke(2.dp, EInkBlack)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        Icons.Default.Description,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .size(20.dp)
+                            .align(Alignment.CenterStart),
+                        tint = EInkBlack
+                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
+                        Text("Note", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -476,19 +635,37 @@ fun UndoSnackbar(
 /**
  * Compact UNDO button with 5 dots countdown for TopAppBar
  * Shows 5 dots on top of "UNDO" text, one dot disappears each second
+ * @param itemKey unique key to restart countdown when deleting a different item
  */
 @Composable
 fun UndoButton(
     onUndo: () -> Unit,
     onTimeout: () -> Unit,
+    modifier: Modifier = Modifier,
+    itemKey: Any? = null
+) {
+    // Use key() to force complete recomposition when itemKey changes
+    // This ensures the old LaunchedEffect is fully cancelled before new one starts
+    key(itemKey) {
+        UndoButtonContent(
+            onUndo = onUndo,
+            onTimeout = onTimeout,
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+private fun UndoButtonContent(
+    onUndo: () -> Unit,
+    onTimeout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 5 dots countdown - one disappears each second
+    // 5 dots countdown - starts fresh each time this composable is created
     var dotsRemaining by remember { mutableIntStateOf(5) }
 
     // Countdown once per second
     LaunchedEffect(Unit) {
-        dotsRemaining = 5
         while (dotsRemaining > 0) {
             delay(1000)
             dotsRemaining--

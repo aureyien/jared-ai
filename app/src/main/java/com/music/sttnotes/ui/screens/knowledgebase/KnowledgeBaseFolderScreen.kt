@@ -166,7 +166,8 @@ fun KnowledgeBaseFolderScreen(
                                 if (files.size <= 1) {
                                     onNavigateBack()
                                 }
-                            }
+                            },
+                            itemKey = deletion.item // Restart countdown when different file deleted
                         )
                     }
                 },

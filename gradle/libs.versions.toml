@@ -34,8 +34,8 @@ richEditor = "1.0.0-rc13"
 # Networking
 okhttp = "4.12.0"
 
-# Markdown Renderer
-markdownRenderer = "0.27.0"
+# Markdown Renderer (0.30.0+ supports GFM tables)
+markdownRenderer = "0.30.0"
 
 # Testing
 junit = "4.13.2"
