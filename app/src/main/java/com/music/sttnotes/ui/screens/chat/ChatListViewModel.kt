@@ -97,6 +97,10 @@ class ChatListViewModel @Inject constructor(
     fun deleteTag(tag: String) {
         viewModelScope.launch {
             chatHistoryRepository.deleteTag(tag)
+            // Remove from filter if it was selected
+            if (tag in _selectedTagFilters.value) {
+                _selectedTagFilters.value = _selectedTagFilters.value - tag
+            }
         }
     }
 }
