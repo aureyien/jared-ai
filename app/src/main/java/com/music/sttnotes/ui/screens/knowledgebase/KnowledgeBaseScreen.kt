@@ -64,6 +64,11 @@ import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
 
+private enum class TagAction {
+    REMOVE_FROM_ALL,
+    DELETE
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun KnowledgeBaseScreen(
@@ -365,27 +370,91 @@ fun KnowledgeBaseScreen(
     }
 
     // Delete tag confirmation dialog
+    // Tag action menu state
+    var showTagActionConfirmation by remember { mutableStateOf<TagAction?>(null) }
+
+    // Tag action menu dialog
     tagToDelete?.let { tag ->
         AlertDialog(
             onDismissRequest = { tagToDelete = null },
-            title = { Text(strings.deleteTag) },
+            title = { Text("Tag: \"$tag\"") },
             text = {
-                Text("${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}")
+                Column {
+                    Text("Choose an action:")
+                }
+            },
+            confirmButton = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Remove from all files option
+                    EInkButton(
+                        onClick = {
+                            showTagActionConfirmation = TagAction.REMOVE_FROM_ALL
+                        },
+                        filled = false
+                    ) {
+                        Text(strings.removeTagFromAll)
+                    }
+                    // Delete tag option
+                    EInkButton(
+                        onClick = {
+                            showTagActionConfirmation = TagAction.DELETE
+                        },
+                        filled = true
+                    ) {
+                        Text(strings.deleteTag)
+                    }
+                }
+            },
+            dismissButton = {
+                EInkButton(
+                    onClick = { tagToDelete = null },
+                    filled = false
+                ) {
+                    Text(strings.cancel)
+                }
+            },
+            containerColor = EInkWhite
+        )
+    }
+
+    // Confirmation dialog for tag actions
+    showTagActionConfirmation?.let { action ->
+        val tag = tagToDelete ?: return@let
+        AlertDialog(
+            onDismissRequest = { showTagActionConfirmation = null },
+            title = {
+                Text(
+                    when (action) {
+                        TagAction.REMOVE_FROM_ALL -> strings.removeTagFromAll
+                        TagAction.DELETE -> strings.deleteTag
+                    }
+                )
+            },
+            text = {
+                Text(
+                    when (action) {
+                        TagAction.REMOVE_FROM_ALL -> "${strings.removeTagFromAllConfirmation} \"$tag\"?"
+                        TagAction.DELETE -> "${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}"
+                    }
+                )
             },
             confirmButton = {
                 EInkButton(
                     onClick = {
                         viewModel.deleteTag(tag)
                         tagToDelete = null
+                        showTagActionConfirmation = null
                     },
                     filled = true
                 ) {
-                    Text(strings.delete)
+                    Text(strings.confirm)
                 }
             },
             dismissButton = {
                 EInkButton(
-                    onClick = { tagToDelete = null },
+                    onClick = { showTagActionConfirmation = null },
                     filled = false
                 ) {
                     Text(strings.cancel)
