@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
@@ -161,8 +162,10 @@ fun NoteEditorScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (noteId == null) "New Note" else "Edit Note",
-                        style = MaterialTheme.typography.titleLarge
+                        text = note.title.ifEmpty { if (noteId == null) "New Note" else "Edit Note" },
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
@@ -178,6 +181,19 @@ fun NoteEditorScreen(
                     }
                 },
                 actions = {
+                    // Archive button (only for existing notes)
+                    if (noteId != null) {
+                        IconButton(onClick = {
+                            viewModel.archiveNote()
+                            onNavigateBack()
+                        }) {
+                            Icon(
+                                Icons.Default.Archive,
+                                contentDescription = "Archive",
+                                tint = EInkBlack
+                            )
+                        }
+                    }
                     // Preview toggle only (no save icon)
                     IconButton(onClick = { viewModel.togglePreviewMode() }) {
                         Icon(

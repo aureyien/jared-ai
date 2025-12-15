@@ -154,7 +154,7 @@ fun ChatListScreen(
                     EInkIconButton(
                         onClick = onNewConversation,
                         icon = Icons.Default.Add,
-                        contentDescription = "Nouvelle conversation"
+                        contentDescription = "New conversation"
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -184,7 +184,7 @@ fun ChatListScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Nouvelle conversation")
+                    Text("New conversation")
                 }
             }
         },
@@ -210,11 +210,11 @@ fun ChatListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = "Rechercher...",
+                    placeholder = "Search...",
                     leadingIcon = {
                         Icon(
                             Icons.Default.Search,
-                            contentDescription = "Rechercher",
+                            contentDescription = "Search",
                             tint = EInkGrayMedium
                         )
                     }
@@ -245,7 +245,7 @@ fun ChatListScreen(
                                 // Set new pending deletion
                                 pendingDeletion = PendingDeletion(
                                     item = conversation,
-                                    message = "Conversation supprimée"
+                                    message = "Conversation deleted"
                                 )
                             }
                         )
@@ -344,7 +344,7 @@ private fun ConversationCard(
             onDismissRequest = { showContextMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Renommer") },
+                text = { Text("Rename") },
                 onClick = {
                     showContextMenu = false
                     onRename()
@@ -352,7 +352,7 @@ private fun ConversationCard(
                 leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
             )
             DropdownMenuItem(
-                text = { Text("Supprimer") },
+                text = { Text("Delete") },
                 onClick = {
                     showContextMenu = false
                     onDelete()
@@ -381,13 +381,13 @@ private fun EmptyConversationsState(
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Aucune conversation",
+            text = "No conversations",
             style = MaterialTheme.typography.titleMedium,
             color = EInkBlack
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Commencez une nouvelle discussion avec l'IA",
+            text = "Start a new conversation with the AI",
             style = MaterialTheme.typography.bodyMedium,
             color = EInkGrayMedium
         )
@@ -398,7 +398,7 @@ private fun EmptyConversationsState(
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Nouvelle conversation")
+            Text("New conversation")
         }
     }
 }
@@ -413,12 +413,12 @@ private fun RenameDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Renommer la conversation") },
+        title = { Text("Rename conversation") },
         text = {
             EInkTextField(
                 value = newTitle,
                 onValueChange = { newTitle = it },
-                placeholder = "Nouveau nom",
+                placeholder = "New name",
                 modifier = Modifier.fillMaxWidth()
             )
         },
@@ -428,7 +428,7 @@ private fun RenameDialog(
                 filled = true,
                 enabled = newTitle.isNotBlank()
             ) {
-                Text("Renommer")
+                Text("Rename")
             }
         },
         dismissButton = {
@@ -436,7 +436,7 @@ private fun RenameDialog(
                 onClick = onDismiss,
                 filled = false
             ) {
-                Text("Annuler")
+                Text("Cancel")
             }
         },
         containerColor = EInkWhite
@@ -444,7 +444,7 @@ private fun RenameDialog(
 }
 
 /**
- * Format timestamp as relative time (e.g., "il y a 2h", "hier", "il y a 3j")
+ * Format timestamp as relative time (e.g., "2h ago", "yesterday", "3d ago")
  */
 private fun formatRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
@@ -455,13 +455,13 @@ private fun formatRelativeTime(timestamp: Long): String {
     val days = TimeUnit.MILLISECONDS.toDays(diff)
 
     return when {
-        minutes < 1 -> "maintenant"
-        minutes < 60 -> "il y a ${minutes}min"
-        hours < 24 -> "il y a ${hours}h"
-        days < 2 -> "hier"
-        days < 7 -> "il y a ${days}j"
+        minutes < 1 -> "now"
+        minutes < 60 -> "${minutes}min ago"
+        hours < 24 -> "${hours}h ago"
+        days < 2 -> "yesterday"
+        days < 7 -> "${days}d ago"
         else -> {
-            val format = SimpleDateFormat("d MMM", Locale.FRENCH)
+            val format = SimpleDateFormat("d MMM", Locale.ENGLISH)
             format.format(Date(timestamp))
         }
     }

@@ -20,7 +20,7 @@ fun LlmProvider.displayName(): String = when (this) {
     LlmProvider.GROQ -> "Groq"
     LlmProvider.OPENAI -> "GPT"
     LlmProvider.XAI -> "Grok"
-    LlmProvider.NONE -> "Aucun"
+    LlmProvider.NONE -> "None"
 }
 
 @Singleton
@@ -45,11 +45,10 @@ class ApiConfig @Inject constructor(
         const val XAI_BASE_URL = "https://api.x.ai/v1/"
 
         val DEFAULT_SYSTEM_PROMPT = """
-            Tu es un assistant qui formate et améliore des transcriptions vocales.
-            - Corrige la ponctuation et la grammaire
-            - Structure le texte en paragraphes clairs
-            - Préserve le sens original
-            - Réponds en français
+            Tu es un assistant intelligent et serviable.
+            - Réponds de manière concise et utile aux questions
+            - Utilise le format markdown pour structurer tes réponses (listes, titres, code, etc.)
+            - Réponds en français sauf si l'utilisateur écrit dans une autre langue
         """.trimIndent()
     }
 

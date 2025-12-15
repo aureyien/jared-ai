@@ -86,6 +86,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { apiConfig.setLlmSystemPrompt(prompt) }
     }
 
+    fun resetLlmSystemPrompt() {
+        viewModelScope.launch { apiConfig.setLlmSystemPrompt(ApiConfig.DEFAULT_SYSTEM_PROMPT) }
+    }
+
     fun setSttLanguage(language: SttLanguage) {
         viewModelScope.launch { sttPreferences.setLanguage(language) }
     }

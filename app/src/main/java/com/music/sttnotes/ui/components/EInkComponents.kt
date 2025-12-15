@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
@@ -257,25 +258,43 @@ fun EInkDivider(
 }
 
 /**
- * E-Ink loading indicator - static dots instead of spinning
+ * E-Ink loading indicator - subtle sequential dot animation (e-ink friendly)
+ * Each dot lights up in sequence, creating a gentle "wave" effect
  */
 @Composable
 fun EInkLoadingIndicator(
     modifier: Modifier = Modifier,
     text: String = "Loading..."
 ) {
+    // Which dot is currently "active" (0, 1, or 2)
+    var activeDot by remember { mutableStateOf(0) }
+
+    // Slow animation: each dot stays active for 800ms
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(800)
+            activeDot = (activeDot + 1) % 3
+        }
+    }
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Static dots instead of animation
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            repeat(3) {
+        // Animated dots - active dot is larger, all vertically centered
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(3) { index ->
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
-                        .background(EInkBlack, CircleShape)
+                        .size(if (index == activeDot) 10.dp else 6.dp)
+                        .background(
+                            if (index == activeDot) EInkBlack else EInkGrayMedium,
+                            CircleShape
+                        )
                 )
             }
         }
@@ -315,21 +334,30 @@ fun EInkBottomActionBar(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Bottom button shape with rounded bottom corners
-            val bottomButtonShape = RoundedCornerShape(
+            // Shape for left button - rounded bottom-left to match Palma 2 Pro screen corner
+            val leftButtonShape = RoundedCornerShape(
                 topStart = 0.dp,
                 topEnd = 0.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
+                bottomStart = 24.dp,
+                bottomEnd = 0.dp
+            )
+            // Shape for middle button - no rounded corners
+            val middleButtonShape = RoundedCornerShape(0.dp)
+            // Shape for right button - rounded bottom-right to match Palma 2 Pro screen corner
+            val rightButtonShape = RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = 0.dp,
+                bottomEnd = 24.dp
             )
 
-            // Knowledge Base button - BLACK background (filled)
+            // Knowledge Base button - BLACK background (filled) - LEFT position
             Surface(
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp)
                     .combinedClickable(onClick = onKnowledgeBase),
-                shape = bottomButtonShape,
+                shape = leftButtonShape,
                 color = EInkBlack
             ) {
                 Row(
@@ -340,12 +368,12 @@ fun EInkBottomActionBar(
                     Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(20.dp), tint = EInkWhite)
                     Spacer(Modifier.width(6.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Knowledge", color = EInkWhite, style = MaterialTheme.typography.labelSmall)
-                        Text("Base", color = EInkWhite, style = MaterialTheme.typography.labelSmall)
+                        Text("Knowledge", color = EInkWhite, style = MaterialTheme.typography.labelMedium)
+                        Text("Base", color = EInkWhite, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
-            // Chat button with long press support - only show if showChat is true - WHITE background (outlined)
+            // Chat button with long press support - only show if showChat is true - WHITE background (outlined) - MIDDLE position
             if (showChat) {
                 Spacer(Modifier.width(8.dp))
                 Surface(
@@ -356,7 +384,7 @@ fun EInkBottomActionBar(
                             onClick = onChat,
                             onLongClick = onChatLongPress
                         ),
-                    shape = bottomButtonShape,
+                    shape = middleButtonShape,
                     color = EInkWhite,
                     border = BorderStroke(2.dp, EInkBlack)
                 ) {
@@ -380,14 +408,14 @@ fun EInkBottomActionBar(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
-                            Text("Chat", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
+                            Text("New", color = EInkBlack, style = MaterialTheme.typography.labelMedium)
+                            Text("Chat", color = EInkBlack, style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }
             }
             Spacer(Modifier.width(8.dp))
-            // Notes button with long press for recording - WHITE background (outlined)
+            // Notes button with long press for recording - WHITE background (outlined) - RIGHT position
             Surface(
                 modifier = Modifier
                     .weight(1f)
@@ -396,7 +424,7 @@ fun EInkBottomActionBar(
                         onClick = onAddNote,
                         onLongClick = onAddNoteWithRecording
                     ),
-                shape = bottomButtonShape,
+                shape = rightButtonShape,
                 color = EInkWhite,
                 border = BorderStroke(2.dp, EInkBlack)
             ) {
@@ -420,8 +448,8 @@ fun EInkBottomActionBar(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text("New", color = EInkBlack, style = MaterialTheme.typography.labelSmall)
-                        Text("Note", color = EInkBlack, style = MaterialTheme.typography.labelLarge)
+                        Text("New", color = EInkBlack, style = MaterialTheme.typography.labelMedium)
+                        Text("Note", color = EInkBlack, style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -454,20 +482,30 @@ fun EInkKBBottomActionBar(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            val bottomButtonShape = RoundedCornerShape(
+            // Shape for left button - rounded bottom-left to match Palma 2 Pro screen corner
+            val leftButtonShape = RoundedCornerShape(
                 topStart = 0.dp,
                 topEnd = 0.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
+                bottomStart = 24.dp,
+                bottomEnd = 0.dp
+            )
+            // Shape for middle button - no rounded corners
+            val middleButtonShape = RoundedCornerShape(0.dp)
+            // Shape for right button - rounded bottom-right to match Palma 2 Pro screen corner
+            val rightButtonShape = RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = 0.dp,
+                bottomEnd = 24.dp
             )
 
-            // Home button - BLACK background (filled)
+            // Home button - BLACK background (filled) - LEFT position
             Surface(
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp)
                     .combinedClickable(onClick = onHome),
-                shape = bottomButtonShape,
+                shape = leftButtonShape,
                 color = EInkBlack
             ) {
                 Row(
@@ -481,7 +519,7 @@ fun EInkKBBottomActionBar(
                 }
             }
 
-            // Chat button - only show if showChat is true
+            // Chat button - only show if showChat is true - MIDDLE position
             if (showChat) {
                 Spacer(Modifier.width(8.dp))
                 Surface(
@@ -492,7 +530,7 @@ fun EInkKBBottomActionBar(
                             onClick = onChat,
                             onLongClick = onChatLongPress
                         ),
-                    shape = bottomButtonShape,
+                    shape = middleButtonShape,
                     color = EInkWhite,
                     border = BorderStroke(2.dp, EInkBlack)
                 ) {
@@ -522,7 +560,7 @@ fun EInkKBBottomActionBar(
 
             Spacer(Modifier.width(8.dp))
 
-            // Notes button
+            // Notes button - RIGHT position
             Surface(
                 modifier = Modifier
                     .weight(1f)
@@ -531,7 +569,7 @@ fun EInkKBBottomActionBar(
                         onClick = onAddNote,
                         onLongClick = onAddNoteWithRecording
                     ),
-                shape = bottomButtonShape,
+                shape = rightButtonShape,
                 color = EInkWhite,
                 border = BorderStroke(2.dp, EInkBlack)
             ) {

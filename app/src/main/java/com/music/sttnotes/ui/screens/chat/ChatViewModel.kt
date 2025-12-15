@@ -276,11 +276,11 @@ class ChatViewModel @Inject constructor(
                             // Send to LLM
                             sendToLlm(transcription)
                         } else {
-                            _chatState.value = ChatState.Error("Transcription vide")
+                            _chatState.value = ChatState.Error("Empty transcription")
                         }
                     },
                     onFailure = { error ->
-                        _chatState.value = ChatState.Error(error.message ?: "Erreur de transcription")
+                        _chatState.value = ChatState.Error(error.message ?: "Transcription error")
                     }
                 )
             } else {
@@ -302,7 +302,7 @@ class ChatViewModel @Inject constructor(
 
         val llmProvider = _currentLlmProvider.value
         if (llmProvider == LlmProvider.NONE) {
-            _chatState.value = ChatState.Error("LLM non configure. Allez dans Parametres.")
+            _chatState.value = ChatState.Error("LLM not configured. Go to Settings.")
             return
         }
 
@@ -314,7 +314,7 @@ class ChatViewModel @Inject constructor(
         }
 
         if (apiKey.isNullOrBlank()) {
-            _chatState.value = ChatState.Error("Cle API manquante. Configurez-la dans Parametres.")
+            _chatState.value = ChatState.Error("API key missing. Configure it in Settings.")
             return
         }
 
@@ -373,7 +373,7 @@ class ChatViewModel @Inject constructor(
         } catch (e: Exception) {
             // Remove the empty streaming message on error
             removeMessage(messageId)
-            _chatState.value = ChatState.Error(e.message ?: "Erreur LLM")
+            _chatState.value = ChatState.Error(e.message ?: "LLM error")
         }
     }
 
@@ -432,7 +432,7 @@ class ChatViewModel @Inject constructor(
                         refreshFolders()
                     },
                     onFailure = {
-                        _chatState.value = ChatState.Error("Erreur de sauvegarde: ${it.message}")
+                        _chatState.value = ChatState.Error("Save error: ${it.message}")
                     }
                 )
             }

@@ -299,7 +299,7 @@ fun ChatScreen(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.CenterStart
                         ) {
-                            EInkLoadingIndicator(text = "Reflexion...")
+                            EInkLoadingIndicator(text = "Thinking...")
                         }
                     }
                 }
@@ -337,13 +337,13 @@ fun ChatScreen(
             // Status bar - shows all processing states for e-ink visibility
             when (val state = chatState) {
                 is ChatState.Recording -> {
-                    StatusBar(text = "Enregistrement en cours...", showMic = true)
+                    StatusBar(text = "Recording...", showMic = true)
                 }
                 is ChatState.Transcribing -> {
-                    StatusBar(text = "Transcription en cours...", showMic = false)
+                    StatusBar(text = "Transcribing...", showMic = false)
                 }
                 is ChatState.SendingToLlm -> {
-                    StatusBar(text = "Sending...", showMic = false)
+                    // Status bar removed - EInkLoadingIndicator "Reflexion..." already shows in chat
                 }
                 is ChatState.Error -> {
                     StatusBar(text = state.message, isError = true, onDismiss = { viewModel.dismissError() })
@@ -353,7 +353,7 @@ fun ChatScreen(
 
             if (showPermissionDenied) {
                 Text(
-                    "Permission micro requise",
+                    "Microphone permission required",
                     color = EInkBlack,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
@@ -402,7 +402,7 @@ fun ChatScreen(
             contentAlignment = Alignment.TopCenter
         ) {
             UndoSnackbar(
-                message = "Conversation effacée",
+                message = "Conversation cleared",
                 onUndo = {
                     viewModel.restoreMessages(clearedMessages)
                     pendingClearMessages = null
@@ -437,12 +437,12 @@ private fun RenameConversationDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Renommer la conversation") },
+        title = { Text("Rename conversation") },
         text = {
             com.music.sttnotes.ui.components.EInkTextField(
                 value = newTitle,
                 onValueChange = { newTitle = it },
-                placeholder = "Nouveau titre",
+                placeholder = "New title",
                 modifier = Modifier.fillMaxWidth()
             )
         },
@@ -455,7 +455,7 @@ private fun RenameConversationDialog(
                     contentColor = EInkWhite
                 )
             ) {
-                Text("Renommer")
+                Text("Rename")
             }
         },
         dismissButton = {
@@ -467,7 +467,7 @@ private fun RenameConversationDialog(
                 ),
                 border = BorderStroke(1.dp, EInkBlack)
             ) {
-                Text("Annuler")
+                Text("Cancel")
             }
         },
         containerColor = EInkWhite
@@ -483,13 +483,13 @@ private fun EmptyState() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Commencez une conversation",
+            text = "Start a conversation",
             style = MaterialTheme.typography.titleMedium,
             color = EInkGrayMedium
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Tapez un message ou utilisez le micro pour dicter",
+            text = "Type a message or use the mic to dictate",
             style = MaterialTheme.typography.bodyMedium,
             color = EInkGrayMedium,
             textAlign = TextAlign.Center
@@ -579,7 +579,7 @@ private fun ChatBubble(
             if (message.content.isNotBlank()) {
                 MiniIconButton(
                     icon = Icons.Default.ContentCopy,
-                    contentDescription = "Copier",
+                    contentDescription = "Copy",
                     onClick = { clipboardManager.setText(AnnotatedString(message.content)) }
                 )
             }
@@ -588,7 +588,7 @@ private fun ChatBubble(
             if (onSaveClick != null) {
                 MiniIconButton(
                     icon = if (isSaved) Icons.Default.Check else Icons.Default.Save,
-                    contentDescription = if (isSaved) "Sauvegardé" else "Sauvegarder",
+                    contentDescription = if (isSaved) "Saved" else "Save",
                     tint = if (isSaved) EInkBlack else EInkGrayMedium,
                     onClick = onSaveClick
                 )
@@ -642,7 +642,7 @@ private fun SaveResponseDialog(
         .trim()
         .replace(Regex("\\s+"), "-")
         .lowercase()
-        .ifEmpty { "reponse" }
+        .ifEmpty { "response" }
 
     var filename by remember { mutableStateOf(defaultFilename) }
     var selectedFolder by remember { mutableStateOf(existingFolders.firstOrNull() ?: "") }
@@ -651,12 +651,12 @@ private fun SaveResponseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Sauvegarder la reponse") },
+        title = { Text("Save response") },
         text = {
             Column {
                 // Filename input
                 Text(
-                    text = "Nom du fichier:",
+                    text = "Filename:",
                     style = MaterialTheme.typography.labelLarge,
                     color = EInkBlack
                 )
@@ -664,14 +664,14 @@ private fun SaveResponseDialog(
                 EInkTextField(
                     value = filename,
                     onValueChange = { filename = it },
-                    placeholder = "Nom du fichier",
+                    placeholder = "Filename",
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(Modifier.height(16.dp))
 
                 Text(
-                    text = "Dossier:",
+                    text = "Folder:",
                     style = MaterialTheme.typography.labelLarge,
                     color = EInkBlack
                 )
@@ -684,7 +684,7 @@ private fun SaveResponseDialog(
                 ) {
                     // New folder chip
                     EInkChip(
-                        label = "+ Nouveau",
+                        label = "+ New",
                         selected = showNewFolderInput,
                         onClick = {
                             showNewFolderInput = true
@@ -711,7 +711,7 @@ private fun SaveResponseDialog(
                     EInkTextField(
                         value = newFolderName,
                         onValueChange = { newFolderName = it },
-                        placeholder = "Nom du nouveau dossier",
+                        placeholder = "New folder name",
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -724,7 +724,7 @@ private fun SaveResponseDialog(
                 filled = true,
                 enabled = filename.isNotBlank() && finalFolder.isNotBlank()
             ) {
-                Text("Sauvegarder")
+                Text("Save")
             }
         },
         dismissButton = {
@@ -732,7 +732,7 @@ private fun SaveResponseDialog(
                 onClick = onDismiss,
                 filled = false
             ) {
-                Text("Annuler")
+                Text("Cancel")
             }
         },
         containerColor = EInkWhite

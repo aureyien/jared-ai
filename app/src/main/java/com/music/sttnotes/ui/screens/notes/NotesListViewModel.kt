@@ -24,7 +24,12 @@ class NotesListViewModel @Inject constructor(
     private val _selectedTag = MutableStateFlow<String?>(null)
     val selectedTag: StateFlow<String?> = _selectedTag
 
+    private val _showArchived = MutableStateFlow(false)
+    val showArchived: StateFlow<Boolean> = _showArchived
+
     val allTags: StateFlow<Set<String>> = notesRepository.allTags
+
+    val archivedNotes: StateFlow<List<Note>> = notesRepository.archivedNotes
 
     val filteredNotes: StateFlow<List<Note>> = combine(
         notesRepository.notes,
@@ -54,9 +59,31 @@ class NotesListViewModel @Inject constructor(
         _searchQuery.value = ""
     }
 
+    fun toggleShowArchived() {
+        _showArchived.value = !_showArchived.value
+    }
+
     fun deleteNote(noteId: String) {
         viewModelScope.launch {
             notesRepository.deleteNote(noteId)
+        }
+    }
+
+    fun archiveNote(noteId: String) {
+        viewModelScope.launch {
+            notesRepository.archiveNote(noteId)
+        }
+    }
+
+    fun unarchiveNote(noteId: String) {
+        viewModelScope.launch {
+            notesRepository.unarchiveNote(noteId)
+        }
+    }
+
+    fun deleteAllArchived() {
+        viewModelScope.launch {
+            notesRepository.deleteAllArchived()
         }
     }
 }

@@ -204,6 +204,19 @@ class NoteEditorViewModel @Inject constructor(
         }
     }
 
+    fun archiveNote() {
+        viewModelScope.launch {
+            // Save first to persist any changes
+            val content = richTextState.toMarkdown()
+            if (content.isNotBlank() || !isNewNote) {
+                val currentNote = _note.value.copy(content = content)
+                notesRepository.saveNote(currentNote)
+            }
+            // Then archive
+            notesRepository.archiveNote(_note.value.id)
+        }
+    }
+
     companion object {
         private const val TAG = "NoteEditorViewModel"
     }
