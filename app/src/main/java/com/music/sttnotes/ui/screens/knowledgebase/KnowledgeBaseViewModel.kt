@@ -316,6 +316,24 @@ class KnowledgeBaseViewModel @Inject constructor(
         _fileTags.value = _fileTags.value.filter { it != tag }
     }
 
+    fun addTagToFile(folder: String, filename: String, tag: String) {
+        viewModelScope.launch {
+            llmOutputRepository.addTagToFile(folder, filename, tag.trim().lowercase()).onSuccess {
+                loadAllTags()
+                loadFolders()
+            }
+        }
+    }
+
+    fun removeTagFromFile(folder: String, filename: String, tag: String) {
+        viewModelScope.launch {
+            llmOutputRepository.removeTagFromFile(folder, filename, tag).onSuccess {
+                loadAllTags()
+                loadFolders()
+            }
+        }
+    }
+
     fun deleteTag(tag: String) {
         viewModelScope.launch {
             llmOutputRepository.deleteTag(tag).onSuccess { filesModified ->
