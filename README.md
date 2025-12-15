@@ -32,27 +32,39 @@ Whisper Notes is designed for users who want fast, private voice-to-text capabil
 - **Rich Text Formatting**: Bold, italic, underline, strikethrough, headers
 - **Lists**: Bulleted, numbered, and checkbox lists
 - **Code Blocks**: Inline code formatting
-- **Tags**: Organize notes with custom tags
+- **Tags**: Organize notes with custom tags (20-character limit)
+- **Tag Management**: Full-screen tag manager with search and filtering
 - **Preview Mode**: Toggle between edit and preview with rendered markdown
 - **Voice Dictation**: Record and transcribe directly into notes
 
 ### AI Chat
 
 - **Multiple Providers**: Support for Groq (Llama), OpenAI (GPT), and xAI (Grok)
-- **Conversation History**: Persistent chat conversations
+- **Conversation History**: Persistent chat conversations with rename/delete
 - **Voice Input**: Dictate messages using STT
 - **Save Responses**: Export AI responses to Knowledge Base
 - **Customizable System Prompt**: Configure AI behavior and language
+- **Tag Organization**: Add tags to conversations for easy filtering
+- **Tag Management**: Full-screen tag manager with long-press delete
 
 ### Knowledge Base
 
 - **3-Level Navigation**: Folders → Files → Detail view
-- **Organized Storage**: Save AI responses in folders
+- **Organized Storage**: Save AI responses in folders (rename folders via menu)
 - **Search & Filter**: Full-text search + tag filtering at both folder and file level
-- **Tag Management**: Add, remove, and filter by tags
+- **Tag Management**: Full-screen tag manager with search, filtering, and long-press actions
+- **Tag Actions**: Long-press tags to delete or remove from all files
+- **Persistent Tags**: Tags remain available even when not assigned to any files
 - **Markdown Editor**: Edit saved content with rich text toolbar
 - **Preview Mode**: View formatted markdown content
 - **Clipboard Integration**: Copy content with one tap
+
+### Dashboard
+
+- **Global Search**: Search across Notes, Conversations, and Knowledge Base
+- **Quick Access**: Recently accessed items appear first
+- **Search Results**: Max 5 results per category with type-specific icons
+- **Direct Navigation**: Tap any result to jump directly to that item
 
 ## Architecture
 
@@ -125,11 +137,24 @@ curl -L -o app/src/main/assets/models/ggml-base.bin \
 
 ### Build the App
 
+**Debug build** (faster builds, no optimization):
 ```bash
 ./gradlew assembleDebug
 ```
+APK: `app/build/outputs/apk/debug/app-debug.apk` (~274 MB)
 
-The APK will be at `app/build/outputs/apk/debug/app-debug.apk`
+**Release build** (optimized for production):
+```bash
+./gradlew assembleRelease
+```
+APK: `app/build/outputs/apk/release/app-release.apk` (~254 MB, 7% smaller)
+
+Release builds include:
+- R8 code shrinking and obfuscation
+- Resource optimization
+- 10-30% faster execution
+- Lower CPU and memory usage
+- Better battery life
 
 ## Configuration
 
@@ -208,9 +233,29 @@ To use cloud services, you'll need API keys:
 6. Use the **tag icon** to filter by tags
 7. Long-press to copy or delete content
 
+### Tag Management
+
+**Access tag management:**
+- **Notes**: Tap the tag icon in the note list to open full-screen tag manager
+- **Chat**: Tap the tag icon in conversation list to manage conversation tags
+- **Knowledge Base**: Long-press the tag icon in the top bar for global tag management, or tap in file detail for file-specific tags
+
+**Tag operations:**
+- **Add tags**: Type in the input field (max 20 characters) and tap the + button
+- **Toggle tags**: Tap tags to add/remove from the current item
+- **Delete tags**: Long-press any tag to delete it or remove it from all items
+- **Filter view**: Tap tag chips to filter by tags (long-press chips for actions)
+- **Search tags**: Use the search bar to find specific tags
+
+**Tag features:**
+- Tags are persistent - they remain available even when not assigned to any items
+- 20-character limit prevents overly long tag names
+- Input validation prevents typing beyond the character limit
+- Tag visibility can be toggled in list views
+
 ### Undo Deletions
 
-When deleting items (notes, chats, KB files), an **UNDO button** appears in the top bar with a 5-dot countdown. Click it to restore the item before permanent deletion.
+When deleting items (notes, chats, KB files), an **UNDO button** appears in the top bar with a 5-dot countdown timer. Click it to restore the item before permanent deletion. The countdown provides visual feedback showing time remaining.
 
 ## Project Structure
 
@@ -222,9 +267,13 @@ When deleting items (notes, chats, KB files), an **UNDO button** appears in the 
 | `AudioRecorder.kt` | Handles microphone input and WAV encoding |
 | `SttManager.kt` | Coordinates local/cloud STT switching |
 | `LlmService.kt` | Handles LLM API calls (Groq/OpenAI/xAI) |
-| `ChatViewModel.kt` | Chat screen state management |
+| `ChatViewModel.kt` | Chat screen state management with tag operations |
 | `NoteEditorViewModel.kt` | Note editor state management |
 | `EInkComponents.kt` | E-Ink optimized Compose components |
+| `TagManagementScreen.kt` | Full-screen tag manager for Chat conversations |
+| `TagManagementScreenForNotes.kt` | Full-screen tag manager for Notes |
+| `TagManagementScreenForKB.kt` | Dual-mode tag manager for Knowledge Base (global/file-specific) |
+| `DashboardViewModel.kt` | Global search across all content types |
 | `KnowledgeBaseFolderScreen.kt` | KB folder files list with search and tag filter |
 | `KnowledgeBaseDetailScreen.kt` | KB file viewer/editor with markdown support |
 
