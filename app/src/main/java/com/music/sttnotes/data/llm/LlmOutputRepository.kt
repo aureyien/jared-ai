@@ -165,6 +165,49 @@ class LlmOutputRepository @Inject constructor(
     }
 
     /**
+     * Add a tag to a specific file
+     */
+    suspend fun addTagToFile(folder: String, filename: String, tag: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val file = getFilePath(folder, filename)
+            if (!file.exists()) return@withContext Result.failure(Exception("File not found"))
+
+            val content = file.readText()
+            val (meta, body) = FrontmatterParser.parse(content)
+
+            val updatedTags = (meta.tags + tag.trim().lowercase()).distinct()
+            val updatedMeta = meta.copy(tags = updatedTags)
+            val updatedContent = FrontmatterParser.combine(updatedMeta, body)
+            file.writeText(updatedContent)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Remove a tag from a specific file
+     */
+    suspend fun removeTagFromFile(folder: String, filename: String, tag: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val file = getFilePath(folder, filename)
+            if (!file.exists()) return@withContext Result.failure(Exception("File not found"))
+
+            val content = file.readText()
+            val (meta, body) = FrontmatterParser.parse(content)
+
+            val updatedMeta = meta.copy(tags = meta.tags - tag)
+            val updatedContent = FrontmatterParser.combine(updatedMeta, body)
+            file.writeText(updatedContent)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Delete a tag from all files
      */
     suspend fun deleteTag(tagToDelete: String): Result<Int> = withContext(Dispatchers.IO) {

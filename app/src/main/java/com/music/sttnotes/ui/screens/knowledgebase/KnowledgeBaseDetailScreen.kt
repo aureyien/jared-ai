@@ -408,16 +408,16 @@ private fun TagsDisplay(
             if (isEditMode) {
                 // Editable tag with delete button
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(4.dp),
                     color = EInkBlack
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+                        modifier = Modifier.padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
                     ) {
                         Text(
                             text = tag,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = EInkWhite
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -439,16 +439,17 @@ private fun TagsDisplay(
                     }
                 }
             } else {
-                // Read-only tag chip
+                // Read-only tag chip (harmonized with Chat styling)
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = EInkBlack
+                    shape = RoundedCornerShape(4.dp),
+                    color = EInkWhite,
+                    border = BorderStroke(1.dp, EInkGrayMedium.copy(alpha = 0.4f))
                 ) {
                     Text(
                         text = tag,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = EInkWhite,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        style = MaterialTheme.typography.labelSmall,
+                        color = EInkGrayMedium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
