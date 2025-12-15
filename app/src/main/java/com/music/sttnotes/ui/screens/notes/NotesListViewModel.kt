@@ -29,6 +29,8 @@ class NotesListViewModel @Inject constructor(
 
     val allTags: StateFlow<Set<String>> = notesRepository.allTags
 
+    val notes: StateFlow<List<Note>> = notesRepository.notes
+
     val archivedNotes: StateFlow<List<Note>> = notesRepository.archivedNotes
 
     val filteredNotes: StateFlow<List<Note>> = combine(
