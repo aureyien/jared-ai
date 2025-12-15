@@ -1,11 +1,20 @@
 package com.music.sttnotes.ui.components
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mikepenz.markdown.compose.components.MarkdownComponent
+import com.mikepenz.markdown.compose.components.MarkdownComponents
+import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownParagraph
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import com.music.sttnotes.ui.theme.EInkBlack
@@ -187,4 +196,26 @@ fun einkMarkdownColors() = markdownColor(
     inlineCodeBackground = EInkGrayLight,
     linkText = EInkBlack,
     dividerColor = EInkGrayMedium
+)
+
+/**
+ * Custom paragraph component with proper spacing between paragraphs
+ * Adds bottom padding to match edit mode spacing
+ */
+private val spacedParagraphComponent: MarkdownComponent = {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+    ) {
+        MarkdownParagraph(it.content, it.node)
+    }
+}
+
+/**
+ * E-Ink optimized Markdown components with proper paragraph spacing
+ */
+@Composable
+fun einkMarkdownComponents(): MarkdownComponents = markdownComponents(
+    paragraph = spacedParagraphComponent
 )

@@ -65,6 +65,7 @@ import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.einkMarkdownColors
+import com.music.sttnotes.ui.components.einkMarkdownComponents
 import com.music.sttnotes.ui.components.einkMarkdownTypography
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
@@ -261,6 +262,7 @@ fun KnowledgeBaseDetailScreen(
                                         content = fileContent ?: "",
                                         colors = einkMarkdownColors(),
                                         typography = einkMarkdownTypography(),
+                                        components = einkMarkdownComponents(),
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .padding(horizontal = 20.dp, vertical = 16.dp)

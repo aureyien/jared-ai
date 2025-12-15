@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.music.sttnotes.data.i18n.AppLanguage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -35,6 +36,7 @@ class ApiConfig @Inject constructor(
         private val LLM_PROVIDER = stringPreferencesKey("llm_provider")
         private val LLM_SYSTEM_PROMPT = stringPreferencesKey("llm_system_prompt")
         private val CHAT_FONT_SIZE = floatPreferencesKey("chat_font_size")
+        private val APP_LANGUAGE = stringPreferencesKey("app_language")
 
         const val DEFAULT_CHAT_FONT_SIZE = 14f
         const val MIN_CHAT_FONT_SIZE = 10f
@@ -75,6 +77,13 @@ class ApiConfig @Inject constructor(
     val chatFontSize: Flow<Float> = context.apiDataStore.data.map {
         it[CHAT_FONT_SIZE] ?: DEFAULT_CHAT_FONT_SIZE
     }
+    val appLanguage: Flow<AppLanguage> = context.apiDataStore.data.map {
+        try {
+            AppLanguage.valueOf(it[APP_LANGUAGE] ?: AppLanguage.ENGLISH.name)
+        } catch (e: IllegalArgumentException) {
+            AppLanguage.ENGLISH
+        }
+    }
 
     suspend fun setGroqApiKey(key: String) {
         context.apiDataStore.edit { it[GROQ_API_KEY] = key }
@@ -102,5 +111,9 @@ class ApiConfig @Inject constructor(
 
     suspend fun setChatFontSize(size: Float) {
         context.apiDataStore.edit { it[CHAT_FONT_SIZE] = size.coerceIn(MIN_CHAT_FONT_SIZE, MAX_CHAT_FONT_SIZE) }
+    }
+
+    suspend fun setAppLanguage(language: AppLanguage) {
+        context.apiDataStore.edit { it[APP_LANGUAGE] = language.name }
     }
 }

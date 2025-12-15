@@ -92,6 +92,7 @@ import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayLight
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
+import com.music.sttnotes.data.i18n.rememberStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,6 +113,7 @@ fun ChatScreen(
     val chatFontSize by viewModel.chatFontSize.collectAsState()
     val isEphemeral by viewModel.isEphemeral.collectAsState()
 
+    val strings = rememberStrings()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var showPermissionDenied by remember { mutableStateOf(false) }
@@ -209,12 +211,12 @@ fun ChatScreen(
                 IconButton(onClick = onNavigateBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Retour",
+                        contentDescription = strings.back,
                         tint = EInkBlack
                     )
                 }
                 Text(
-                    text = conversationTitle.ifEmpty { "Chat" },
+                    text = conversationTitle.ifEmpty { strings.chat },
                     style = MaterialTheme.typography.titleMedium,
                     color = EInkBlack,
                     maxLines = 1,
@@ -299,7 +301,7 @@ fun ChatScreen(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.CenterStart
                         ) {
-                            EInkLoadingIndicator(text = "Thinking...")
+                            EInkLoadingIndicator(text = strings.thinking)
                         }
                     }
                 }
@@ -337,10 +339,10 @@ fun ChatScreen(
             // Status bar - shows all processing states for e-ink visibility
             when (val state = chatState) {
                 is ChatState.Recording -> {
-                    StatusBar(text = "Recording...", showMic = true)
+                    StatusBar(text = strings.recording, showMic = true)
                 }
                 is ChatState.Transcribing -> {
-                    StatusBar(text = "Transcribing...", showMic = false)
+                    StatusBar(text = strings.transcribing, showMic = false)
                 }
                 is ChatState.SendingToLlm -> {
                     // Status bar removed - EInkLoadingIndicator "Reflexion..." already shows in chat
@@ -353,7 +355,7 @@ fun ChatScreen(
 
             if (showPermissionDenied) {
                 Text(
-                    "Microphone permission required",
+                    strings.micPermissionRequired,
                     color = EInkBlack,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
@@ -402,7 +404,7 @@ fun ChatScreen(
             contentAlignment = Alignment.TopCenter
         ) {
             UndoSnackbar(
-                message = "Conversation cleared",
+                message = strings.conversationCleared,
                 onUndo = {
                     viewModel.restoreMessages(clearedMessages)
                     pendingClearMessages = null
@@ -433,16 +435,17 @@ private fun RenameConversationDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
+    val strings = rememberStrings()
     var newTitle by remember { mutableStateOf(currentTitle) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename conversation") },
+        title = { Text(strings.renameConversation) },
         text = {
             com.music.sttnotes.ui.components.EInkTextField(
                 value = newTitle,
                 onValueChange = { newTitle = it },
-                placeholder = "New title",
+                placeholder = strings.newTitle,
                 modifier = Modifier.fillMaxWidth()
             )
         },
@@ -455,7 +458,7 @@ private fun RenameConversationDialog(
                     contentColor = EInkWhite
                 )
             ) {
-                Text("Rename")
+                Text(strings.rename)
             }
         },
         dismissButton = {
@@ -467,7 +470,7 @@ private fun RenameConversationDialog(
                 ),
                 border = BorderStroke(1.dp, EInkBlack)
             ) {
-                Text("Cancel")
+                Text(strings.cancel)
             }
         },
         containerColor = EInkWhite
@@ -476,6 +479,7 @@ private fun RenameConversationDialog(
 
 @Composable
 private fun EmptyState() {
+    val strings = rememberStrings()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -483,13 +487,13 @@ private fun EmptyState() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Start a conversation",
+            text = strings.startConversation,
             style = MaterialTheme.typography.titleMedium,
             color = EInkGrayMedium
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Type a message or use the mic to dictate",
+            text = strings.typeOrDictate,
             style = MaterialTheme.typography.bodyMedium,
             color = EInkGrayMedium,
             textAlign = TextAlign.Center
@@ -503,6 +507,7 @@ private fun ChatBubble(
     fontSize: Float = 14f,
     onSaveClick: (() -> Unit)? = null
 ) {
+    val strings = rememberStrings()
     val isUser = message.role == "user"
     val isSaved = message.savedToFile != null
     val cornerRadius = 8.dp
@@ -579,7 +584,7 @@ private fun ChatBubble(
             if (message.content.isNotBlank()) {
                 MiniIconButton(
                     icon = Icons.Default.ContentCopy,
-                    contentDescription = "Copy",
+                    contentDescription = strings.copy,
                     onClick = { clipboardManager.setText(AnnotatedString(message.content)) }
                 )
             }
@@ -588,7 +593,7 @@ private fun ChatBubble(
             if (onSaveClick != null) {
                 MiniIconButton(
                     icon = if (isSaved) Icons.Default.Check else Icons.Default.Save,
-                    contentDescription = if (isSaved) "Saved" else "Save",
+                    contentDescription = if (isSaved) strings.saved else strings.save,
                     tint = if (isSaved) EInkBlack else EInkGrayMedium,
                     onClick = onSaveClick
                 )
@@ -635,6 +640,7 @@ private fun SaveResponseDialog(
     onSave: (filename: String, folder: String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = rememberStrings()
     // Generate default filename from content
     val defaultFilename = message.content
         .take(40)
@@ -651,12 +657,12 @@ private fun SaveResponseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Save response") },
+        title = { Text(strings.saveResponse) },
         text = {
             Column {
                 // Filename input
                 Text(
-                    text = "Filename:",
+                    text = "${strings.filename}:",
                     style = MaterialTheme.typography.labelLarge,
                     color = EInkBlack
                 )
@@ -664,14 +670,14 @@ private fun SaveResponseDialog(
                 EInkTextField(
                     value = filename,
                     onValueChange = { filename = it },
-                    placeholder = "Filename",
+                    placeholder = strings.filename,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(Modifier.height(16.dp))
 
                 Text(
-                    text = "Folder:",
+                    text = "${strings.folder}:",
                     style = MaterialTheme.typography.labelLarge,
                     color = EInkBlack
                 )
@@ -684,7 +690,7 @@ private fun SaveResponseDialog(
                 ) {
                     // New folder chip
                     EInkChip(
-                        label = "+ New",
+                        label = strings.newFolder,
                         selected = showNewFolderInput,
                         onClick = {
                             showNewFolderInput = true
@@ -711,7 +717,7 @@ private fun SaveResponseDialog(
                     EInkTextField(
                         value = newFolderName,
                         onValueChange = { newFolderName = it },
-                        placeholder = "New folder name",
+                        placeholder = strings.newFolderName,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -724,7 +730,7 @@ private fun SaveResponseDialog(
                 filled = true,
                 enabled = filename.isNotBlank() && finalFolder.isNotBlank()
             ) {
-                Text("Save")
+                Text(strings.save)
             }
         },
         dismissButton = {
@@ -732,7 +738,7 @@ private fun SaveResponseDialog(
                 onClick = onDismiss,
                 filled = false
             ) {
-                Text("Cancel")
+                Text(strings.cancel)
             }
         },
         containerColor = EInkWhite

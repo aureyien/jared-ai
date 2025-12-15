@@ -100,6 +100,7 @@ import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayLight
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
+import com.music.sttnotes.data.i18n.rememberStrings
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -110,6 +111,7 @@ fun NoteEditorScreen(
     onNavigateBack: () -> Unit,
     viewModel: NoteEditorViewModel = hiltViewModel()
 ) {
+    val strings = rememberStrings()
     val note by viewModel.note.collectAsState()
     val recordingState by viewModel.recordingState.collectAsState()
     val isPreviewMode by viewModel.isPreviewMode.collectAsState()
@@ -162,7 +164,7 @@ fun NoteEditorScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = note.title.ifEmpty { if (noteId == null) "New Note" else "Edit Note" },
+                        text = note.title.ifEmpty { if (noteId == null) strings.newNoteTitle else strings.editNote },
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -175,7 +177,7 @@ fun NoteEditorScreen(
                     }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = strings.back,
                             tint = EInkBlack
                         )
                     }
@@ -189,7 +191,7 @@ fun NoteEditorScreen(
                         }) {
                             Icon(
                                 Icons.Default.Archive,
-                                contentDescription = "Archive",
+                                contentDescription = strings.archive,
                                 tint = EInkBlack
                             )
                         }
@@ -198,7 +200,7 @@ fun NoteEditorScreen(
                     IconButton(onClick = { viewModel.togglePreviewMode() }) {
                         Icon(
                             if (isPreviewMode) Icons.Default.Edit else Icons.Default.Visibility,
-                            contentDescription = if (isPreviewMode) "Edit" else "Preview",
+                            contentDescription = if (isPreviewMode) strings.edit else strings.preview,
                             tint = EInkBlack
                         )
                     }
@@ -227,7 +229,7 @@ fun NoteEditorScreen(
             if (isPreviewMode) {
                 // Preview mode: show title as text
                 Text(
-                    text = note.title.ifEmpty { "Sans titre" },
+                    text = note.title.ifEmpty { strings.untitled },
                     style = MaterialTheme.typography.headlineMedium,
                     color = EInkBlack,
                     modifier = Modifier.fillMaxWidth()
@@ -269,7 +271,7 @@ fun NoteEditorScreen(
                         value = note.title,
                         onValueChange = viewModel::updateTitle,
                         modifier = Modifier.weight(1f),
-                        placeholder = "Title"
+                        placeholder = strings.title
                     )
                     Spacer(Modifier.width(8.dp))
                     IconButton(
@@ -285,7 +287,7 @@ fun NoteEditorScreen(
                     ) {
                         Icon(
                             Icons.Default.LocalOffer,
-                            contentDescription = "Tags",
+                            contentDescription = strings.tags,
                             tint = if (showTagInput || note.tags.isNotEmpty()) EInkBlack else EInkGrayMedium
                         )
                     }
@@ -304,7 +306,7 @@ fun NoteEditorScreen(
                             value = tagInput,
                             onValueChange = viewModel::updateTagInput,
                             modifier = Modifier.weight(1f),
-                            placeholder = "Add tag..."
+                            placeholder = strings.addTag
                         )
                         Spacer(Modifier.width(8.dp))
                         IconButton(
@@ -314,7 +316,7 @@ fun NoteEditorScreen(
                                 .aspectRatio(1f)
                                 .border(1.dp, EInkBlack, RoundedCornerShape(4.dp))
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add tag", tint = EInkBlack)
+                            Icon(Icons.Default.Add, contentDescription = strings.addTag, tint = EInkBlack)
                         }
                     }
                 }
@@ -398,7 +400,7 @@ fun NoteEditorScreen(
                                 textColor = EInkBlack,
                                 cursorColor = EInkBlack
                             ),
-                            placeholder = { Text("Start writing or record voice...", color = EInkGrayMedium) }
+                            placeholder = { Text(strings.startWritingOrRecord, color = EInkGrayMedium) }
                         )
                     }
                 }
@@ -434,7 +436,7 @@ fun NoteEditorScreen(
 
                 if (showPermissionDenied) {
                     Text(
-                        "Microphone permission required",
+                        strings.micPermissionRequired,
                         color = EInkBlack,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = 8.dp)
@@ -453,6 +455,7 @@ private fun RecordingControls(
     onCancelRecording: () -> Unit,
     onDismissError: () -> Unit
 ) {
+    val strings = rememberStrings()
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -471,16 +474,16 @@ private fun RecordingControls(
                     border = BorderStroke(2.dp, EInkBlack),
                     elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp)
                 ) {
-                    Icon(Icons.Default.Mic, contentDescription = "Start recording", modifier = Modifier.size(28.dp))
+                    Icon(Icons.Default.Mic, contentDescription = strings.recording, modifier = Modifier.size(28.dp))
                 }
                 Text(
-                    "Tap to record",
+                    strings.tapToRecord,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
             is RecordingState.Initializing -> {
-                EInkLoadingIndicator(text = "Initializing...")
+                EInkLoadingIndicator(text = strings.initializing)
             }
             is RecordingState.Recording -> {
                 // No animation for e-ink - static visual with border
@@ -506,12 +509,12 @@ private fun RecordingControls(
                         ),
                         elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp)
                     ) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.Stop, contentDescription = strings.recording, modifier = Modifier.size(28.dp))
                     }
                 }
             }
             is RecordingState.Processing -> {
-                EInkLoadingIndicator(text = "Transcribing...")
+                EInkLoadingIndicator(text = strings.transcribing)
             }
             is RecordingState.Error -> {
                 Icon(
@@ -527,7 +530,7 @@ private fun RecordingControls(
                     modifier = Modifier.padding(top = 8.dp)
                 )
                 TextButton(onClick = onDismissError) {
-                    Text("Dismiss", color = EInkBlack)
+                    Text(strings.dismiss, color = EInkBlack)
                 }
             }
         }

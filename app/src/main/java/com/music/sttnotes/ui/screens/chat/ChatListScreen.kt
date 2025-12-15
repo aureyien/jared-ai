@@ -61,6 +61,8 @@ import com.music.sttnotes.ui.components.UndoButton
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
+import com.music.sttnotes.data.i18n.rememberStrings
+import com.music.sttnotes.data.i18n.Strings
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -75,6 +77,7 @@ fun ChatListScreen(
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
     val conversations by viewModel.conversations.collectAsState()
+    val strings = rememberStrings()
 
     // Refresh list when screen becomes visible (returning from conversation)
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -123,7 +126,7 @@ fun ChatListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Conversations", style = MaterialTheme.typography.headlineSmall) },
+                title = { Text(strings.chat, style = MaterialTheme.typography.headlineSmall) },
                 navigationIcon = {
                     EInkIconButton(
                         onClick = {
@@ -135,7 +138,7 @@ fun ChatListScreen(
                             onNavigateBack()
                         },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Retour"
+                        contentDescription = strings.back
                     )
                 },
                 actions = {
@@ -154,7 +157,7 @@ fun ChatListScreen(
                     EInkIconButton(
                         onClick = onNewConversation,
                         icon = Icons.Default.Add,
-                        contentDescription = "New conversation"
+                        contentDescription = strings.newConversation
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -184,7 +187,7 @@ fun ChatListScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("New conversation")
+                    Text(strings.newConversation)
                 }
             }
         },
@@ -210,11 +213,11 @@ fun ChatListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = "Search...",
+                    placeholder = strings.searchPlaceholder,
                     leadingIcon = {
                         Icon(
                             Icons.Default.Search,
-                            contentDescription = "Search",
+                            contentDescription = strings.search,
                             tint = EInkGrayMedium
                         )
                     }
@@ -245,7 +248,7 @@ fun ChatListScreen(
                                 // Set new pending deletion
                                 pendingDeletion = PendingDeletion(
                                     item = conversation,
-                                    message = "Conversation deleted"
+                                    message = strings.conversationDeleted
                                 )
                             }
                         )
@@ -276,6 +279,7 @@ private fun ConversationCard(
     onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
 
     Box {
@@ -298,7 +302,7 @@ private fun ConversationCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = conversation.title.ifEmpty { "Sans titre" },
+                        text = conversation.title.ifEmpty { strings.untitled },
                         style = MaterialTheme.typography.titleMedium,
                         color = EInkBlack,
                         maxLines = 1,
@@ -344,7 +348,7 @@ private fun ConversationCard(
             onDismissRequest = { showContextMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Rename") },
+                text = { Text(strings.rename) },
                 onClick = {
                     showContextMenu = false
                     onRename()
@@ -352,7 +356,7 @@ private fun ConversationCard(
                 leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
             )
             DropdownMenuItem(
-                text = { Text("Delete") },
+                text = { Text(strings.delete) },
                 onClick = {
                     showContextMenu = false
                     onDelete()
@@ -368,6 +372,7 @@ private fun EmptyConversationsState(
     onNewConversation: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = rememberStrings()
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -381,13 +386,13 @@ private fun EmptyConversationsState(
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "No conversations",
+            text = strings.noConversations,
             style = MaterialTheme.typography.titleMedium,
             color = EInkBlack
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Start a new conversation with the AI",
+            text = strings.startNewConversation,
             style = MaterialTheme.typography.bodyMedium,
             color = EInkGrayMedium
         )
@@ -398,7 +403,7 @@ private fun EmptyConversationsState(
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("New conversation")
+            Text(strings.newConversation)
         }
     }
 }
@@ -409,16 +414,17 @@ private fun RenameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
+    val strings = rememberStrings()
     var newTitle by remember { mutableStateOf(currentTitle) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename conversation") },
+        title = { Text(strings.renameConversation) },
         text = {
             EInkTextField(
                 value = newTitle,
                 onValueChange = { newTitle = it },
-                placeholder = "New name",
+                placeholder = strings.newTitle,
                 modifier = Modifier.fillMaxWidth()
             )
         },
@@ -428,7 +434,7 @@ private fun RenameDialog(
                 filled = true,
                 enabled = newTitle.isNotBlank()
             ) {
-                Text("Rename")
+                Text(strings.rename)
             }
         },
         dismissButton = {
@@ -436,7 +442,7 @@ private fun RenameDialog(
                 onClick = onDismiss,
                 filled = false
             ) {
-                Text("Cancel")
+                Text(strings.cancel)
             }
         },
         containerColor = EInkWhite
@@ -449,17 +455,18 @@ private fun RenameDialog(
 private fun formatRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
+    val strings = Strings.current
 
     val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
     val hours = TimeUnit.MILLISECONDS.toHours(diff)
     val days = TimeUnit.MILLISECONDS.toDays(diff)
 
     return when {
-        minutes < 1 -> "now"
-        minutes < 60 -> "${minutes}min ago"
-        hours < 24 -> "${hours}h ago"
-        days < 2 -> "yesterday"
-        days < 7 -> "${days}d ago"
+        minutes < 1 -> strings.now
+        minutes < 60 -> "$minutes ${strings.minutesAgo}"
+        hours < 24 -> "$hours${strings.hoursAgo}"
+        days < 2 -> strings.yesterday
+        days < 7 -> "$days${strings.daysAgo}"
         else -> {
             val format = SimpleDateFormat("d MMM", Locale.ENGLISH)
             format.format(Date(timestamp))
