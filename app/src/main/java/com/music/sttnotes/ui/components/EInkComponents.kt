@@ -5,6 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,25 +108,51 @@ fun EInkButton(
 /**
  * E-Ink optimized icon button - larger touch target
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EInkIconButton(
     onClick: () -> Unit,
     icon: ImageVector,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = modifier.size(48.dp),
-        enabled = enabled
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(28.dp),
-            tint = if (enabled) EInkBlack else EInkBlack.copy(alpha = 0.4f)
-        )
+    if (onLongClick != null) {
+        // Use Box with combinedClickable for long-press support
+        Box(
+            modifier = modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .combinedClickable(
+                    enabled = enabled,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                    onLongClickLabel = contentDescription
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(28.dp),
+                tint = if (enabled) EInkBlack else EInkBlack.copy(alpha = 0.4f)
+            )
+        }
+    } else {
+        // Original IconButton for simple click
+        IconButton(
+            onClick = onClick,
+            modifier = modifier.size(48.dp),
+            enabled = enabled
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(28.dp),
+                tint = if (enabled) EInkBlack else EInkBlack.copy(alpha = 0.4f)
+            )
+        }
     }
 }
 
