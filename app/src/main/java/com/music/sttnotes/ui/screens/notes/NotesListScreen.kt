@@ -189,8 +189,7 @@ fun NotesListScreen(
                         )
                         // Tag manager icon
                         EInkIconButton(
-                            onClick = {},
-                            onLongClick = onManageTagsGlobal,
+                            onClick = onManageTagsGlobal,
                             icon = Icons.Default.LocalOffer,
                             contentDescription = strings.manageTags
                         )
