@@ -92,4 +92,11 @@ class ChatListViewModel @Inject constructor(
             chatHistoryRepository.removeTagFromConversation(conversationId, tag)
         }
     }
+
+    // Delete tag from all conversations
+    fun deleteTag(tag: String) {
+        viewModelScope.launch {
+            chatHistoryRepository.deleteTag(tag)
+        }
+    }
 }

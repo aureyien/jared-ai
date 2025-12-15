@@ -211,6 +211,25 @@ class ChatHistoryRepository @Inject constructor(
         }
     }
 
+    suspend fun deleteTag(tag: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            // Remove tag from all conversations
+            val current = _conversations.value.map { conv ->
+                if (tag in conv.tags) {
+                    conv.copy(tags = conv.tags - tag)
+                } else {
+                    conv
+                }
+            }
+            _conversations.value = current.sortedByDescending { it.updatedAt }
+
+            // Remove from allTags set
+            _allTags.value = _allTags.value - tag
+
+            persistConversations(current)
+        }
+    }
+
     fun getConversation(id: String): ChatConversation? {
         return _conversations.value.find { it.id == id }
     }

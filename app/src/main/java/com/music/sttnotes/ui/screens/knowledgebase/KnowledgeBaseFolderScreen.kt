@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkCard
 import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.EInkDivider
@@ -87,6 +89,9 @@ fun KnowledgeBaseFolderScreen(
 
     // Tag filter visibility
     var showTagFilter by remember { mutableStateOf(false) }
+
+    // Tag deletion state
+    var tagToDelete by remember { mutableStateOf<String?>(null) }
 
     // Find the current folder's files
     val files = remember(allFolders, folderName) {
@@ -262,7 +267,8 @@ fun KnowledgeBaseFolderScreen(
                                 EInkChip(
                                     label = tag,
                                     selected = tag in selectedTagFilters,
-                                    onClick = { viewModel.toggleTagFilter(tag) }
+                                    onClick = { viewModel.toggleTagFilter(tag) },
+                                    onLongClick = { tagToDelete = tag }
                                 )
                             }
                         }
@@ -320,6 +326,37 @@ fun KnowledgeBaseFolderScreen(
                     }
                 }
             }
+        }
+
+        // Delete tag confirmation dialog
+        tagToDelete?.let { tag ->
+            AlertDialog(
+                onDismissRequest = { tagToDelete = null },
+                title = { Text(strings.deleteTag) },
+                text = {
+                    Text("${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}")
+                },
+                confirmButton = {
+                    EInkButton(
+                        onClick = {
+                            viewModel.deleteTag(tag)
+                            tagToDelete = null
+                        },
+                        filled = true
+                    ) {
+                        Text(strings.delete)
+                    }
+                },
+                dismissButton = {
+                    EInkButton(
+                        onClick = { tagToDelete = null },
+                        filled = false
+                    ) {
+                        Text(strings.cancel)
+                    }
+                },
+                containerColor = EInkWhite
+            )
         }
     }
 }
