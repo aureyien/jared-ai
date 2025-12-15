@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.music.sttnotes.ui.screens.chat.ChatListScreen
 import com.music.sttnotes.ui.screens.chat.ChatScreen
+import com.music.sttnotes.ui.screens.chat.TagManagementScreen
 import com.music.sttnotes.ui.screens.home.DashboardScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseDetailScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseFolderScreen
@@ -29,6 +30,9 @@ sealed class Screen(val route: String) {
     data object Chat : Screen("chat/{conversationId}?startRecording={startRecording}") {
         fun createRoute(conversationId: String? = null, startRecording: Boolean = false) =
             "chat/${conversationId ?: "new"}?startRecording=$startRecording"
+    }
+    data object TagManagement : Screen("tag_management/{conversationId}") {
+        fun createRoute(conversationId: String) = "tag_management/$conversationId"
     }
     data object KnowledgeBase : Screen("knowledge_base")
     data object KnowledgeBaseFolder : Screen("knowledge_base/folder/{folderName}") {
@@ -89,7 +93,10 @@ fun NavGraph(
                 onNewConversation = {
                     navController.navigate(Screen.Chat.createRoute(conversationId = null))
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onManageTags = { conversationId ->
+                    navController.navigate(Screen.TagManagement.createRoute(conversationId))
+                }
             )
         }
 
@@ -119,6 +126,22 @@ fun NavGraph(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Tag Management
+        composable(
+            route = Screen.TagManagement.route,
+            arguments = listOf(
+                navArgument("conversationId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val conversationId = backStackEntry.arguments?.getString("conversationId") ?: return@composable
+            TagManagementScreen(
+                conversationId = conversationId,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

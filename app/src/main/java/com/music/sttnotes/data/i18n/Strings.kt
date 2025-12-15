@@ -180,6 +180,17 @@ interface StringResources {
     val exportNote: String
     val message: String
     val messages: String
+
+    // Chat Tags
+    val manageTags: String
+    val addTagToConversation: String
+    val searchTags: String
+    val allTags: String
+    val selectedTags: String
+    val selected: String
+
+    // KB Folder
+    val renameFolder: String
 }
 
 object EnglishStrings : StringResources {
@@ -333,6 +344,17 @@ object EnglishStrings : StringResources {
     override val exportNote = "Export Note"
     override val message = "message"
     override val messages = "messages"
+
+    // Chat Tags
+    override val manageTags = "Manage tags"
+    override val addTagToConversation = "Add tag..."
+    override val searchTags = "Search tags..."
+    override val allTags = "All tags"
+    override val selectedTags = "Selected tags"
+    override val selected = "Selected"
+
+    // KB Folder
+    override val renameFolder = "Rename folder"
 }
 
 object FrenchStrings : StringResources {
@@ -486,6 +508,17 @@ object FrenchStrings : StringResources {
     override val exportNote = "Exporter la note"
     override val message = "message"
     override val messages = "messages"
+
+    // Chat Tags
+    override val manageTags = "Gérer les tags"
+    override val addTagToConversation = "Ajouter un tag..."
+    override val searchTags = "Rechercher des tags..."
+    override val allTags = "Tous les tags"
+    override val selectedTags = "Tags sélectionnés"
+    override val selected = "Sélectionné"
+
+    // KB Folder
+    override val renameFolder = "Renommer le dossier"
 }
 
 /**

@@ -218,6 +218,32 @@ class LlmOutputRepository @Inject constructor(
     }
 
     /**
+     * Rename folder
+     * @return Result with the new folder name (sanitized) on success
+     */
+    suspend fun renameFolder(oldName: String, newName: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val oldFolder = File(rootDir, sanitizePath(oldName))
+            val sanitizedNewName = sanitizePath(newName)
+            val newFolder = File(rootDir, sanitizedNewName)
+
+            if (newFolder.exists() && oldFolder.canonicalPath != newFolder.canonicalPath) {
+                return@withContext Result.failure(Exception("A folder with this name already exists"))
+            }
+
+            if (oldFolder.renameTo(newFolder)) {
+                Log.d(TAG, "Renamed folder from $oldName to $sanitizedNewName")
+                Result.success(sanitizedNewName)
+            } else {
+                Result.failure(Exception("Rename failed"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to rename folder", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Export file (get absolute path for sharing)
      * Note: filename should already be the actual filename, no sanitization needed
      */
