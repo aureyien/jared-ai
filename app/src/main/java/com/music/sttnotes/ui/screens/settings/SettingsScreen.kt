@@ -46,6 +46,8 @@ import com.music.sttnotes.data.api.ApiConfig
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.music.sttnotes.data.api.LlmProvider
 import com.music.sttnotes.data.api.SttProvider
+import com.music.sttnotes.data.i18n.AppLanguage
+import com.music.sttnotes.data.i18n.rememberStrings
 import com.music.sttnotes.data.stt.SttLanguage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,14 +57,15 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val strings = rememberStrings()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(strings.settingsTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back)
                     }
                 }
             )
@@ -76,8 +79,16 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // App Language Section
+            SettingsSection(title = strings.appLanguage) {
+                AppLanguageSelector(
+                    selected = uiState.appLanguage,
+                    onSelect = viewModel::setAppLanguage
+                )
+            }
+
             // STT Provider Section
-            SettingsSection(title = "Transcription (STT)") {
+            SettingsSection(title = strings.transcriptionStt) {
                 SttProviderSelector(
                     selected = uiState.sttProvider,
                     onSelect = viewModel::setSttProvider
@@ -85,7 +96,7 @@ fun SettingsScreen(
             }
 
             // STT Language Section
-            SettingsSection(title = "Transcription language") {
+            SettingsSection(title = strings.transcriptionLanguage) {
                 SttLanguageSelector(
                     selected = uiState.sttLanguage,
                     onSelect = viewModel::setSttLanguage
@@ -93,15 +104,18 @@ fun SettingsScreen(
             }
 
             // Chat Font Size Section
-            SettingsSection(title = "Chat font size") {
+            SettingsSection(title = strings.chatFontSize) {
                 ChatFontSizeSelector(
                     currentSize = uiState.chatFontSize,
-                    onSizeChange = viewModel::setChatFontSize
+                    onSizeChange = viewModel::setChatFontSize,
+                    previewLabel = strings.preview,
+                    userMessage = strings.previewUserMessage,
+                    assistantMessage = strings.previewAssistantMessage
                 )
             }
 
             // LLM Provider Section
-            SettingsSection(title = "LLM Processing") {
+            SettingsSection(title = strings.llmProcessing) {
                 LlmProviderSelector(
                     selected = uiState.llmProvider,
                     onSelect = viewModel::setLlmProvider
@@ -109,49 +123,61 @@ fun SettingsScreen(
             }
 
             // API Keys Section - Always visible to configure all keys
-            SettingsSection(title = "API Keys") {
+            SettingsSection(title = strings.apiKeys) {
                 // Groq - used for STT and LLM
                 ApiKeyField(
-                    label = "Groq API Key",
+                    label = strings.groqApiKey,
                     value = uiState.groqApiKey,
                     onValueChange = viewModel::setGroqApiKey,
-                    hint = "Free: console.groq.com",
-                    isActive = uiState.sttProvider == SttProvider.GROQ || uiState.llmProvider == LlmProvider.GROQ
+                    hint = strings.freeConsole,
+                    isActive = uiState.sttProvider == SttProvider.GROQ || uiState.llmProvider == LlmProvider.GROQ,
+                    activeLabel = strings.active,
+                    configuredLabel = strings.configured,
+                    showLabel = strings.show,
+                    hideLabel = strings.hide
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // OpenAI - used for STT and LLM
                 ApiKeyField(
-                    label = "OpenAI API Key",
+                    label = strings.openaiApiKey,
                     value = uiState.openaiApiKey,
                     onValueChange = viewModel::setOpenaiApiKey,
                     hint = "platform.openai.com",
-                    isActive = uiState.sttProvider == SttProvider.OPENAI || uiState.llmProvider == LlmProvider.OPENAI
+                    isActive = uiState.sttProvider == SttProvider.OPENAI || uiState.llmProvider == LlmProvider.OPENAI,
+                    activeLabel = strings.active,
+                    configuredLabel = strings.configured,
+                    showLabel = strings.show,
+                    hideLabel = strings.hide
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // xAI - LLM only
                 ApiKeyField(
-                    label = "xAI API Key",
+                    label = strings.xaiApiKey,
                     value = uiState.xaiApiKey,
                     onValueChange = viewModel::setXaiApiKey,
                     hint = "console.x.ai",
-                    isActive = uiState.llmProvider == LlmProvider.XAI
+                    isActive = uiState.llmProvider == LlmProvider.XAI,
+                    activeLabel = strings.active,
+                    configuredLabel = strings.configured,
+                    showLabel = strings.show,
+                    hideLabel = strings.hide
                 )
             }
 
             // LLM System Prompt
             if (uiState.llmProvider != LlmProvider.NONE) {
-                SettingsSection(title = "LLM System Prompt") {
+                SettingsSection(title = strings.llmSystemPrompt) {
                     OutlinedTextField(
                         value = uiState.llmSystemPrompt,
                         onValueChange = viewModel::setLlmSystemPrompt,
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 4,
                         maxLines = 8,
-                        label = { Text("Instructions for the LLM") }
+                        label = { Text(strings.instructionsForLlm) }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -161,20 +187,16 @@ fun SettingsScreen(
                         androidx.compose.material3.TextButton(
                             onClick = viewModel::resetLlmSystemPrompt
                         ) {
-                            Text("Reset to default")
+                            Text(strings.resetToDefault)
                         }
                     }
                 }
             }
 
             // Info Section
-            SettingsSection(title = "About") {
+            SettingsSection(title = strings.about) {
                 Text(
-                    text = """
-                        • Local: Whisper.cpp (offline, model included)
-                        • Groq: Whisper v3 Turbo (free 8h/day)
-                        • LLM: Formats and enhances transcriptions
-                    """.trimIndent(),
+                    text = strings.aboutText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -302,12 +324,38 @@ private fun SttLanguageSelector(
 }
 
 @Composable
+private fun AppLanguageSelector(
+    selected: AppLanguage,
+    onSelect: (AppLanguage) -> Unit
+) {
+    Column {
+        AppLanguage.entries.forEach { language ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = selected == language,
+                    onClick = { onSelect(language) }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = language.displayName)
+            }
+        }
+    }
+}
+
+@Composable
 private fun ApiKeyField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
     hint: String,
-    isActive: Boolean = false
+    isActive: Boolean = false,
+    activeLabel: String = "active",
+    configuredLabel: String = "configured",
+    showLabel: String = "Show",
+    hideLabel: String = "Hide"
 ) {
     var visible by remember { mutableStateOf(false) }
     val isConfigured = value.isNotBlank()
@@ -322,14 +370,14 @@ private fun ApiKeyField(
                 if (isActive) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "active",
+                        text = activeLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                 } else if (isConfigured) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "configured",
+                        text = configuredLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -343,7 +391,7 @@ private fun ApiKeyField(
             IconButton(onClick = { visible = !visible }) {
                 Icon(
                     imageVector = if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (visible) "Hide" else "Show"
+                    contentDescription = if (visible) hideLabel else showLabel
                 )
             }
         }
@@ -353,7 +401,10 @@ private fun ApiKeyField(
 @Composable
 private fun ChatFontSizeSelector(
     currentSize: Float,
-    onSizeChange: (Float) -> Unit
+    onSizeChange: (Float) -> Unit,
+    previewLabel: String = "Preview:",
+    userMessage: String = "Hello, how are you?",
+    assistantMessage: String = "I'm doing great, thanks!"
 ) {
     Column {
         // Slider with value display
@@ -380,7 +431,7 @@ private fun ChatFontSizeSelector(
 
         // Preview
         Text(
-            text = "Preview:",
+            text = previewLabel,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -412,7 +463,7 @@ private fun ChatFontSizeSelector(
                         .padding(12.dp)
                 ) {
                     Text(
-                        text = "Hello, how are you?",
+                        text = userMessage,
                         fontSize = currentSize.sp,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -434,7 +485,7 @@ private fun ChatFontSizeSelector(
                         .padding(12.dp)
                 ) {
                     Text(
-                        text = "I'm doing great, thanks!",
+                        text = assistantMessage,
                         fontSize = currentSize.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

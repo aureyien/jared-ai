@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.music.sttnotes.data.api.ApiConfig
 import com.music.sttnotes.data.api.LlmProvider
 import com.music.sttnotes.data.api.SttProvider
+import com.music.sttnotes.data.i18n.AppLanguage
+import com.music.sttnotes.data.i18n.Strings
 import com.music.sttnotes.data.stt.SttLanguage
 import com.music.sttnotes.data.stt.SttPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +25,8 @@ data class SettingsUiState(
     val xaiApiKey: String = "",
     val llmSystemPrompt: String = ApiConfig.DEFAULT_SYSTEM_PROMPT,
     val sttLanguage: SttLanguage = SttLanguage.FRENCH,
-    val chatFontSize: Float = ApiConfig.DEFAULT_CHAT_FONT_SIZE
+    val chatFontSize: Float = ApiConfig.DEFAULT_CHAT_FONT_SIZE,
+    val appLanguage: AppLanguage = AppLanguage.ENGLISH
 )
 
 @HiltViewModel
@@ -42,23 +45,35 @@ class SettingsViewModel @Inject constructor(
                 apiConfig.llmProvider,
                 apiConfig.groqApiKey,
                 apiConfig.openaiApiKey,
-                apiConfig.xaiApiKey,
-                apiConfig.llmSystemPrompt,
-                sttPreferences.selectedLanguage,
-                apiConfig.chatFontSize
-            ) { values ->
-                @Suppress("UNCHECKED_CAST")
+                apiConfig.xaiApiKey
+            ) { stt, llm, groq, openai, xai ->
+                arrayOf(stt, llm, groq, openai, xai)
+            }.combine(
+                combine(
+                    apiConfig.llmSystemPrompt,
+                    sttPreferences.selectedLanguage,
+                    apiConfig.chatFontSize,
+                    apiConfig.appLanguage
+                ) { prompt, lang, fontSize, appLang ->
+                    arrayOf(prompt, lang, fontSize, appLang)
+                }
+            ) { first, second ->
                 SettingsUiState(
-                    sttProvider = values[0] as SttProvider,
-                    llmProvider = values[1] as LlmProvider,
-                    groqApiKey = (values[2] as? String) ?: "",
-                    openaiApiKey = (values[3] as? String) ?: "",
-                    xaiApiKey = (values[4] as? String) ?: "",
-                    llmSystemPrompt = values[5] as String,
-                    sttLanguage = values[6] as SttLanguage,
-                    chatFontSize = values[7] as Float
+                    sttProvider = first[0] as SttProvider,
+                    llmProvider = first[1] as LlmProvider,
+                    groqApiKey = (first[2] as? String) ?: "",
+                    openaiApiKey = (first[3] as? String) ?: "",
+                    xaiApiKey = (first[4] as? String) ?: "",
+                    llmSystemPrompt = second[0] as String,
+                    sttLanguage = second[1] as SttLanguage,
+                    chatFontSize = second[2] as Float,
+                    appLanguage = second[3] as AppLanguage
                 )
-            }.collect { _uiState.value = it }
+            }.collect { state ->
+                _uiState.value = state
+                // Update the global Strings object when language changes
+                Strings.setLanguage(state.appLanguage)
+            }
         }
     }
 
@@ -96,5 +111,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setChatFontSize(size: Float) {
         viewModelScope.launch { apiConfig.setChatFontSize(size) }
+    }
+
+    fun setAppLanguage(language: AppLanguage) {
+        viewModelScope.launch { apiConfig.setAppLanguage(language) }
     }
 }

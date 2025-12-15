@@ -73,6 +73,8 @@ import com.music.sttnotes.ui.components.PendingDeletion
 import com.music.sttnotes.ui.components.UndoButton
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkWhite
+import com.music.sttnotes.data.i18n.rememberStrings
+import com.music.sttnotes.data.i18n.Strings
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -91,6 +93,7 @@ fun NotesListScreen(
     val allTags by viewModel.allTags.collectAsState()
     val showArchived by viewModel.showArchived.collectAsState()
     val archivedNotes by viewModel.archivedNotes.collectAsState()
+    val strings = rememberStrings()
 
     // Undo deletion state
     var pendingDeletion by remember { mutableStateOf<PendingDeletion<Note>?>(null) }
@@ -123,7 +126,7 @@ fun NotesListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (showArchived) "Archives" else "Notes",
+                        if (showArchived) strings.archive else strings.notes,
                         style = MaterialTheme.typography.headlineMedium
                     )
                 },
@@ -142,7 +145,7 @@ fun NotesListScreen(
                             }
                         },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back"
+                        contentDescription = strings.back
                     )
                 },
                 actions = {
@@ -164,7 +167,7 @@ fun NotesListScreen(
                             EInkIconButton(
                                 onClick = { viewModel.deleteAllArchived() },
                                 icon = Icons.Default.DeleteForever,
-                                contentDescription = "Delete all archived"
+                                contentDescription = strings.deleteAllArchived
                             )
                         }
                     } else {
@@ -172,12 +175,12 @@ fun NotesListScreen(
                         EInkIconButton(
                             onClick = { viewModel.toggleShowArchived() },
                             icon = Icons.Default.Inventory2,
-                            contentDescription = "View archives"
+                            contentDescription = strings.viewArchives
                         )
                         EInkIconButton(
                             onClick = { isListView = !isListView },
                             icon = if (isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
-                            contentDescription = if (isListView) "Grid view" else "List view"
+                            contentDescription = if (isListView) strings.gridView else strings.listView
                         )
                     }
                 },
@@ -210,7 +213,7 @@ fun NotesListScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("New Note")
+                        Text(strings.newNote)
                     }
                 }
             }
@@ -242,12 +245,12 @@ fun NotesListScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "No archived notes",
+                                text = strings.noArchivedNotes,
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Archived notes will appear here",
+                                text = strings.archivedNotesAppearHere,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -271,7 +274,7 @@ fun NotesListScreen(
                                     // Set new pending deletion
                                     pendingDeletion = PendingDeletion(
                                         item = note,
-                                        message = "Note permanently deleted"
+                                        message = strings.notePermanentlyDeleted
                                     )
                                 }
                             )
@@ -291,7 +294,7 @@ fun NotesListScreen(
                         value = searchQuery,
                         onValueChange = viewModel::onSearchQueryChange,
                         modifier = Modifier.weight(1f),
-                        placeholder = "Search notes...",
+                        placeholder = strings.searchPlaceholder,
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Search,
@@ -304,7 +307,7 @@ fun NotesListScreen(
                                 EInkIconButton(
                                     onClick = { viewModel.onSearchQueryChange("") },
                                     icon = Icons.Default.Close,
-                                    contentDescription = "Clear"
+                                    contentDescription = strings.clear
                                 )
                             }
                         }
@@ -315,7 +318,7 @@ fun NotesListScreen(
                         EInkIconButton(
                             onClick = { showTagFilter = !showTagFilter },
                             icon = Icons.Default.LocalOffer,
-                            contentDescription = "Filter by tags"
+                            contentDescription = strings.filterByTags
                         )
                     }
                 }
@@ -352,13 +355,13 @@ fun NotesListScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = if (searchQuery.isNotEmpty() || selectedTag != null)
-                                    "No notes found" else "No notes yet",
+                                    strings.noResults else strings.noNotes,
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = if (searchQuery.isEmpty() && selectedTag == null)
-                                    "Tap 'New Note' to create one" else "Try a different search",
+                                    strings.createFirstNote else strings.tryAnotherSearch,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -392,7 +395,7 @@ fun NotesListScreen(
                                         // Set new pending deletion
                                         pendingDeletion = PendingDeletion(
                                             item = note,
-                                            message = "Note deleted"
+                                            message = strings.noteDeleted
                                         )
                                     }
                                 )
@@ -427,7 +430,7 @@ fun NotesListScreen(
                                         // Set new pending deletion
                                         pendingDeletion = PendingDeletion(
                                             item = note,
-                                            message = "Note deleted"
+                                            message = strings.noteDeleted
                                         )
                                     }
                                 )
@@ -451,6 +454,7 @@ private fun NoteListItem(
     onArchive: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
 
     Box {
@@ -474,7 +478,7 @@ private fun NoteListItem(
                 ) {
                     // Title
                     Text(
-                        text = note.title.ifEmpty { "Untitled" },
+                        text = note.title.ifEmpty { strings.untitled },
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -507,7 +511,7 @@ private fun NoteListItem(
                 EInkIconButton(
                     onClick = onDelete,
                     icon = Icons.Default.Delete,
-                    contentDescription = "Delete"
+                    contentDescription = strings.delete
                 )
             }
         }
@@ -518,7 +522,7 @@ private fun NoteListItem(
             onDismissRequest = { showContextMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Archive") },
+                text = { Text(strings.archive) },
                 onClick = {
                     showContextMenu = false
                     onArchive()
@@ -543,6 +547,7 @@ private fun NoteGridCard(
     onArchive: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -563,7 +568,7 @@ private fun NoteGridCard(
             ) {
                 // Title
                 Text(
-                    text = note.title.ifEmpty { "Untitled" },
+                    text = note.title.ifEmpty { strings.untitled },
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -601,7 +606,7 @@ private fun NoteGridCard(
             onDismissRequest = { showContextMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Archive") },
+                text = { Text(strings.archive) },
                 onClick = {
                     showContextMenu = false
                     onArchive()
@@ -611,12 +616,12 @@ private fun NoteGridCard(
                 }
             )
             DropdownMenuItem(
-                text = { Text("Export / Share") },
+                text = { Text(strings.export) },
                 onClick = {
                     showContextMenu = false
                     // Export note as text
                     val shareText = buildString {
-                        appendLine(note.title.ifEmpty { "Untitled" })
+                        appendLine(note.title.ifEmpty { strings.untitled })
                         appendLine()
                         appendLine(note.content)
                         if (note.tags.isNotEmpty()) {
@@ -626,17 +631,17 @@ private fun NoteGridCard(
                     }
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, note.title.ifEmpty { "Note" })
+                        putExtra(Intent.EXTRA_SUBJECT, note.title.ifEmpty { strings.note })
                         putExtra(Intent.EXTRA_TEXT, shareText)
                     }
-                    context.startActivity(Intent.createChooser(intent, "Export Note"))
+                    context.startActivity(Intent.createChooser(intent, strings.exportNote))
                 },
                 leadingIcon = {
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
             )
             DropdownMenuItem(
-                text = { Text("Delete") },
+                text = { Text(strings.delete) },
                 onClick = {
                     showContextMenu = false
                     onDelete()
@@ -659,6 +664,7 @@ private fun ArchivedNoteItem(
     onRestore: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
 
     Box {
@@ -692,7 +698,7 @@ private fun ArchivedNoteItem(
                 ) {
                     // Title
                     Text(
-                        text = note.title.ifEmpty { "Untitled" },
+                        text = note.title.ifEmpty { strings.untitled },
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -727,7 +733,7 @@ private fun ArchivedNoteItem(
             onDismissRequest = { showContextMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Restore") },
+                text = { Text(strings.restore) },
                 onClick = {
                     showContextMenu = false
                     onRestore()
@@ -737,7 +743,7 @@ private fun ArchivedNoteItem(
                 }
             )
             DropdownMenuItem(
-                text = { Text("Delete permanently") },
+                text = { Text(strings.deletePermantently) },
                 onClick = {
                     showContextMenu = false
                     onDelete()

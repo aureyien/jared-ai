@@ -1,0 +1,501 @@
+package com.music.sttnotes.data.i18n
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+enum class AppLanguage(val code: String, val displayName: String) {
+    ENGLISH("en", "English"),
+    FRENCH("fr", "Français")
+}
+
+/**
+ * Simple i18n system for the app
+ */
+object Strings {
+    private val _currentLanguage = MutableStateFlow(AppLanguage.ENGLISH)
+    val currentLanguage: StateFlow<AppLanguage> = _currentLanguage
+
+    fun setLanguage(language: AppLanguage) {
+        _currentLanguage.value = language
+    }
+
+    // Get current strings based on language
+    val current: StringResources
+        get() = when (_currentLanguage.value) {
+            AppLanguage.ENGLISH -> EnglishStrings
+            AppLanguage.FRENCH -> FrenchStrings
+        }
+}
+
+/**
+ * All string resources for the app
+ */
+interface StringResources {
+    // Common
+    val cancel: String
+    val save: String
+    val delete: String
+    val rename: String
+    val search: String
+    val back: String
+    val settings: String
+    val archive: String
+    val restore: String
+    val export: String
+    val copy: String
+    val clear: String
+    val ok: String
+    val none: String
+    val yes: String
+    val no: String
+
+    // Dashboard
+    val dashboardTitle: String
+    val notes: String
+    val chat: String
+    val knowledgeBase: String
+    val newNote: String
+    val newChat: String
+    val searchPlaceholder: String
+    val noResults: String
+
+    // Notes
+    val notesTitle: String
+    val noNotes: String
+    val createFirstNote: String
+    val untitled: String
+    val noteDeleted: String
+    val noteArchived: String
+    val noArchivedNotes: String
+    val archivedNotesAppearHere: String
+    val notePermanentlyDeleted: String
+    val deletePermantently: String
+    val filterByTags: String
+
+    // Chat
+    val chatTitle: String
+    val newConversation: String
+    val noConversations: String
+    val startNewConversation: String
+    val conversationDeleted: String
+    val renameConversation: String
+    val newTitle: String
+    val thinking: String
+    val recording: String
+    val transcribing: String
+    val conversationCleared: String
+    val startConversation: String
+    val typeOrDictate: String
+    val micPermissionRequired: String
+    val emptyTranscription: String
+    val transcriptionError: String
+    val llmError: String
+    val saveError: String
+    val llmNotConfigured: String
+    val apiKeyMissing: String
+
+    // Chat - Save dialog
+    val saveResponse: String
+    val filename: String
+    val folder: String
+    val newFolder: String
+    val newFolderName: String
+    val saved: String
+
+    // Knowledge Base
+    val kbTitle: String
+    val noSavedFiles: String
+    val saveFromChat: String
+    val folderDeleted: String
+    val fileDeleted: String
+    val deleteFolder: String
+    val tryAnotherSearch: String
+    val file: String
+    val files: String
+
+    // Settings
+    val settingsTitle: String
+    val transcriptionStt: String
+    val transcriptionLanguage: String
+    val chatFontSize: String
+    val llmProcessing: String
+    val apiKeys: String
+    val groqApiKey: String
+    val openaiApiKey: String
+    val xaiApiKey: String
+    val freeConsole: String
+    val llmSystemPrompt: String
+    val instructionsForLlm: String
+    val resetToDefault: String
+    val about: String
+    val aboutText: String
+    val disabled: String
+    val rawTranscription: String
+    val freeVeryFast: String
+    val preview: String
+    val active: String
+    val configured: String
+    val show: String
+    val hide: String
+    val appLanguage: String
+
+    // Relative time
+    val now: String
+    val minutesAgo: String
+    val hoursAgo: String
+    val yesterday: String
+    val daysAgo: String
+
+    // Preview messages
+    val previewUserMessage: String
+    val previewAssistantMessage: String
+
+    // Note Editor
+    val newNoteTitle: String
+    val editNote: String
+    val title: String
+    val addTag: String
+    val tags: String
+    val startWritingOrRecord: String
+    val tapToRecord: String
+    val initializing: String
+    val dismiss: String
+    val edit: String
+
+    // Knowledge Base - additional
+    val loading: String
+    val emptyFolder: String
+    val deleteFile: String
+    val copyContent: String
+
+    // Notes List - additional
+    val deleteAllArchived: String
+    val viewArchives: String
+    val gridView: String
+    val listView: String
+    val note: String
+    val exportNote: String
+    val message: String
+    val messages: String
+}
+
+object EnglishStrings : StringResources {
+    // Common
+    override val cancel = "Cancel"
+    override val save = "Save"
+    override val delete = "Delete"
+    override val rename = "Rename"
+    override val search = "Search"
+    override val back = "Back"
+    override val settings = "Settings"
+    override val archive = "Archive"
+    override val restore = "Restore"
+    override val export = "Export / Share"
+    override val copy = "Copy"
+    override val clear = "Clear"
+    override val ok = "OK"
+    override val none = "None"
+    override val yes = "Yes"
+    override val no = "No"
+
+    // Dashboard
+    override val dashboardTitle = "Dashboard"
+    override val notes = "Notes"
+    override val chat = "Chat"
+    override val knowledgeBase = "KB"
+    override val newNote = "New Note"
+    override val newChat = "New Chat"
+    override val searchPlaceholder = "Search..."
+    override val noResults = "No results"
+
+    // Notes
+    override val notesTitle = "Notes"
+    override val noNotes = "No notes yet"
+    override val createFirstNote = "Create your first note"
+    override val untitled = "Untitled"
+    override val noteDeleted = "Note deleted"
+    override val noteArchived = "Note archived"
+    override val noArchivedNotes = "No archived notes"
+    override val archivedNotesAppearHere = "Archived notes will appear here"
+    override val notePermanentlyDeleted = "Note permanently deleted"
+    override val deletePermantently = "Delete permanently"
+    override val filterByTags = "Filter by tags"
+
+    // Chat
+    override val chatTitle = "Chat"
+    override val newConversation = "New conversation"
+    override val noConversations = "No conversations"
+    override val startNewConversation = "Start a new conversation with the AI"
+    override val conversationDeleted = "Conversation deleted"
+    override val renameConversation = "Rename conversation"
+    override val newTitle = "New title"
+    override val thinking = "Thinking..."
+    override val recording = "Recording..."
+    override val transcribing = "Transcribing..."
+    override val conversationCleared = "Conversation cleared"
+    override val startConversation = "Start a conversation"
+    override val typeOrDictate = "Type a message or use the mic to dictate"
+    override val micPermissionRequired = "Microphone permission required"
+    override val emptyTranscription = "Empty transcription"
+    override val transcriptionError = "Transcription error"
+    override val llmError = "LLM error"
+    override val saveError = "Save error"
+    override val llmNotConfigured = "LLM not configured. Go to Settings."
+    override val apiKeyMissing = "API key missing. Configure it in Settings."
+
+    // Chat - Save dialog
+    override val saveResponse = "Save response"
+    override val filename = "Filename"
+    override val folder = "Folder"
+    override val newFolder = "+ New"
+    override val newFolderName = "New folder name"
+    override val saved = "Saved"
+
+    // Knowledge Base
+    override val kbTitle = "Knowledge Base"
+    override val noSavedFiles = "No saved files"
+    override val saveFromChat = "Save AI responses from Chat"
+    override val folderDeleted = "Folder deleted"
+    override val fileDeleted = "File deleted"
+    override val deleteFolder = "Delete folder"
+    override val tryAnotherSearch = "Try another search"
+    override val file = "file"
+    override val files = "files"
+
+    // Settings
+    override val settingsTitle = "Settings"
+    override val transcriptionStt = "Transcription (STT)"
+    override val transcriptionLanguage = "Transcription language"
+    override val chatFontSize = "Chat font size"
+    override val llmProcessing = "LLM Processing"
+    override val apiKeys = "API Keys"
+    override val groqApiKey = "Groq API Key"
+    override val openaiApiKey = "OpenAI API Key"
+    override val xaiApiKey = "xAI API Key"
+    override val freeConsole = "Free: console.groq.com"
+    override val llmSystemPrompt = "LLM System Prompt"
+    override val instructionsForLlm = "Instructions for the LLM"
+    override val resetToDefault = "Reset to default"
+    override val about = "About"
+    override val aboutText = """
+        • Local: Whisper.cpp (offline, model included)
+        • Groq: Whisper v3 Turbo (free 8h/day)
+        • LLM: Formats and enhances transcriptions
+    """.trimIndent()
+    override val disabled = "Disabled"
+    override val rawTranscription = "Raw transcription"
+    override val freeVeryFast = "Free, very fast"
+    override val preview = "Preview:"
+    override val active = "active"
+    override val configured = "configured"
+    override val show = "Show"
+    override val hide = "Hide"
+    override val appLanguage = "App language"
+
+    // Relative time
+    override val now = "now"
+    override val minutesAgo = "min ago"
+    override val hoursAgo = "h ago"
+    override val yesterday = "yesterday"
+    override val daysAgo = "d ago"
+
+    // Preview messages
+    override val previewUserMessage = "Hello, how are you?"
+    override val previewAssistantMessage = "I'm doing great, thanks!"
+
+    // Note Editor
+    override val newNoteTitle = "New Note"
+    override val editNote = "Edit Note"
+    override val title = "Title"
+    override val addTag = "Add tag..."
+    override val tags = "Tags"
+    override val startWritingOrRecord = "Start writing or record voice..."
+    override val tapToRecord = "Tap to record"
+    override val initializing = "Initializing..."
+    override val dismiss = "Dismiss"
+    override val edit = "Edit"
+
+    // Knowledge Base - additional
+    override val loading = "Loading..."
+    override val emptyFolder = "Empty folder"
+    override val deleteFile = "Delete file"
+    override val copyContent = "Copy content"
+
+    // Notes List - additional
+    override val deleteAllArchived = "Delete all archived"
+    override val viewArchives = "View archives"
+    override val gridView = "Grid view"
+    override val listView = "List view"
+    override val note = "Note"
+    override val exportNote = "Export Note"
+    override val message = "message"
+    override val messages = "messages"
+}
+
+object FrenchStrings : StringResources {
+    // Common
+    override val cancel = "Annuler"
+    override val save = "Sauvegarder"
+    override val delete = "Supprimer"
+    override val rename = "Renommer"
+    override val search = "Rechercher"
+    override val back = "Retour"
+    override val settings = "Paramètres"
+    override val archive = "Archiver"
+    override val restore = "Restaurer"
+    override val export = "Exporter / Partager"
+    override val copy = "Copier"
+    override val clear = "Effacer"
+    override val ok = "OK"
+    override val none = "Aucun"
+    override val yes = "Oui"
+    override val no = "Non"
+
+    // Dashboard
+    override val dashboardTitle = "Accueil"
+    override val notes = "Notes"
+    override val chat = "Chat"
+    override val knowledgeBase = "KB"
+    override val newNote = "Nouvelle note"
+    override val newChat = "Nouveau chat"
+    override val searchPlaceholder = "Rechercher..."
+    override val noResults = "Aucun résultat"
+
+    // Notes
+    override val notesTitle = "Notes"
+    override val noNotes = "Aucune note"
+    override val createFirstNote = "Créez votre première note"
+    override val untitled = "Sans titre"
+    override val noteDeleted = "Note supprimée"
+    override val noteArchived = "Note archivée"
+    override val noArchivedNotes = "Aucune note archivée"
+    override val archivedNotesAppearHere = "Les notes archivées apparaîtront ici"
+    override val notePermanentlyDeleted = "Note supprimée définitivement"
+    override val deletePermantently = "Supprimer définitivement"
+    override val filterByTags = "Filtrer par tags"
+
+    // Chat
+    override val chatTitle = "Chat"
+    override val newConversation = "Nouvelle conversation"
+    override val noConversations = "Aucune conversation"
+    override val startNewConversation = "Commencez une nouvelle discussion avec l'IA"
+    override val conversationDeleted = "Conversation supprimée"
+    override val renameConversation = "Renommer la conversation"
+    override val newTitle = "Nouveau titre"
+    override val thinking = "Réflexion..."
+    override val recording = "Enregistrement en cours..."
+    override val transcribing = "Transcription en cours..."
+    override val conversationCleared = "Conversation effacée"
+    override val startConversation = "Commencez une conversation"
+    override val typeOrDictate = "Tapez un message ou utilisez le micro pour dicter"
+    override val micPermissionRequired = "Permission micro requise"
+    override val emptyTranscription = "Transcription vide"
+    override val transcriptionError = "Erreur de transcription"
+    override val llmError = "Erreur LLM"
+    override val saveError = "Erreur de sauvegarde"
+    override val llmNotConfigured = "LLM non configuré. Allez dans Paramètres."
+    override val apiKeyMissing = "Clé API manquante. Configurez-la dans Paramètres."
+
+    // Chat - Save dialog
+    override val saveResponse = "Sauvegarder la réponse"
+    override val filename = "Nom du fichier"
+    override val folder = "Dossier"
+    override val newFolder = "+ Nouveau"
+    override val newFolderName = "Nom du nouveau dossier"
+    override val saved = "Sauvegardé"
+
+    // Knowledge Base
+    override val kbTitle = "Base de connaissances"
+    override val noSavedFiles = "Aucun fichier sauvegardé"
+    override val saveFromChat = "Sauvegardez des réponses IA depuis le Chat"
+    override val folderDeleted = "Dossier supprimé"
+    override val fileDeleted = "Fichier supprimé"
+    override val deleteFolder = "Supprimer le dossier"
+    override val tryAnotherSearch = "Essayez une autre recherche"
+    override val file = "fichier"
+    override val files = "fichiers"
+
+    // Settings
+    override val settingsTitle = "Paramètres"
+    override val transcriptionStt = "Transcription (STT)"
+    override val transcriptionLanguage = "Langue de transcription"
+    override val chatFontSize = "Taille de police du chat"
+    override val llmProcessing = "Traitement LLM"
+    override val apiKeys = "Clés API"
+    override val groqApiKey = "Clé API Groq"
+    override val openaiApiKey = "Clé API OpenAI"
+    override val xaiApiKey = "Clé API xAI"
+    override val freeConsole = "Gratuit: console.groq.com"
+    override val llmSystemPrompt = "Prompt système LLM"
+    override val instructionsForLlm = "Instructions pour le LLM"
+    override val resetToDefault = "Réinitialiser par défaut"
+    override val about = "À propos"
+    override val aboutText = """
+        • Local: Whisper.cpp (hors-ligne, modèle inclus)
+        • Groq: Whisper v3 Turbo (gratuit 8h/jour)
+        • LLM: Formate et améliore les transcriptions
+    """.trimIndent()
+    override val disabled = "Désactivé"
+    override val rawTranscription = "Transcription brute"
+    override val freeVeryFast = "Gratuit, très rapide"
+    override val preview = "Aperçu:"
+    override val active = "actif"
+    override val configured = "configuré"
+    override val show = "Afficher"
+    override val hide = "Masquer"
+    override val appLanguage = "Langue de l'application"
+
+    // Relative time
+    override val now = "maintenant"
+    override val minutesAgo = "min"
+    override val hoursAgo = "h"
+    override val yesterday = "hier"
+    override val daysAgo = "j"
+
+    // Preview messages
+    override val previewUserMessage = "Bonjour, comment ça va ?"
+    override val previewAssistantMessage = "Je vais très bien, merci !"
+
+    // Note Editor
+    override val newNoteTitle = "Nouvelle note"
+    override val editNote = "Modifier la note"
+    override val title = "Titre"
+    override val addTag = "Ajouter un tag..."
+    override val tags = "Tags"
+    override val startWritingOrRecord = "Commencez à écrire ou enregistrez..."
+    override val tapToRecord = "Appuyez pour enregistrer"
+    override val initializing = "Initialisation..."
+    override val dismiss = "Fermer"
+    override val edit = "Modifier"
+
+    // Knowledge Base - additional
+    override val loading = "Chargement..."
+    override val emptyFolder = "Dossier vide"
+    override val deleteFile = "Supprimer le fichier"
+    override val copyContent = "Copier le contenu"
+
+    // Notes List - additional
+    override val deleteAllArchived = "Tout supprimer"
+    override val viewArchives = "Voir les archives"
+    override val gridView = "Grille"
+    override val listView = "Liste"
+    override val note = "Note"
+    override val exportNote = "Exporter la note"
+    override val message = "message"
+    override val messages = "messages"
+}
+
+/**
+ * Composable helper to get current strings with recomposition on language change
+ */
+@Composable
+fun rememberStrings(): StringResources {
+    val language by Strings.currentLanguage.collectAsState()
+    return when (language) {
+        AppLanguage.ENGLISH -> EnglishStrings
+        AppLanguage.FRENCH -> FrenchStrings
+    }
+}

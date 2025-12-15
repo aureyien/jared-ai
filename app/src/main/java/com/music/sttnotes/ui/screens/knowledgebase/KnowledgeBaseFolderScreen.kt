@@ -61,6 +61,8 @@ import com.music.sttnotes.ui.components.UndoButton
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
+import com.music.sttnotes.data.i18n.rememberStrings
+import com.music.sttnotes.data.i18n.Strings
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -74,6 +76,7 @@ fun KnowledgeBaseFolderScreen(
     onNavigateBack: () -> Unit,
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
+    val strings = rememberStrings()
     val allFolders by viewModel.filteredFolders.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
@@ -151,7 +154,7 @@ fun KnowledgeBaseFolderScreen(
                             onNavigateBack()
                         },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Retour"
+                        contentDescription = strings.back
                     )
                 },
                 actions = {
@@ -186,7 +189,7 @@ fun KnowledgeBaseFolderScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    EInkLoadingIndicator(text = "Chargement...")
+                    EInkLoadingIndicator(text = strings.loading)
                 }
             }
             displayFiles.isEmpty() && selectedTagFilters.isEmpty() && searchQuery.isEmpty() -> {
@@ -196,7 +199,7 @@ fun KnowledgeBaseFolderScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "Dossier vide",
+                        text = strings.emptyFolder,
                         style = MaterialTheme.typography.titleMedium,
                         color = EInkGrayMedium
                     )
@@ -217,7 +220,7 @@ fun KnowledgeBaseFolderScreen(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
                             modifier = Modifier.weight(1f),
-                            placeholder = "Rechercher...",
+                            placeholder = strings.searchPlaceholder,
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Search,
@@ -230,7 +233,7 @@ fun KnowledgeBaseFolderScreen(
                                     EInkIconButton(
                                         onClick = { searchQuery = "" },
                                         icon = Icons.Default.Close,
-                                        contentDescription = "Effacer"
+                                        contentDescription = strings.clear
                                     )
                                 }
                             }
@@ -241,7 +244,7 @@ fun KnowledgeBaseFolderScreen(
                             EInkIconButton(
                                 onClick = { showTagFilter = !showTagFilter },
                                 icon = Icons.Default.LocalOffer,
-                                contentDescription = "Filtrer par tags"
+                                contentDescription = strings.filterByTags
                             )
                         }
                     }
@@ -278,7 +281,7 @@ fun KnowledgeBaseFolderScreen(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = "No results",
+                                text = strings.noResults,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = EInkGrayMedium
                             )
@@ -305,7 +308,7 @@ fun KnowledgeBaseFolderScreen(
                                         }
                                         pendingFileDeletion = PendingDeletion(
                                             item = filePreview.file.name,
-                                            message = "File deleted"
+                                            message = strings.fileDeleted
                                         )
                                     },
                                     onCopyContent = {
@@ -329,6 +332,7 @@ private fun FolderFileItem(
     onDelete: () -> Unit,
     onCopyContent: () -> String?
 ) {
+    val strings = rememberStrings()
     var showMenu by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
 
@@ -366,7 +370,7 @@ private fun FolderFileItem(
                 EInkIconButton(
                     onClick = { showMenu = true },
                     icon = Icons.Default.Delete,
-                    contentDescription = "Supprimer"
+                    contentDescription = strings.delete
                 )
             }
             if (file.preview.isNotBlank()) {
@@ -396,7 +400,7 @@ private fun FolderFileItem(
             onDismissRequest = { showMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Copier le contenu") },
+                text = { Text(strings.copyContent) },
                 onClick = {
                     showMenu = false
                     val content = onCopyContent()
@@ -409,7 +413,7 @@ private fun FolderFileItem(
                 }
             )
             DropdownMenuItem(
-                text = { Text("Supprimer") },
+                text = { Text(strings.delete) },
                 onClick = {
                     showMenu = false
                     onDelete()
@@ -425,19 +429,20 @@ private fun FolderFileItem(
 private fun formatRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
+    val strings = Strings.current
 
     val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
     val hours = TimeUnit.MILLISECONDS.toHours(diff)
     val days = TimeUnit.MILLISECONDS.toDays(diff)
 
     return when {
-        minutes < 1 -> "maintenant"
-        minutes < 60 -> "il y a ${minutes}min"
-        hours < 24 -> "il y a ${hours}h"
-        days < 2 -> "hier"
-        days < 7 -> "il y a ${days}j"
+        minutes < 1 -> strings.now
+        minutes < 60 -> "$minutes ${strings.minutesAgo}"
+        hours < 24 -> "$hours${strings.hoursAgo}"
+        days < 2 -> strings.yesterday
+        days < 7 -> "$days${strings.daysAgo}"
         else -> {
-            val format = SimpleDateFormat("d MMM", Locale.FRENCH)
+            val format = SimpleDateFormat("d MMM", Locale.ENGLISH)
             format.format(Date(timestamp))
         }
     }

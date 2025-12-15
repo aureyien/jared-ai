@@ -53,6 +53,7 @@ import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
+import com.music.sttnotes.data.i18n.rememberStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +72,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val strings = rememberStrings()
     val isSearching = state.searchQuery.isNotEmpty()
 
     // Refresh on resume
@@ -93,7 +95,7 @@ fun DashboardScreen(
                     EInkIconButton(
                         onClick = onSettings,
                         icon = Icons.Default.Settings,
-                        contentDescription = "Settings"
+                        contentDescription = strings.settings
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -128,7 +130,7 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 12.dp),
-                placeholder = "Search notes, chats, KB...",
+                placeholder = strings.searchPlaceholder,
                 leadingIcon = {
                     Icon(
                         Icons.Default.Search,
@@ -141,7 +143,7 @@ fun DashboardScreen(
                         EInkIconButton(
                             onClick = { viewModel.onSearchQueryChange("") },
                             icon = Icons.Default.Close,
-                            contentDescription = "Clear"
+                            contentDescription = strings.clear
                         )
                     }
                 }
@@ -151,7 +153,7 @@ fun DashboardScreen(
                 // Search Results
                 if (state.searchResults.isEmpty() && !state.isSearching) {
                     Text(
-                        text = "No results found",
+                        text = strings.noResults,
                         style = MaterialTheme.typography.bodyMedium,
                         color = EInkGrayMedium,
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -180,18 +182,18 @@ fun DashboardScreen(
                 ) {
             // Notes Section
             DashboardSection(
-                title = "Notes",
+                title = strings.notes,
                 count = state.notesCount,
                 icon = Icons.Default.Description,
                 onClick = onNotesClick,
                 onNew = null,
                 isEmpty = state.notesCount == 0,
-                emptyText = "No notes yet",
+                emptyText = strings.noNotes,
                 newButtonText = null
             ) {
                 state.lastNote?.let { note ->
                     Text(
-                        text = note.title.ifEmpty { "Untitled" },
+                        text = note.title.ifEmpty { strings.untitled },
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -212,18 +214,18 @@ fun DashboardScreen(
             // Conversations Section - only show if LLM is configured
             if (state.isLlmConfigured) {
                 DashboardSection(
-                    title = "Conversations",
+                    title = strings.chat,
                     count = state.conversationsCount,
                     icon = Icons.Default.SmartToy,
                     onClick = onConversationsClick,
                     onNew = null,
                     isEmpty = state.conversationsCount == 0,
-                    emptyText = "No conversations yet",
+                    emptyText = strings.noConversations,
                     newButtonText = null
                 ) {
                     state.lastConversation?.let { conv ->
                         Text(
-                            text = conv.title.ifEmpty { "Untitled" },
+                            text = conv.title.ifEmpty { strings.untitled },
                             style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -246,13 +248,13 @@ fun DashboardScreen(
 
             // Knowledge Base Section
             DashboardSection(
-                title = "Knowledge Base",
+                title = strings.knowledgeBase,
                 count = state.kbItemsCount,
                 icon = Icons.AutoMirrored.Filled.LibraryBooks,
                 onClick = onKnowledgeBaseClick,
                 onNew = null, // KB doesn't have "new" - items are saved from chat
                 isEmpty = state.kbItemsCount == 0,
-                emptyText = "No saved items",
+                emptyText = strings.noSavedFiles,
                 newButtonText = null
             ) {
                 if (state.lastKbFolder != null && state.lastKbFile != null) {
@@ -285,6 +287,7 @@ private fun SearchResultItem(
     onConversationClick: (com.music.sttnotes.data.chat.ChatConversation) -> Unit,
     onKbClick: (String, String) -> Unit
 ) {
+    val strings = rememberStrings()
     EInkCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = {
@@ -314,8 +317,8 @@ private fun SearchResultItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = when (result) {
-                        is GlobalSearchResult.NoteResult -> result.note.title.ifEmpty { "Untitled" }
-                        is GlobalSearchResult.ConversationResult -> result.conversation.title.ifEmpty { "Untitled" }
+                        is GlobalSearchResult.NoteResult -> result.note.title.ifEmpty { strings.untitled }
+                        is GlobalSearchResult.ConversationResult -> result.conversation.title.ifEmpty { strings.untitled }
                         is GlobalSearchResult.KbResult -> result.filename.removeSuffix(".md")
                     },
                     style = MaterialTheme.typography.titleSmall,

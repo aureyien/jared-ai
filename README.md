@@ -63,6 +63,7 @@ whisper-notes/
 │       ├── data/
 │       │   ├── api/              # API services (LLM, Cloud STT)
 │       │   ├── chat/             # Chat conversation persistence
+│       │   ├── i18n/             # Internationalization (EN/FR)
 │       │   ├── llm/              # LLM output storage
 │       │   ├── notes/            # Notes repository
 │       │   └── stt/              # Speech-to-text components
@@ -140,6 +141,17 @@ Navigate to **Settings** to configure:
 |---------|---------|-------------|
 | **STT Provider** | Local, Groq, OpenAI | Choose transcription backend |
 | **Language** | French, English | Transcription language |
+
+### App Language
+
+The app supports multiple UI languages:
+
+| Language | Code |
+|----------|------|
+| English | EN |
+| French | FR |
+
+Change the UI language in **Settings** → **App Language**.
 
 ### LLM Provider Settings
 

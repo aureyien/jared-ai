@@ -56,6 +56,7 @@ import com.music.sttnotes.ui.components.UndoButton
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
+import com.music.sttnotes.data.i18n.rememberStrings
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -68,6 +69,7 @@ fun KnowledgeBaseScreen(
     onNewChatWithRecording: () -> Unit,
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
+    val strings = rememberStrings()
     val allFolders by viewModel.filteredFolders.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -112,7 +114,7 @@ fun KnowledgeBaseScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Knowledge Base", style = MaterialTheme.typography.headlineSmall) },
+                title = { Text(strings.kbTitle, style = MaterialTheme.typography.headlineSmall) },
                 navigationIcon = {
                     EInkIconButton(
                         onClick = {
@@ -124,7 +126,7 @@ fun KnowledgeBaseScreen(
                             onNavigateBack()
                         },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Retour"
+                        contentDescription = strings.back
                     )
                 },
                 actions = {
@@ -172,7 +174,7 @@ fun KnowledgeBaseScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    EInkLoadingIndicator(text = "Chargement...")
+                    EInkLoadingIndicator(text = strings.loading)
                 }
             }
             folders.isEmpty() && searchQuery.isEmpty() -> {
@@ -193,7 +195,7 @@ fun KnowledgeBaseScreen(
                             value = searchQuery,
                             onValueChange = viewModel::onSearchQueryChange,
                             modifier = Modifier.weight(1f),
-                            placeholder = "Rechercher...",
+                            placeholder = strings.searchPlaceholder,
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Search,
@@ -206,7 +208,7 @@ fun KnowledgeBaseScreen(
                                     EInkIconButton(
                                         onClick = { viewModel.onSearchQueryChange("") },
                                         icon = Icons.Default.Close,
-                                        contentDescription = "Effacer"
+                                        contentDescription = strings.clear
                                     )
                                 }
                             }
@@ -217,7 +219,7 @@ fun KnowledgeBaseScreen(
                             EInkIconButton(
                                 onClick = { showTagFilter = !showTagFilter },
                                 icon = Icons.Default.LocalOffer,
-                                contentDescription = "Filtrer par tags"
+                                contentDescription = strings.filterByTags
                             )
                         }
                     }
@@ -253,12 +255,12 @@ fun KnowledgeBaseScreen(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = "No results",
+                                text = strings.noResults,
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "Try another search",
+                                text = strings.tryAnotherSearch,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -289,7 +291,7 @@ fun KnowledgeBaseScreen(
                                         // Set new pending deletion
                                         pendingFolderDeletion = PendingDeletion(
                                             item = folder.name,
-                                            message = "Folder deleted"
+                                            message = strings.folderDeleted
                                         )
                                     }
                                 )
@@ -304,6 +306,7 @@ fun KnowledgeBaseScreen(
 
 @Composable
 private fun EmptyState(modifier: Modifier = Modifier) {
+    val strings = rememberStrings()
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -317,13 +320,13 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "No saved files",
+            text = strings.noSavedFiles,
             style = MaterialTheme.typography.titleMedium,
             color = EInkBlack
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Save AI responses from Chat",
+            text = strings.saveFromChat,
             style = MaterialTheme.typography.bodyMedium,
             color = EInkGrayMedium
         )
@@ -337,6 +340,7 @@ private fun FolderCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = rememberStrings()
     var showMenu by remember { mutableStateOf(false) }
 
     EInkCard(
@@ -361,7 +365,7 @@ private fun FolderCard(
                     color = EInkBlack
                 )
                 Text(
-                    text = "$fileCount file${if (fileCount > 1) "s" else ""}",
+                    text = "$fileCount ${if (fileCount > 1) strings.files else strings.file}",
                     style = MaterialTheme.typography.bodySmall,
                     color = EInkGrayMedium
                 )
@@ -371,14 +375,14 @@ private fun FolderCard(
             EInkIconButton(
                 onClick = { showMenu = true },
                 icon = Icons.Default.Delete,
-                contentDescription = "Delete"
+                contentDescription = strings.delete
             )
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Delete folder") },
+                    text = { Text(strings.deleteFolder) },
                     onClick = {
                         showMenu = false
                         onDelete()
