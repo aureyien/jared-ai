@@ -92,6 +92,9 @@ fun KnowledgeBaseScreen(
     // Rename dialog state
     var showRenameFolderDialog by remember { mutableStateOf<String?>(null) }
 
+    // Tag deletion state
+    var tagToDelete by remember { mutableStateOf<String?>(null) }
+
     // Filter out pending deletion folders from display
     val folders = remember(allFolders, pendingFolderDeletion) {
         allFolders.filter { folder -> pendingFolderDeletion?.item != folder.name }
@@ -246,7 +249,8 @@ fun KnowledgeBaseScreen(
                                 EInkChip(
                                     label = tag,
                                     selected = tag in selectedTagFilters,
-                                    onClick = { viewModel.toggleTagFilter(tag) }
+                                    onClick = { viewModel.toggleTagFilter(tag) },
+                                    onLongClick = { tagToDelete = tag }
                                 )
                             }
                         }
@@ -352,6 +356,37 @@ fun KnowledgeBaseScreen(
                     onClick = { showRenameFolderDialog = null },
                     filled = false,
                     enabled = !isRenaming
+                ) {
+                    Text(strings.cancel)
+                }
+            },
+            containerColor = EInkWhite
+        )
+    }
+
+    // Delete tag confirmation dialog
+    tagToDelete?.let { tag ->
+        AlertDialog(
+            onDismissRequest = { tagToDelete = null },
+            title = { Text(strings.deleteTag) },
+            text = {
+                Text("${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}")
+            },
+            confirmButton = {
+                EInkButton(
+                    onClick = {
+                        viewModel.deleteTag(tag)
+                        tagToDelete = null
+                    },
+                    filled = true
+                ) {
+                    Text(strings.delete)
+                }
+            },
+            dismissButton = {
+                EInkButton(
+                    onClick = { tagToDelete = null },
+                    filled = false
                 ) {
                     Text(strings.cancel)
                 }

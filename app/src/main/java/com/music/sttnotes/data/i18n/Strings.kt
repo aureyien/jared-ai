@@ -188,6 +188,9 @@ interface StringResources {
     val allTags: String
     val selectedTags: String
     val selected: String
+    val deleteTag: String
+    val deleteTagConfirmation: String
+    val deleteTagWarning: String
 
     // KB Folder
     val renameFolder: String
@@ -352,6 +355,9 @@ object EnglishStrings : StringResources {
     override val allTags = "All tags"
     override val selectedTags = "Selected tags"
     override val selected = "Selected"
+    override val deleteTag = "Delete tag"
+    override val deleteTagConfirmation = "Are you sure you want to delete the tag"
+    override val deleteTagWarning = "This will remove the tag from all conversations."
 
     // KB Folder
     override val renameFolder = "Rename folder"
@@ -516,6 +522,9 @@ object FrenchStrings : StringResources {
     override val allTags = "Tous les tags"
     override val selectedTags = "Tags sélectionnés"
     override val selected = "Sélectionné"
+    override val deleteTag = "Supprimer le tag"
+    override val deleteTagConfirmation = "Êtes-vous sûr de vouloir supprimer le tag"
+    override val deleteTagWarning = "Cela supprimera le tag de toutes les conversations."
 
     // KB Folder
     override val renameFolder = "Renommer le dossier"

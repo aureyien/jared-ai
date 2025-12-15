@@ -165,6 +165,35 @@ class LlmOutputRepository @Inject constructor(
     }
 
     /**
+     * Delete a tag from all files
+     */
+    suspend fun deleteTag(tagToDelete: String): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            var filesModified = 0
+            listFolders().forEach { folder ->
+                listFiles(folder).forEach { file ->
+                    try {
+                        val content = file.readText()
+                        val (meta, body) = FrontmatterParser.parse(content)
+
+                        if (tagToDelete in meta.tags) {
+                            val updatedMeta = meta.copy(tags = meta.tags - tagToDelete)
+                            val updatedContent = FrontmatterParser.combine(updatedMeta, body)
+                            file.writeText(updatedContent)
+                            filesModified++
+                        }
+                    } catch (e: Exception) {
+                        // Ignore parsing errors
+                    }
+                }
+            }
+            Result.success(filesModified)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Delete file
      */
     suspend fun deleteFile(folder: String, filename: String): Result<Unit> = withContext(Dispatchers.IO) {

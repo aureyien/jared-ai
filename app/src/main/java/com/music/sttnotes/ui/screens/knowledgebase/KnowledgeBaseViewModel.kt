@@ -316,6 +316,15 @@ class KnowledgeBaseViewModel @Inject constructor(
         _fileTags.value = _fileTags.value.filter { it != tag }
     }
 
+    fun deleteTag(tag: String) {
+        viewModelScope.launch {
+            llmOutputRepository.deleteTag(tag).onSuccess { filesModified ->
+                loadAllTags() // Refresh all tags
+                loadFolders() // Refresh folders to show updated file tags
+            }
+        }
+    }
+
     fun getFile(folder: String, filename: String): File {
         return llmOutputRepository.getFilePath(folder, filename)
     }

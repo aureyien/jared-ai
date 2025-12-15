@@ -1,6 +1,8 @@
 package com.music.sttnotes.ui.screens.chat
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -10,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,8 +27,9 @@ import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.EInkDivider
+import com.music.sttnotes.ui.components.EInkButton
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TagManagementScreen(
     conversationId: String,
@@ -41,6 +45,7 @@ fun TagManagementScreen(
     val strings = rememberStrings()
     var searchQuery by remember { mutableStateOf("") }
     var newTagInput by remember { mutableStateOf("") }
+    var tagToDelete by remember { mutableStateOf<String?>(null) }
 
     // Calculate tag counts across all conversations
     val tagCounts = remember(conversations) {
@@ -151,20 +156,26 @@ fun TagManagementScreen(
                             val count = tagCounts[tag] ?: 0
 
                             Surface(
-                                onClick = {
-                                    if (isSelected) {
-                                        viewModel.removeTagFromConversation(conversationId, tag)
-                                    } else {
-                                        viewModel.addTagToConversation(conversationId, tag)
-                                    }
-                                },
                                 shape = RoundedCornerShape(8.dp),
                                 color = EInkWhite,
                                 border = BorderStroke(
                                     width = if (isSelected) 2.dp else 1.dp,
                                     color = if (isSelected) EInkBlack else EInkGrayMedium.copy(alpha = 0.3f)
                                 ),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (isSelected) {
+                                                viewModel.removeTagFromConversation(conversationId, tag)
+                                            } else {
+                                                viewModel.addTagToConversation(conversationId, tag)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            tagToDelete = tag
+                                        }
+                                    )
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -215,6 +226,37 @@ fun TagManagementScreen(
                     )
                 }
             }
+        }
+
+        // Delete tag confirmation dialog
+        tagToDelete?.let { tag ->
+            AlertDialog(
+                onDismissRequest = { tagToDelete = null },
+                title = { Text(strings.deleteTag) },
+                text = {
+                    Text("${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}")
+                },
+                confirmButton = {
+                    EInkButton(
+                        onClick = {
+                            viewModel.deleteTag(tag)
+                            tagToDelete = null
+                        },
+                        filled = true
+                    ) {
+                        Text(strings.delete)
+                    }
+                },
+                dismissButton = {
+                    EInkButton(
+                        onClick = { tagToDelete = null },
+                        filled = false
+                    ) {
+                        Text(strings.cancel)
+                    }
+                },
+                containerColor = EInkWhite
+            )
         }
     }
 }

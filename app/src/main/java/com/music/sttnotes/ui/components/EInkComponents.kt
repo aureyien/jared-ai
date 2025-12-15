@@ -166,22 +166,35 @@ fun EInkCard(
  * E-Ink optimized chip - high contrast border
  */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun EInkChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null
 ) {
+    val chipModifier = if (onLongClick != null) {
+        modifier
+            .height(40.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+    } else {
+        modifier.height(40.dp)
+    }
+
     FilterChip(
         selected = selected,
-        onClick = onClick,
+        onClick = if (onLongClick != null) { {} } else onClick, // Disable FilterChip onClick if using combinedClickable
         label = {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge
             )
         },
-        modifier = modifier.height(40.dp),
+        modifier = chipModifier,
         shape = RoundedCornerShape(4.dp),
         colors = FilterChipDefaults.filterChipColors(
             containerColor = EInkWhite,
