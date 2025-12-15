@@ -339,6 +339,10 @@ class KnowledgeBaseViewModel @Inject constructor(
             llmOutputRepository.deleteTag(tag).onSuccess { filesModified ->
                 loadAllTags() // Refresh all tags
                 loadFolders() // Refresh folders to show updated file tags
+                // Remove from filter if it was selected
+                if (tag in _selectedTagFilters.value) {
+                    _selectedTagFilters.value = _selectedTagFilters.value - tag
+                }
             }
         }
     }

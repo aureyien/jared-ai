@@ -104,6 +104,10 @@ class NotesListViewModel @Inject constructor(
     fun deleteTag(tag: String) {
         viewModelScope.launch {
             notesRepository.deleteTag(tag)
+            // Clear filter if the deleted tag was selected
+            if (_selectedTag.value == tag) {
+                _selectedTag.value = null
+            }
         }
     }
 }
