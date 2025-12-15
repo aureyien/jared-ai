@@ -16,6 +16,7 @@ import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseFolderScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseScreen
 import com.music.sttnotes.ui.screens.notes.NoteEditorScreen
 import com.music.sttnotes.ui.screens.notes.NotesListScreen
+import com.music.sttnotes.ui.screens.notes.TagManagementScreenForNotes
 import com.music.sttnotes.ui.screens.settings.SettingsScreen
 
 sealed class Screen(val route: String) {
@@ -33,6 +34,9 @@ sealed class Screen(val route: String) {
     }
     data object TagManagement : Screen("tag_management/{conversationId}") {
         fun createRoute(conversationId: String) = "tag_management/$conversationId"
+    }
+    data object TagManagementNote : Screen("tag_management_note/{noteId}") {
+        fun createRoute(noteId: String) = "tag_management_note/$noteId"
     }
     data object KnowledgeBase : Screen("knowledge_base")
     data object KnowledgeBaseFolder : Screen("knowledge_base/folder/{folderName}") {
@@ -80,7 +84,10 @@ fun NavGraph(
                 onAddNote = {
                     navController.navigate(Screen.NoteEditor.createRoute(null))
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onManageTags = { noteId ->
+                    navController.navigate(Screen.TagManagementNote.createRoute(noteId))
+                }
             )
         }
 
@@ -163,6 +170,20 @@ fun NavGraph(
             NoteEditorScreen(
                 noteId = if (noteId == "new") null else noteId,
                 autoRecord = autoRecord,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Tag Management for Notes
+        composable(
+            route = Screen.TagManagementNote.route,
+            arguments = listOf(
+                navArgument("noteId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val noteId = backStackEntry.arguments?.getString("noteId") ?: return@composable
+            TagManagementScreenForNotes(
+                noteId = noteId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -2,10 +2,12 @@ package com.music.sttnotes.ui.screens.notes
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -72,6 +74,7 @@ import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
 import com.music.sttnotes.ui.components.UndoButton
 import com.music.sttnotes.ui.theme.EInkBlack
+import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
 import com.music.sttnotes.data.i18n.Strings
@@ -85,6 +88,7 @@ fun NotesListScreen(
     onNoteClick: (String) -> Unit,
     onAddNote: () -> Unit,
     onNavigateBack: () -> Unit,
+    onManageTags: (String) -> Unit = {},
     viewModel: NotesListViewModel = hiltViewModel()
 ) {
     val allNotes by viewModel.filteredNotes.collectAsState()
@@ -397,7 +401,8 @@ fun NotesListScreen(
                                             item = note,
                                             message = strings.noteDeleted
                                         )
-                                    }
+                                    },
+                                    onManageTags = { onManageTags(note.id) }
                                 )
                             }
                         }
@@ -432,7 +437,8 @@ fun NotesListScreen(
                                             item = note,
                                             message = strings.noteDeleted
                                         )
-                                    }
+                                    },
+                                    onManageTags = { onManageTags(note.id) }
                                 )
                             }
                         }
@@ -452,7 +458,8 @@ private fun NoteListItem(
     note: Note,
     onClick: () -> Unit,
     onArchive: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onManageTags: () -> Unit = {}
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -503,6 +510,42 @@ private fun NoteListItem(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    // Tags display
+                    if (note.tags.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Gray separator
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(EInkGrayMedium.copy(alpha = 0.3f))
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Tags in styled chips
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            note.tags.forEach { tag ->
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = EInkWhite,
+                                    border = BorderStroke(1.dp, EInkGrayMedium.copy(alpha = 0.4f))
+                                ) {
+                                    Text(
+                                        text = tag,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = EInkGrayMedium,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -521,6 +564,16 @@ private fun NoteListItem(
             expanded = showContextMenu,
             onDismissRequest = { showContextMenu = false }
         ) {
+            DropdownMenuItem(
+                text = { Text(strings.manageTags) },
+                onClick = {
+                    showContextMenu = false
+                    onManageTags()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
             DropdownMenuItem(
                 text = { Text(strings.archive) },
                 onClick = {
@@ -545,7 +598,8 @@ private fun NoteGridCard(
     note: Note,
     onClick: () -> Unit,
     onArchive: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onManageTags: () -> Unit = {}
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -597,6 +651,43 @@ private fun NoteGridCard(
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                // Tags display (compact version for grid)
+                if (note.tags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        note.tags.take(2).forEach { tag ->  // Limit to 2 tags for grid view
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = EInkWhite,
+                                border = BorderStroke(1.dp, EInkGrayMedium.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = androidx.compose.ui.unit.TextUnit(7f, androidx.compose.ui.unit.TextUnitType.Sp)
+                                    ),
+                                    color = EInkGrayMedium,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        if (note.tags.size > 2) {
+                            Text(
+                                text = "+${note.tags.size - 2}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = androidx.compose.ui.unit.TextUnit(7f, androidx.compose.ui.unit.TextUnitType.Sp)
+                                ),
+                                color = EInkGrayMedium
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -605,6 +696,16 @@ private fun NoteGridCard(
             expanded = showContextMenu,
             onDismissRequest = { showContextMenu = false }
         ) {
+            DropdownMenuItem(
+                text = { Text(strings.manageTags) },
+                onClick = {
+                    showContextMenu = false
+                    onManageTags()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
             DropdownMenuItem(
                 text = { Text(strings.archive) },
                 onClick = {

@@ -49,6 +49,16 @@ class NotesRepository @Inject constructor(
                     _archivedNotes.value = allNotes.filter { it.isArchived }
                     rebuildIndex(allNotes.filter { !it.isArchived })
                     updateAllTags(allNotes.filter { !it.isArchived })
+
+                    // Migration: if allTags empty but notes have tags, extract them
+                    if (data.allTags.isEmpty() && data.notes.any { it.tags.isNotEmpty() }) {
+                        _allTags.value = data.notes.flatMap { it.tags }.toSet()
+                        persistNotes(allNotes.filter { !it.isArchived })
+                        Log.d(TAG, "Migrated ${_allTags.value.size} tags from notes")
+                    } else {
+                        _allTags.value = data.allTags
+                    }
+
                     Log.d(TAG, "Loaded ${_notes.value.size} notes, ${_archivedNotes.value.size} archived")
                 }
             } catch (e: Exception) {
@@ -77,6 +87,52 @@ class NotesRepository @Inject constructor(
             updateAllTags(currentNotes)
             persistNotes(currentNotes)
             updatedNote
+        }
+    }
+
+    suspend fun addTagToNote(noteId: String, tag: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val current = _notes.value.toMutableList()
+            val index = current.indexOfFirst { it.id == noteId }
+
+            if (index >= 0) {
+                val note = current[index]
+                val updatedTags = (note.tags + tag).distinct()
+                current[index] = note.copy(tags = updatedTags)
+                _notes.value = current.sortedByDescending { it.updatedAt }
+                _allTags.value = _allTags.value + tag
+                persistNotes(current)
+            }
+        }
+    }
+
+    suspend fun removeTagFromNote(noteId: String, tag: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val current = _notes.value.toMutableList()
+            val index = current.indexOfFirst { it.id == noteId }
+
+            if (index >= 0) {
+                val note = current[index]
+                current[index] = note.copy(tags = note.tags - tag)
+                _notes.value = current.sortedByDescending { it.updatedAt }
+                persistNotes(current)
+            }
+        }
+    }
+
+    suspend fun deleteTag(tag: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            // Remove from all notes
+            val current = _notes.value.map { note ->
+                if (tag in note.tags) note.copy(tags = note.tags - tag)
+                else note
+            }
+            _notes.value = current.sortedByDescending { it.updatedAt }
+
+            // Remove from allTags set
+            _allTags.value = _allTags.value - tag
+
+            persistNotes(current)
         }
     }
 
@@ -158,7 +214,10 @@ class NotesRepository @Inject constructor(
 
     private suspend fun persistNotes(notes: List<Note>) {
         try {
-            val data = NotesData(notes = notes)
+            val data = NotesData(
+                notes = notes,
+                allTags = _allTags.value
+            )
             notesFile.writeText(json.encodeToString(NotesData.serializer(), data))
         } catch (e: Exception) {
             Log.e(TAG, "Failed to persist notes", e)

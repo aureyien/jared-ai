@@ -86,4 +86,22 @@ class NotesListViewModel @Inject constructor(
             notesRepository.deleteAllArchived()
         }
     }
+
+    fun addTagToNote(noteId: String, tag: String) {
+        viewModelScope.launch {
+            notesRepository.addTagToNote(noteId, tag.trim().lowercase())
+        }
+    }
+
+    fun removeTagFromNote(noteId: String, tag: String) {
+        viewModelScope.launch {
+            notesRepository.removeTagFromNote(noteId, tag)
+        }
+    }
+
+    fun deleteTag(tag: String) {
+        viewModelScope.launch {
+            notesRepository.deleteTag(tag)
+        }
+    }
 }
