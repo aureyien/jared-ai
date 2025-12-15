@@ -329,8 +329,7 @@ fun KnowledgeBaseFolderScreen(
         }
 
         // Delete tag confirmation dialog
-        tagToDelete?.let { tag ->
-            AlertDialog(
+        tagToDelete?.let { tag -> AlertDialog(
                 onDismissRequest = { tagToDelete = null },
                 title = { Text(strings.deleteTag) },
                 text = {

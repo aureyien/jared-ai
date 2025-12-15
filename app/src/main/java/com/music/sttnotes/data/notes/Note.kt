@@ -17,5 +17,6 @@ data class Note(
 @Serializable
 data class NotesData(
     val notes: List<Note> = emptyList(),
+    val allTags: Set<String> = emptySet(),
     val version: Int = 1
 )
