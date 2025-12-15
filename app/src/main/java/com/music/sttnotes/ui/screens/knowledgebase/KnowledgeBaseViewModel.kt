@@ -318,7 +318,7 @@ class KnowledgeBaseViewModel @Inject constructor(
 
     fun addTagToFile(folder: String, filename: String, tag: String) {
         viewModelScope.launch {
-            llmOutputRepository.addTagToFile(folder, filename, tag.trim().lowercase()).onSuccess {
+            llmOutputRepository.addTagToFile(folder, filename, tag.trim().lowercase().take(20)).onSuccess {
                 loadAllTags()
                 loadFolders()
             }

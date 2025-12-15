@@ -82,7 +82,7 @@ class ChatListViewModel @Inject constructor(
     // Add tag to conversation
     fun addTagToConversation(conversationId: String, tag: String) {
         viewModelScope.launch {
-            chatHistoryRepository.addTagToConversation(conversationId, tag.trim().lowercase())
+            chatHistoryRepository.addTagToConversation(conversationId, tag.trim().lowercase().take(20))
         }
     }
 
