@@ -269,8 +269,7 @@ fun ChatScreen(
                 }
                 // Tag manager icon
                 EInkIconButton(
-                    onClick = {},
-                    onLongClick = onManageTags,
+                    onClick = onManageTags,
                     icon = Icons.Default.LocalOffer,
                     contentDescription = strings.manageTags
                 )
