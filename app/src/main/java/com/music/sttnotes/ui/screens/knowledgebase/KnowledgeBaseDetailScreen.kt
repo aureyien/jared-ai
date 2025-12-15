@@ -83,6 +83,7 @@ fun KnowledgeBaseDetailScreen(
     folder: String,
     filename: String,
     onNavigateBack: () -> Unit,
+    onManageTags: () -> Unit = {},
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
     val fileContent by viewModel.fileContent.collectAsState()
@@ -163,9 +164,9 @@ fun KnowledgeBaseDetailScreen(
                     )
                 },
                 actions = {
-                    // Tags button
+                    // Manage tags button
                     EInkIconButton(
-                        onClick = { showTagsSection = !showTagsSection },
+                        onClick = onManageTags,
                         icon = Icons.Default.LocalOffer,
                         contentDescription = "Tags"
                     )

@@ -14,6 +14,7 @@ import com.music.sttnotes.ui.screens.home.DashboardScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseDetailScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseFolderScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseScreen
+import com.music.sttnotes.ui.screens.knowledgebase.TagManagementScreenForKB
 import com.music.sttnotes.ui.screens.notes.NoteEditorScreen
 import com.music.sttnotes.ui.screens.notes.NotesListScreen
 import com.music.sttnotes.ui.screens.notes.TagManagementScreenForNotes
@@ -37,6 +38,9 @@ sealed class Screen(val route: String) {
     }
     data object TagManagementNote : Screen("tag_management_note/{noteId}") {
         fun createRoute(noteId: String) = "tag_management_note/$noteId"
+    }
+    data object TagManagementKB : Screen("tag_management_kb/{folder}/{filename}") {
+        fun createRoute(folder: String, filename: String) = "tag_management_kb/$folder/$filename"
     }
     data object KnowledgeBase : Screen("knowledge_base")
     data object KnowledgeBaseFolder : Screen("knowledge_base/folder/{folderName}") {
@@ -228,6 +232,26 @@ fun NavGraph(
             val folder = backStackEntry.arguments?.getString("folder") ?: ""
             val filename = backStackEntry.arguments?.getString("filename") ?: ""
             KnowledgeBaseDetailScreen(
+                folder = folder,
+                filename = filename,
+                onNavigateBack = { navController.popBackStack() },
+                onManageTags = {
+                    navController.navigate(Screen.TagManagementKB.createRoute(folder, filename))
+                }
+            )
+        }
+
+        // Tag Management for KB
+        composable(
+            route = Screen.TagManagementKB.route,
+            arguments = listOf(
+                navArgument("folder") { type = NavType.StringType },
+                navArgument("filename") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val folder = backStackEntry.arguments?.getString("folder") ?: ""
+            val filename = backStackEntry.arguments?.getString("filename") ?: ""
+            TagManagementScreenForKB(
                 folder = folder,
                 filename = filename,
                 onNavigateBack = { navController.popBackStack() }
