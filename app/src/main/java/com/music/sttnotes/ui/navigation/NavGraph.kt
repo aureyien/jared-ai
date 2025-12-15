@@ -36,6 +36,7 @@ sealed class Screen(val route: String) {
     data object TagManagement : Screen("tag_management/{conversationId}") {
         fun createRoute(conversationId: String) = "tag_management/$conversationId"
     }
+    data object TagManagementGlobal : Screen("tag_management_global")
     data object TagManagementNote : Screen("tag_management_note/{noteId}") {
         fun createRoute(noteId: String) = "tag_management_note/$noteId"
     }
@@ -112,6 +113,9 @@ fun NavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onManageTags = { conversationId ->
                     navController.navigate(Screen.TagManagement.createRoute(conversationId))
+                },
+                onManageTagsGlobal = {
+                    navController.navigate(Screen.TagManagementGlobal.route)
                 }
             )
         }
@@ -163,6 +167,14 @@ fun NavGraph(
             val conversationId = backStackEntry.arguments?.getString("conversationId") ?: return@composable
             TagManagementScreen(
                 conversationId = conversationId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Tag Management Global (Chat)
+        composable(Screen.TagManagementGlobal.route) {
+            TagManagementScreen(
+                conversationId = null,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
