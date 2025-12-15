@@ -12,6 +12,7 @@ data class ChatConversation(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "",
     val messages: List<ChatMessageEntity> = emptyList(),
+    val tags: List<String> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 ) {
@@ -40,5 +41,6 @@ data class ChatMessageEntity(
 @Serializable
 data class ChatHistoryData(
     val conversations: List<ChatConversation> = emptyList(),
+    val allTags: Set<String> = emptySet(),
     val version: Int = 1
 )

@@ -4,6 +4,12 @@ project(whisper.cpp)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# Android 15+ 16KB page size compatibility (required from Nov 1, 2025)
+# Applied globally so ggml libraries also get this flag
+if (ANDROID)
+    add_link_options(-Wl,-z,max-page-size=16384)
+endif()
+
 # Point to local copy of whisper.cpp
 set(WHISPER_LIB_DIR ${CMAKE_SOURCE_DIR}/../cpp)
 

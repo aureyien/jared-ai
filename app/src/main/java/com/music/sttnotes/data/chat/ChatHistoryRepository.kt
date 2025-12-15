@@ -31,6 +31,9 @@ class ChatHistoryRepository @Inject constructor(
     private val _conversations = MutableStateFlow<List<ChatConversation>>(emptyList())
     val conversations: StateFlow<List<ChatConversation>> = _conversations
 
+    private val _allTags = MutableStateFlow<Set<String>>(emptySet())
+    val allTags: StateFlow<Set<String>> = _allTags
+
     suspend fun initialize() = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
@@ -38,11 +41,24 @@ class ChatHistoryRepository @Inject constructor(
                     val content = historyFile.readText()
                     val data = json.decodeFromString<ChatHistoryData>(content)
                     _conversations.value = data.conversations.sortedByDescending { it.updatedAt }
-                    Log.d(TAG, "Loaded ${data.conversations.size} conversations")
+
+                    // Migration: if allTags is empty but conversations have tags, populate from conversations
+                    if (data.allTags.isEmpty() && data.conversations.any { it.tags.isNotEmpty() }) {
+                        val migratedTags = data.conversations.flatMap { it.tags }.toSet()
+                        _allTags.value = migratedTags
+                        Log.d(TAG, "Migrated ${migratedTags.size} tags from conversations")
+                        // Persist the migrated tags
+                        persistConversations(data.conversations)
+                    } else {
+                        _allTags.value = data.allTags
+                    }
+
+                    Log.d(TAG, "Loaded ${data.conversations.size} conversations and ${_allTags.value.size} tags")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load conversations", e)
                 _conversations.value = emptyList()
+                _allTags.value = emptySet()
             }
         }
     }
@@ -148,13 +164,63 @@ class ChatHistoryRepository @Inject constructor(
         }
     }
 
+    suspend fun updateConversationTags(id: String, tags: List<String>) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val current = _conversations.value.toMutableList()
+            val index = current.indexOfFirst { it.id == id }
+
+            if (index >= 0) {
+                current[index] = current[index].copy(tags = tags)
+                _conversations.value = current.sortedByDescending { it.updatedAt }
+                persistConversations(current)
+            }
+        }
+    }
+
+    suspend fun addTagToConversation(id: String, tag: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val current = _conversations.value.toMutableList()
+            val index = current.indexOfFirst { it.id == id }
+
+            if (index >= 0) {
+                val conv = current[index]
+                if (tag !in conv.tags) {
+                    current[index] = conv.copy(tags = conv.tags + tag)
+                    _conversations.value = current.sortedByDescending { it.updatedAt }
+
+                    // Add tag to allTags set to persist it even when removed from all conversations
+                    _allTags.value = _allTags.value + tag
+
+                    persistConversations(current)
+                }
+            }
+        }
+    }
+
+    suspend fun removeTagFromConversation(id: String, tag: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val current = _conversations.value.toMutableList()
+            val index = current.indexOfFirst { it.id == id }
+
+            if (index >= 0) {
+                val conv = current[index]
+                current[index] = conv.copy(tags = conv.tags - tag)
+                _conversations.value = current.sortedByDescending { it.updatedAt }
+                persistConversations(current)
+            }
+        }
+    }
+
     fun getConversation(id: String): ChatConversation? {
         return _conversations.value.find { it.id == id }
     }
 
     private suspend fun persistConversations(conversations: List<ChatConversation>) {
         try {
-            val data = ChatHistoryData(conversations = conversations)
+            val data = ChatHistoryData(
+                conversations = conversations,
+                allTags = _allTags.value
+            )
             historyFile.writeText(json.encodeToString(ChatHistoryData.serializer(), data))
         } catch (e: Exception) {
             Log.e(TAG, "Failed to persist conversations", e)

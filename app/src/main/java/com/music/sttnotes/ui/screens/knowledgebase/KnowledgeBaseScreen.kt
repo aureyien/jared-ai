@@ -22,9 +22,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,11 +42,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkCard
 import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.EInkDivider
@@ -82,6 +88,9 @@ fun KnowledgeBaseScreen(
 
     // Undo deletion state for folders
     var pendingFolderDeletion by remember { mutableStateOf<PendingDeletion<String>?>(null) }
+
+    // Rename dialog state
+    var showRenameFolderDialog by remember { mutableStateOf<String?>(null) }
 
     // Filter out pending deletion folders from display
     val folders = remember(allFolders, pendingFolderDeletion) {
@@ -283,6 +292,7 @@ fun KnowledgeBaseScreen(
                                         pendingFolderDeletion = null
                                         onFolderClick(folder.name)
                                     },
+                                    onRename = { showRenameFolderDialog = folder.name },
                                     onDelete = {
                                         // Commit previous pending deletion first
                                         pendingFolderDeletion?.let { previousDeletion ->
@@ -301,6 +311,53 @@ fun KnowledgeBaseScreen(
                 }
             }
         }
+    }
+
+    // Rename Folder Dialog
+    showRenameFolderDialog?.let { folderName ->
+        var newName by remember { mutableStateOf(folderName) }
+        var isRenaming by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
+
+        AlertDialog(
+            onDismissRequest = { if (!isRenaming) showRenameFolderDialog = null },
+            title = { Text(strings.renameFolder) },
+            text = {
+                EInkTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    placeholder = strings.newFolderName,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                EInkButton(
+                    onClick = {
+                        if (newName.isNotBlank() && newName != folderName) {
+                            isRenaming = true
+                            coroutineScope.launch {
+                                viewModel.renameFolder(folderName, newName)
+                                showRenameFolderDialog = null
+                            }
+                        }
+                    },
+                    filled = true,
+                    enabled = newName.isNotBlank() && newName != folderName && !isRenaming
+                ) {
+                    Text(strings.rename)
+                }
+            },
+            dismissButton = {
+                EInkButton(
+                    onClick = { showRenameFolderDialog = null },
+                    filled = false,
+                    enabled = !isRenaming
+                ) {
+                    Text(strings.cancel)
+                }
+            },
+            containerColor = EInkWhite
+        )
     }
 }
 
@@ -338,6 +395,7 @@ private fun FolderCard(
     name: String,
     fileCount: Int,
     onClick: () -> Unit,
+    onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
     val strings = rememberStrings()
@@ -371,16 +429,24 @@ private fun FolderCard(
                 )
             }
 
-            // Delete button with menu
+            // More options menu button
             EInkIconButton(
                 onClick = { showMenu = true },
-                icon = Icons.Default.Delete,
-                contentDescription = strings.delete
+                icon = Icons.Default.MoreVert,
+                contentDescription = strings.settings
             )
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }
             ) {
+                DropdownMenuItem(
+                    text = { Text(strings.renameFolder) },
+                    onClick = {
+                        showMenu = false
+                        onRename()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Edit, null) }
+                )
                 DropdownMenuItem(
                     text = { Text(strings.deleteFolder) },
                     onClick = {

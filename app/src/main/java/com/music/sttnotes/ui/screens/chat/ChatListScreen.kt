@@ -3,10 +3,13 @@ package com.music.sttnotes.ui.screens.chat
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,8 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.AlertDialog
@@ -53,6 +58,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.music.sttnotes.data.chat.ChatConversation
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkCard
+import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.EInkDivider
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkTextField
@@ -68,15 +74,19 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ChatListScreen(
     onConversationClick: (String) -> Unit,
     onNewConversation: () -> Unit,
     onNavigateBack: () -> Unit,
+    onManageTags: (String) -> Unit = {},
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
     val conversations by viewModel.conversations.collectAsState()
+    val usedTags by viewModel.usedTags.collectAsState()
+    val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
+    val showTagFilter by viewModel.showTagFilter.collectAsState()
     val strings = rememberStrings()
 
     // Refresh list when screen becomes visible (returning from conversation)
@@ -98,17 +108,24 @@ fun ChatListScreen(
 
     // Search state
     var searchQuery by remember { mutableStateOf("") }
-    val filteredConversations = remember(conversations, searchQuery, pendingDeletion) {
+    val filteredConversations = remember(conversations, searchQuery, pendingDeletion, selectedTagFilters) {
         val baseList = if (searchQuery.isBlank()) {
             conversations
         } else {
             conversations.filter { conv ->
                 conv.title.contains(searchQuery, ignoreCase = true) ||
-                conv.messages.any { it.content.contains(searchQuery, ignoreCase = true) }
+                conv.messages.any { it.content.contains(searchQuery, ignoreCase = true) } ||
+                conv.tags.any { it.contains(searchQuery, ignoreCase = true) }
             }
         }
+        // Filter by selected tags
+        val tagFiltered = if (selectedTagFilters.isEmpty()) {
+            baseList
+        } else {
+            baseList.filter { conv -> conv.tags.any { it in selectedTagFilters } }
+        }
         // Filter out pending deletion items from display
-        baseList.filter { conv -> pendingDeletion?.item?.id != conv.id }
+        tagFiltered.filter { conv -> pendingDeletion?.item?.id != conv.id }
     }
 
     // Dialog states
@@ -206,22 +223,55 @@ fun ChatListScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                // Search field
-                EInkTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                // Search bar with tag filter button
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = strings.searchPlaceholder,
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = strings.search,
-                            tint = EInkGrayMedium
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    EInkTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = strings.searchPlaceholder,
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = strings.search,
+                                tint = EInkGrayMedium
+                            )
+                        }
+                    )
+                    // Tag filter button (only show if there are tags)
+                    if (usedTags.isNotEmpty()) {
+                        Spacer(Modifier.width(8.dp))
+                        EInkIconButton(
+                            onClick = { viewModel.toggleShowTagFilter() },
+                            icon = Icons.Default.LocalOffer,
+                            contentDescription = strings.filterByTags
                         )
                     }
-                )
+                }
+
+                // Tag filter chips (show when toggled and tags exist)
+                if (showTagFilter && usedTags.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        usedTags.forEach { tag ->
+                            EInkChip(
+                                label = tag,
+                                selected = tag in selectedTagFilters,
+                                onClick = { viewModel.toggleTagFilter(tag) }
+                            )
+                        }
+                    }
+                }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -250,7 +300,9 @@ fun ChatListScreen(
                                     item = conversation,
                                     message = strings.conversationDeleted
                                 )
-                            }
+                            },
+                            onManageTags = { onManageTags(conversation.id) },
+                            showTags = showTagFilter
                         )
                     }
                 }
@@ -277,7 +329,9 @@ private fun ConversationCard(
     conversation: ChatConversation,
     onClick: () -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onManageTags: () -> Unit,
+    showTags: Boolean
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -334,10 +388,43 @@ private fun ConversationCard(
                 if (messageCount > 0) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "$messageCount message${if (messageCount > 1) "s" else ""}",
+                        text = "$messageCount ${if (messageCount > 1) strings.messages else strings.message}",
                         style = MaterialTheme.typography.labelSmall,
                         color = EInkGrayMedium
                     )
+                }
+
+                // Tags display (only when showTags is true)
+                if (showTags && conversation.tags.isNotEmpty()) {
+                    Spacer(Modifier.height(14.dp))
+                    // Gray separator
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(EInkGrayMedium.copy(alpha = 0.3f))
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    // Tags in styled chips
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        conversation.tags.forEach { tag ->
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = EInkWhite,
+                                border = BorderStroke(1.dp, EInkGrayMedium.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = EInkGrayMedium,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -354,6 +441,14 @@ private fun ConversationCard(
                     onRename()
                 },
                 leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+            )
+            DropdownMenuItem(
+                text = { Text(strings.manageTags) },
+                onClick = {
+                    showContextMenu = false
+                    onManageTags()
+                },
+                leadingIcon = { Icon(Icons.Default.LocalOffer, contentDescription = null) }
             )
             DropdownMenuItem(
                 text = { Text(strings.delete) },
@@ -473,3 +568,4 @@ private fun formatRelativeTime(timestamp: Long): String {
         }
     }
 }
+

@@ -256,6 +256,17 @@ class KnowledgeBaseViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Rename a folder and return the new folder name
+     */
+    suspend fun renameFolder(oldName: String, newName: String): Result<String> {
+        val result = llmOutputRepository.renameFolder(oldName, newName)
+        if (result.isSuccess) {
+            loadFolders()
+        }
+        return result
+    }
+
     fun clearFileContent() {
         _fileContent.value = null
         _isEditMode.value = false
