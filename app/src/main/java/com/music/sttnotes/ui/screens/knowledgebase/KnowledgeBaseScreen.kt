@@ -91,6 +91,9 @@ fun KnowledgeBaseScreen(
     // Tag filter visibility
     var showTagFilter by remember { mutableStateOf(false) }
 
+    // Tag management dialog visibility
+    var showTagManagementDialog by remember { mutableStateOf(false) }
+
     // Undo deletion state for folders
     var pendingFolderDeletion by remember { mutableStateOf<PendingDeletion<String>?>(null) }
 
@@ -236,7 +239,8 @@ fun KnowledgeBaseScreen(
                             EInkIconButton(
                                 onClick = { showTagFilter = !showTagFilter },
                                 icon = Icons.Default.LocalOffer,
-                                contentDescription = strings.filterByTags
+                                contentDescription = strings.filterByTags,
+                                onLongClick = { showTagManagementDialog = true }
                             )
                         }
                     }
@@ -455,6 +459,54 @@ fun KnowledgeBaseScreen(
             dismissButton = {
                 EInkButton(
                     onClick = { showTagActionConfirmation = null },
+                    filled = false
+                ) {
+                    Text(strings.cancel)
+                }
+            },
+            containerColor = EInkWhite
+        )
+    }
+
+    // Tag Management Dialog (long-press on tag icon)
+    if (showTagManagementDialog) {
+        AlertDialog(
+            onDismissRequest = { showTagManagementDialog = false },
+            title = { Text(strings.manageTags) },
+            text = {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(allTags.toList()) { tag ->
+                        EInkCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { tagToDelete = tag }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                EInkButton(
+                    onClick = { showTagManagementDialog = false },
                     filled = false
                 ) {
                     Text(strings.cancel)
