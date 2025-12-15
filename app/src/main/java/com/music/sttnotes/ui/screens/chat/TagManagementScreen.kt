@@ -32,15 +32,16 @@ import com.music.sttnotes.ui.components.EInkButton
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TagManagementScreen(
-    conversationId: String,
+    conversationId: String? = null,
     onNavigateBack: () -> Unit,
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
     val conversations by viewModel.conversations.collectAsState()
     val allTagsSet by viewModel.allTags.collectAsState()
-    val conversation = conversations.find { it.id == conversationId } ?: run {
-        LaunchedEffect(Unit) { onNavigateBack() }
-        return
+    val conversation = if (conversationId != null) {
+        conversations.find { it.id == conversationId }
+    } else {
+        null
     }
     val strings = rememberStrings()
     var searchQuery by remember { mutableStateOf("") }
@@ -103,44 +104,48 @@ fun TagManagementScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            // Add new tag section
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .padding(bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                EInkTextField(
-                    value = newTagInput,
-                    onValueChange = { if (it.length <= 20) newTagInput = it },
-                    placeholder = strings.addTagToConversation,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(8.dp))
-                EInkIconButton(
-                    onClick = {
-                        if (newTagInput.isNotBlank() && newTagInput !in conversation.tags) {
-                            viewModel.addTagToConversation(conversationId, newTagInput.trim())
-                            newTagInput = ""
-                            searchQuery = ""
-                        }
-                    },
-                    icon = Icons.Default.Add,
-                    contentDescription = strings.addTag
-                )
+            // Add new tag section (only in conversation-specific mode)
+            if (conversation != null && conversationId != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    EInkTextField(
+                        value = newTagInput,
+                        onValueChange = { if (it.length <= 20) newTagInput = it },
+                        placeholder = strings.addTagToConversation,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    EInkIconButton(
+                        onClick = {
+                            if (newTagInput.isNotBlank() && newTagInput !in conversation.tags) {
+                                viewModel.addTagToConversation(conversationId, newTagInput.trim())
+                                newTagInput = ""
+                                searchQuery = ""
+                            }
+                        },
+                        icon = Icons.Default.Add,
+                        contentDescription = strings.addTag
+                    )
+                }
+
+                EInkDivider()
             }
 
-            EInkDivider()
-
             Column(modifier = Modifier.fillMaxSize()) {
-                // Show selected tags count (always show, even if 0)
-                Text(
-                    text = "${strings.selectedTags}: ${conversation.tags.size}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = EInkGrayMedium,
-                    modifier = Modifier.padding(16.dp)
-                )
+                // Show selected tags count (only in conversation-specific mode)
+                if (conversation != null) {
+                    Text(
+                        text = "${strings.selectedTags}: ${conversation.tags.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = EInkGrayMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
 
                 // Tags grid
                 if (filteredTags.isNotEmpty()) {
@@ -152,7 +157,7 @@ fun TagManagementScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(filteredTags) { tag ->
-                            val isSelected = tag in conversation.tags
+                            val isSelected = conversation?.tags?.contains(tag) == true
                             val count = tagCounts[tag] ?: 0
 
                             Surface(
@@ -166,10 +171,12 @@ fun TagManagementScreen(
                                     .fillMaxWidth()
                                     .combinedClickable(
                                         onClick = {
-                                            if (isSelected) {
-                                                viewModel.removeTagFromConversation(conversationId, tag)
-                                            } else {
-                                                viewModel.addTagToConversation(conversationId, tag)
+                                            if (conversation != null && conversationId != null) {
+                                                if (isSelected) {
+                                                    viewModel.removeTagFromConversation(conversationId, tag)
+                                                } else {
+                                                    viewModel.addTagToConversation(conversationId, tag)
+                                                }
                                             }
                                         },
                                         onLongClick = {

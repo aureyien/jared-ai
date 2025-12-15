@@ -81,6 +81,7 @@ fun ChatListScreen(
     onNewConversation: () -> Unit,
     onNavigateBack: () -> Unit,
     onManageTags: (String) -> Unit = {},
+    onManageTagsGlobal: () -> Unit = {},
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
     val conversations by viewModel.conversations.collectAsState()
@@ -248,6 +249,7 @@ fun ChatListScreen(
                         Spacer(Modifier.width(8.dp))
                         EInkIconButton(
                             onClick = { viewModel.toggleShowTagFilter() },
+                            onLongClick = onManageTagsGlobal,
                             icon = Icons.Default.LocalOffer,
                             contentDescription = strings.filterByTags
                         )
