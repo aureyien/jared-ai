@@ -119,7 +119,7 @@ fun TagManagementScreenForNotes(
                 EInkIconButton(
                     onClick = {
                         if (newTagInput.isNotBlank()) {
-                            viewModel.addTagToNote(noteId, newTagInput.trim().lowercase())
+                            viewModel.addTagToNote(noteId, newTagInput.trim().lowercase().take(20))
                             newTagInput = ""
                         }
                     },

@@ -131,7 +131,7 @@ fun TagManagementScreenForKB(
                     EInkIconButton(
                         onClick = {
                             if (newTagInput.isNotBlank()) {
-                                viewModel.addTagToFile(folder, filename, newTagInput.trim().lowercase())
+                                viewModel.addTagToFile(folder, filename, newTagInput.trim().lowercase().take(20))
                                 newTagInput = ""
                             }
                         },

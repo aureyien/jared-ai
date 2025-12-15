@@ -91,7 +91,7 @@ class NotesListViewModel @Inject constructor(
 
     fun addTagToNote(noteId: String, tag: String) {
         viewModelScope.launch {
-            notesRepository.addTagToNote(noteId, tag.trim().lowercase())
+            notesRepository.addTagToNote(noteId, tag.trim().lowercase().take(20))
         }
     }
 
