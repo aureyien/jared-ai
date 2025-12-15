@@ -29,15 +29,16 @@ import com.music.sttnotes.ui.components.EInkButton
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TagManagementScreenForNotes(
-    noteId: String,
+    noteId: String? = null,
     onNavigateBack: () -> Unit,
     viewModel: NotesListViewModel = hiltViewModel()
 ) {
     val allNotes by viewModel.notes.collectAsState()
     val allTagsSet by viewModel.allTags.collectAsState()
-    val note = allNotes.find { it.id == noteId } ?: run {
-        LaunchedEffect(Unit) { onNavigateBack() }
-        return
+    val note = if (noteId != null) {
+        allNotes.find { it.id == noteId }
+    } else {
+        null
     }
     val strings = rememberStrings()
     var searchQuery by remember { mutableStateOf("") }
@@ -101,34 +102,36 @@ fun TagManagementScreenForNotes(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            // Add tag input
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                EInkTextField(
-                    value = newTagInput,
-                    onValueChange = { if (it.length <= 20) newTagInput = it },
-                    placeholder = strings.addTag,
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                EInkIconButton(
-                    onClick = {
-                        if (newTagInput.isNotBlank()) {
-                            viewModel.addTagToNote(noteId, newTagInput.trim().lowercase().take(20))
-                            newTagInput = ""
-                        }
-                    },
-                    icon = Icons.Default.Add,
-                    contentDescription = strings.addTag
-                )
-            }
+            // Add tag input (only in note-specific mode)
+            if (note != null && noteId != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    EInkTextField(
+                        value = newTagInput,
+                        onValueChange = { if (it.length <= 20) newTagInput = it },
+                        placeholder = strings.addTag,
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    EInkIconButton(
+                        onClick = {
+                            if (newTagInput.isNotBlank()) {
+                                viewModel.addTagToNote(noteId, newTagInput.trim().lowercase().take(20))
+                                newTagInput = ""
+                            }
+                        },
+                        icon = Icons.Default.Add,
+                        contentDescription = strings.addTag
+                    )
+                }
 
-            Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
+            }
 
             // 2-column grid
             LazyVerticalGrid(
@@ -138,7 +141,7 @@ fun TagManagementScreenForNotes(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 items(filteredTags) { tag ->
-                    val isSelected = tag in note.tags
+                    val isSelected = note?.tags?.contains(tag) == true
                     val count = tagCounts[tag] ?: 0
 
                     Surface(
@@ -152,10 +155,12 @@ fun TagManagementScreenForNotes(
                             .fillMaxWidth()
                             .combinedClickable(
                                 onClick = {
-                                    if (isSelected) {
-                                        viewModel.removeTagFromNote(noteId, tag)
-                                    } else {
-                                        viewModel.addTagToNote(noteId, tag)
+                                    if (note != null && noteId != null) {
+                                        if (isSelected) {
+                                            viewModel.removeTagFromNote(noteId, tag)
+                                        } else {
+                                            viewModel.addTagToNote(noteId, tag)
+                                        }
                                     }
                                 },
                                 onLongClick = {

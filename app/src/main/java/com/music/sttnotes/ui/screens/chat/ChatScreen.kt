@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Stop
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkChip
+import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.UndoSnackbar
@@ -100,6 +102,7 @@ fun ChatScreen(
     conversationId: String? = null,
     startRecording: Boolean = false,
     onNavigateBack: () -> Unit,
+    onManageTags: () -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val messages by viewModel.messages.collectAsState()
@@ -264,6 +267,13 @@ fun ChatScreen(
                         }
                     }
                 }
+                // Tag manager icon
+                EInkIconButton(
+                    onClick = {},
+                    onLongClick = onManageTags,
+                    icon = Icons.Default.LocalOffer,
+                    contentDescription = strings.manageTags
+                )
             }
 
             // Messages list with scroll FABs
