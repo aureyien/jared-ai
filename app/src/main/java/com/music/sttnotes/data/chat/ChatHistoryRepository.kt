@@ -49,7 +49,7 @@ class ChatHistoryRepository @Inject constructor(
 
     suspend fun createConversation(firstMessage: String? = null): ChatConversation = withContext(Dispatchers.IO) {
         mutex.withLock {
-            val title = firstMessage?.take(50)?.trim() ?: "Nouvelle conversation"
+            val title = firstMessage?.take(50)?.trim() ?: "New conversation"
             val conversation = ChatConversation(title = title)
             val current = _conversations.value.toMutableList()
             current.add(0, conversation)
@@ -87,7 +87,7 @@ class ChatHistoryRepository @Inject constructor(
                 val newMessages = conv.messages + message
 
                 // Auto-generate title from first user message if still default
-                val newTitle = if (conv.title == "Nouvelle conversation" && message.role == "user") {
+                val newTitle = if (conv.title == "New conversation" && message.role == "user") {
                     message.content.take(50).trim()
                 } else {
                     conv.title

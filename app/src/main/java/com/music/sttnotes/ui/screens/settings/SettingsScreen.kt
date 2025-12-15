@@ -59,10 +59,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Paramètres") },
+                title = { Text("Settings") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -85,7 +85,7 @@ fun SettingsScreen(
             }
 
             // STT Language Section
-            SettingsSection(title = "Langue de transcription") {
+            SettingsSection(title = "Transcription language") {
                 SttLanguageSelector(
                     selected = uiState.sttLanguage,
                     onSelect = viewModel::setSttLanguage
@@ -93,7 +93,7 @@ fun SettingsScreen(
             }
 
             // Chat Font Size Section
-            SettingsSection(title = "Taille de police du chat") {
+            SettingsSection(title = "Chat font size") {
                 ChatFontSizeSelector(
                     currentSize = uiState.chatFontSize,
                     onSizeChange = viewModel::setChatFontSize
@@ -101,7 +101,7 @@ fun SettingsScreen(
             }
 
             // LLM Provider Section
-            SettingsSection(title = "Traitement LLM") {
+            SettingsSection(title = "LLM Processing") {
                 LlmProviderSelector(
                     selected = uiState.llmProvider,
                     onSelect = viewModel::setLlmProvider
@@ -109,13 +109,13 @@ fun SettingsScreen(
             }
 
             // API Keys Section - Always visible to configure all keys
-            SettingsSection(title = "Clés API") {
+            SettingsSection(title = "API Keys") {
                 // Groq - used for STT and LLM
                 ApiKeyField(
-                    label = "Clé API Groq",
+                    label = "Groq API Key",
                     value = uiState.groqApiKey,
                     onValueChange = viewModel::setGroqApiKey,
-                    hint = "Gratuit: console.groq.com",
+                    hint = "Free: console.groq.com",
                     isActive = uiState.sttProvider == SttProvider.GROQ || uiState.llmProvider == LlmProvider.GROQ
                 )
 
@@ -123,7 +123,7 @@ fun SettingsScreen(
 
                 // OpenAI - used for STT and LLM
                 ApiKeyField(
-                    label = "Clé API OpenAI",
+                    label = "OpenAI API Key",
                     value = uiState.openaiApiKey,
                     onValueChange = viewModel::setOpenaiApiKey,
                     hint = "platform.openai.com",
@@ -134,7 +134,7 @@ fun SettingsScreen(
 
                 // xAI - LLM only
                 ApiKeyField(
-                    label = "Clé API xAI",
+                    label = "xAI API Key",
                     value = uiState.xaiApiKey,
                     onValueChange = viewModel::setXaiApiKey,
                     hint = "console.x.ai",
@@ -144,25 +144,36 @@ fun SettingsScreen(
 
             // LLM System Prompt
             if (uiState.llmProvider != LlmProvider.NONE) {
-                SettingsSection(title = "Prompt système LLM") {
+                SettingsSection(title = "LLM System Prompt") {
                     OutlinedTextField(
                         value = uiState.llmSystemPrompt,
                         onValueChange = viewModel::setLlmSystemPrompt,
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 4,
                         maxLines = 8,
-                        label = { Text("Instructions pour le LLM") }
+                        label = { Text("Instructions for the LLM") }
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        androidx.compose.material3.TextButton(
+                            onClick = viewModel::resetLlmSystemPrompt
+                        ) {
+                            Text("Reset to default")
+                        }
+                    }
                 }
             }
 
             // Info Section
-            SettingsSection(title = "À propos") {
+            SettingsSection(title = "About") {
                 Text(
                     text = """
-                        • Local: Whisper.cpp (hors-ligne, modèle inclus)
-                        • Groq: Whisper v3 Turbo (gratuit 8h/jour)
-                        • LLM: Formate et améliore les transcriptions
+                        • Local: Whisper.cpp (offline, model included)
+                        • Groq: Whisper v3 Turbo (free 8h/day)
+                        • LLM: Formats and enhances transcriptions
                     """.trimIndent(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -246,7 +257,7 @@ private fun LlmProviderSelector(
                 Column {
                     Text(
                         text = when (provider) {
-                            LlmProvider.NONE -> "Désactivé"
+                            LlmProvider.NONE -> "Disabled"
                             LlmProvider.GROQ -> "Groq (Llama 3.3 70B)"
                             LlmProvider.OPENAI -> "OpenAI (GPT-5-mini)"
                             LlmProvider.XAI -> "xAI (Grok 4.1 Fast)"
@@ -254,8 +265,8 @@ private fun LlmProviderSelector(
                     )
                     Text(
                         text = when (provider) {
-                            LlmProvider.NONE -> "Transcription brute"
-                            LlmProvider.GROQ -> "Gratuit, très rapide"
+                            LlmProvider.NONE -> "Raw transcription"
+                            LlmProvider.GROQ -> "Free, very fast"
                             LlmProvider.OPENAI -> "\$0.25/1M input, \$2/1M output"
                             LlmProvider.XAI -> "\$0.20/1M input, \$0.50/1M output"
                         },
@@ -311,14 +322,14 @@ private fun ApiKeyField(
                 if (isActive) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "actif",
+                        text = "active",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                 } else if (isConfigured) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "configure",
+                        text = "configured",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -332,7 +343,7 @@ private fun ApiKeyField(
             IconButton(onClick = { visible = !visible }) {
                 Icon(
                     imageVector = if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (visible) "Masquer" else "Afficher"
+                    contentDescription = if (visible) "Hide" else "Show"
                 )
             }
         }
@@ -369,7 +380,7 @@ private fun ChatFontSizeSelector(
 
         // Preview
         Text(
-            text = "Aperçu:",
+            text = "Preview:",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -401,7 +412,7 @@ private fun ChatFontSizeSelector(
                         .padding(12.dp)
                 ) {
                     Text(
-                        text = "Bonjour, comment ça va ?",
+                        text = "Hello, how are you?",
                         fontSize = currentSize.sp,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -423,7 +434,7 @@ private fun ChatFontSizeSelector(
                         .padding(12.dp)
                 ) {
                     Text(
-                        text = "Je vais très bien, merci !",
+                        text = "I'm doing great, thanks!",
                         fontSize = currentSize.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

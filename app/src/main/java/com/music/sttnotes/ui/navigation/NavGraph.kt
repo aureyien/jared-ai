@@ -60,7 +60,10 @@ fun NavGraph(
                 onNewConversation = { navController.navigate(Screen.Chat.createRoute(null)) },
                 onNewConversationWithRecording = { navController.navigate(Screen.Chat.createRoute(null, startRecording = true)) },
                 onKnowledgeBaseClick = { navController.navigate(Screen.KnowledgeBase.route) },
-                onSettings = { navController.navigate(Screen.Settings.route) }
+                onSettings = { navController.navigate(Screen.Settings.route) },
+                onNoteClick = { noteId -> navController.navigate(Screen.NoteEditor.createRoute(noteId)) },
+                onConversationClick = { convId -> navController.navigate(Screen.Chat.createRoute(conversationId = convId)) },
+                onKbFileClick = { folder, filename -> navController.navigate(Screen.KnowledgeBaseDetail.createRoute(folder, filename)) }
             )
         }
 

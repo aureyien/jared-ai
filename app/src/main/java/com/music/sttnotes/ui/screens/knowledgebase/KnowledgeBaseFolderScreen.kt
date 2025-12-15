@@ -278,7 +278,7 @@ fun KnowledgeBaseFolderScreen(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = "Aucun résultat",
+                                text = "No results",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = EInkGrayMedium
                             )
@@ -305,7 +305,7 @@ fun KnowledgeBaseFolderScreen(
                                         }
                                         pendingFileDeletion = PendingDeletion(
                                             item = filePreview.file.name,
-                                            message = "Fichier supprimé"
+                                            message = "File deleted"
                                         )
                                     },
                                     onCopyContent = {

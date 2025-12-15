@@ -16,6 +16,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// Search result types
+sealed class GlobalSearchResult {
+    data class NoteResult(val note: Note) : GlobalSearchResult()
+    data class ConversationResult(val conversation: ChatConversation) : GlobalSearchResult()
+    data class KbResult(val folder: String, val filename: String, val preview: String) : GlobalSearchResult()
+}
+
 data class DashboardState(
     val notesCount: Int = 0,
     val lastNote: Note? = null,
@@ -25,7 +32,11 @@ data class DashboardState(
     val lastKbFolder: String? = null,
     val lastKbFile: String? = null,
     val isLlmConfigured: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    // Search state
+    val searchQuery: String = "",
+    val searchResults: List<GlobalSearchResult> = emptyList(),
+    val isSearching: Boolean = false
 )
 
 @HiltViewModel
@@ -45,6 +56,66 @@ class DashboardViewModel @Inject constructor(
 
     fun refresh() {
         loadData()
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _state.value = _state.value.copy(searchQuery = query)
+        if (query.isBlank()) {
+            _state.value = _state.value.copy(searchResults = emptyList(), isSearching = false)
+        } else {
+            performSearch(query)
+        }
+    }
+
+    private fun performSearch(query: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isSearching = true)
+            val results = mutableListOf<GlobalSearchResult>()
+            val queryLower = query.lowercase()
+
+            // Search in notes
+            val notes = notesRepository.notes.value
+            notes.filter { note ->
+                note.title.lowercase().contains(queryLower) ||
+                note.content.lowercase().contains(queryLower) ||
+                note.tags.any { it.lowercase().contains(queryLower) }
+            }.take(5).forEach { note ->
+                results.add(GlobalSearchResult.NoteResult(note))
+            }
+
+            // Search in conversations
+            val conversations = chatHistoryRepository.conversations.value
+            conversations.filter { conv ->
+                conv.title.lowercase().contains(queryLower) ||
+                conv.messages.any { msg ->
+                    msg.content.lowercase().contains(queryLower)
+                }
+            }.take(5).forEach { conv ->
+                results.add(GlobalSearchResult.ConversationResult(conv))
+            }
+
+            // Search in KB files
+            val folders = llmOutputRepository.listFolders()
+            var kbCount = 0
+            for (folder in folders) {
+                if (kbCount >= 5) break
+                val files = llmOutputRepository.listFiles(folder)
+                for (file in files) {
+                    if (kbCount >= 5) break
+                    val filename = file.name.removeSuffix(".md")
+                    val content = llmOutputRepository.readFile(folder, file.name).getOrNull() ?: ""
+                    if (filename.lowercase().contains(queryLower) ||
+                        folder.lowercase().contains(queryLower) ||
+                        content.lowercase().contains(queryLower)) {
+                        val preview = content.take(100).replace("\n", " ")
+                        results.add(GlobalSearchResult.KbResult(folder, file.name, preview))
+                        kbCount++
+                    }
+                }
+            }
+
+            _state.value = _state.value.copy(searchResults = results, isSearching = false)
+        }
     }
 
     private fun loadData() {

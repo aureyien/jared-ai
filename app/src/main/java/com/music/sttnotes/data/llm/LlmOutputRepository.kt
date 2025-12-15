@@ -43,19 +43,20 @@ class LlmOutputRepository @Inject constructor(
             val file = File(folderDir, sanitizeFilename(filename))
 
             // Build markdown content with metadata
+            // Transcription originale goes first (after frontmatter), then separator, then LLM response
             val mdContent = buildString {
                 appendLine("---")
                 appendLine("created: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
                 appendLine("folder: $folder")
                 appendLine("---")
                 appendLine()
-                appendLine(content)
+                appendLine("## Original transcription")
+                appendLine()
+                appendLine("> ${rawTranscription.replace("\n", "\n> ")}")
                 appendLine()
                 appendLine("---")
                 appendLine()
-                appendLine("## Transcription originale")
-                appendLine()
-                appendLine("> ${rawTranscription.replace("\n", "\n> ")}")
+                appendLine(content)
             }
 
             file.writeText(mdContent)
@@ -188,14 +189,14 @@ class LlmOutputRepository @Inject constructor(
             val newFile = File(folderDir, sanitizedNewName)
 
             if (newFile.exists() && oldFile.canonicalPath != newFile.canonicalPath) {
-                return@withContext Result.failure(Exception("Un fichier avec ce nom existe déjà"))
+                return@withContext Result.failure(Exception("A file with this name already exists"))
             }
 
             if (oldFile.renameTo(newFile)) {
                 Log.d(TAG, "Renamed file from $oldFilename to $sanitizedNewName")
                 Result.success(sanitizedNewName)
             } else {
-                Result.failure(Exception("Échec du renommage"))
+                Result.failure(Exception("Rename failed"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to rename file", e)

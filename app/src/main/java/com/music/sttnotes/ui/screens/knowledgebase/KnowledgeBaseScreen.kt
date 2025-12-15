@@ -253,12 +253,12 @@ fun KnowledgeBaseScreen(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = "Aucun resultat",
+                                text = "No results",
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "Essayez une autre recherche",
+                                text = "Try another search",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -289,7 +289,7 @@ fun KnowledgeBaseScreen(
                                         // Set new pending deletion
                                         pendingFolderDeletion = PendingDeletion(
                                             item = folder.name,
-                                            message = "Dossier supprimé"
+                                            message = "Folder deleted"
                                         )
                                     }
                                 )
@@ -317,13 +317,13 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Aucun fichier sauvegarde",
+            text = "No saved files",
             style = MaterialTheme.typography.titleMedium,
             color = EInkBlack
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Sauvegardez des reponses IA depuis le Chat",
+            text = "Save AI responses from Chat",
             style = MaterialTheme.typography.bodyMedium,
             color = EInkGrayMedium
         )
@@ -361,7 +361,7 @@ private fun FolderCard(
                     color = EInkBlack
                 )
                 Text(
-                    text = "$fileCount fichier${if (fileCount > 1) "s" else ""}",
+                    text = "$fileCount file${if (fileCount > 1) "s" else ""}",
                     style = MaterialTheme.typography.bodySmall,
                     color = EInkGrayMedium
                 )
@@ -371,14 +371,14 @@ private fun FolderCard(
             EInkIconButton(
                 onClick = { showMenu = true },
                 icon = Icons.Default.Delete,
-                contentDescription = "Supprimer"
+                contentDescription = "Delete"
             )
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Supprimer le dossier") },
+                    text = { Text("Delete folder") },
                     onClick = {
                         showMenu = false
                         onDelete()

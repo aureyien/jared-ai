@@ -10,7 +10,8 @@ data class Note(
     val content: String = "",  // Markdown content
     val tags: List<String> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isArchived: Boolean = false
 )
 
 @Serializable
