@@ -29,21 +29,25 @@ import com.music.sttnotes.ui.components.EInkButton
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TagManagementScreenForKB(
-    folder: String,
-    filename: String,
+    folder: String? = null,
+    filename: String? = null,
     onNavigateBack: () -> Unit,
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
     val folders by viewModel.folders.collectAsState()
     val allTagsSet by viewModel.allTags.collectAsState()
 
-    // Find the current file to get its tags
+    // Find the current file to get its tags (null if no file specified)
     val currentFile = remember(folders, folder, filename) {
-        folders.flatMap { folderWithFiles ->
-            folderWithFiles.files.map { it to folderWithFiles.name }
-        }.find { (file, folderName) ->
-            folderName == folder && file.file.name == filename
-        }?.first
+        if (folder != null && filename != null) {
+            folders.flatMap { folderWithFiles ->
+                folderWithFiles.files.map { it to folderWithFiles.name }
+            }.find { (file, folderName) ->
+                folderName == folder && file.file.name == filename
+            }?.first
+        } else {
+            null
+        }
     }
 
     val strings = rememberStrings()
@@ -108,31 +112,33 @@ fun TagManagementScreenForKB(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            // Add tag input
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                EInkTextField(
-                    value = newTagInput,
-                    onValueChange = { newTagInput = it },
-                    placeholder = strings.addTag,
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                EInkIconButton(
-                    onClick = {
-                        if (newTagInput.isNotBlank()) {
-                            viewModel.addTagToFile(folder, filename, newTagInput.trim().lowercase())
-                            newTagInput = ""
-                        }
-                    },
-                    icon = Icons.Default.Add,
-                    contentDescription = strings.addTag
-                )
+            // Add tag input (only for specific file)
+            if (currentFile != null && folder != null && filename != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    EInkTextField(
+                        value = newTagInput,
+                        onValueChange = { newTagInput = it },
+                        placeholder = strings.addTag,
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    EInkIconButton(
+                        onClick = {
+                            if (newTagInput.isNotBlank()) {
+                                viewModel.addTagToFile(folder, filename, newTagInput.trim().lowercase())
+                                newTagInput = ""
+                            }
+                        },
+                        icon = Icons.Default.Add,
+                        contentDescription = strings.addTag
+                    )
+                }
             }
 
             Spacer(Modifier.height(12.dp))
@@ -159,10 +165,13 @@ fun TagManagementScreenForKB(
                             .fillMaxWidth()
                             .combinedClickable(
                                 onClick = {
-                                    if (isSelected) {
-                                        viewModel.removeTagFromFile(folder, filename, tag)
-                                    } else {
-                                        viewModel.addTagToFile(folder, filename, tag)
+                                    // Only allow toggle if we have a specific file
+                                    if (currentFile != null && folder != null && filename != null) {
+                                        if (isSelected) {
+                                            viewModel.removeTagFromFile(folder, filename, tag)
+                                        } else {
+                                            viewModel.addTagToFile(folder, filename, tag)
+                                        }
                                     }
                                 },
                                 onLongClick = {

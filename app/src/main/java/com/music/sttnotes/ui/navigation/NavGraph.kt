@@ -42,6 +42,7 @@ sealed class Screen(val route: String) {
     data object TagManagementKB : Screen("tag_management_kb/{folder}/{filename}") {
         fun createRoute(folder: String, filename: String) = "tag_management_kb/$folder/$filename"
     }
+    data object TagManagementKBGlobal : Screen("tag_management_kb_global")
     data object KnowledgeBase : Screen("knowledge_base")
     data object KnowledgeBaseFolder : Screen("knowledge_base/folder/{folderName}") {
         fun createRoute(folderName: String) = "knowledge_base/folder/$folderName"
@@ -202,7 +203,8 @@ fun NavGraph(
                 onNewNote = { navController.navigate(Screen.NoteEditor.createRoute(null)) },
                 onNewNoteWithRecording = { navController.navigate(Screen.NoteEditor.createRoute(null, autoRecord = true)) },
                 onNewChat = { navController.navigate(Screen.Chat.createRoute(null)) },
-                onNewChatWithRecording = { navController.navigate(Screen.Chat.createRoute(null, startRecording = true)) }
+                onNewChatWithRecording = { navController.navigate(Screen.Chat.createRoute(null, startRecording = true)) },
+                onManageTags = { navController.navigate(Screen.TagManagementKBGlobal.route) }
             )
         }
 
@@ -254,6 +256,13 @@ fun NavGraph(
             TagManagementScreenForKB(
                 folder = folder,
                 filename = filename,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Global Tag Management for KB (no specific file)
+        composable(route = Screen.TagManagementKBGlobal.route) {
+            TagManagementScreenForKB(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
