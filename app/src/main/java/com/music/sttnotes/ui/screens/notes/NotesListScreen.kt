@@ -187,12 +187,6 @@ fun NotesListScreen(
                             icon = if (isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
                             contentDescription = if (isListView) strings.gridView else strings.listView
                         )
-                        // Tag manager icon
-                        EInkIconButton(
-                            onClick = onManageTagsGlobal,
-                            icon = Icons.Default.LocalOffer,
-                            contentDescription = strings.manageTags
-                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -328,6 +322,7 @@ fun NotesListScreen(
                         Spacer(Modifier.width(8.dp))
                         EInkIconButton(
                             onClick = { showTagFilter = !showTagFilter },
+                            onLongClick = onManageTagsGlobal,
                             icon = Icons.Default.LocalOffer,
                             contentDescription = strings.filterByTags
                         )
