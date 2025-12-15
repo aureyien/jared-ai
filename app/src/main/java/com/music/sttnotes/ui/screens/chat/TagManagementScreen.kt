@@ -113,7 +113,7 @@ fun TagManagementScreen(
             ) {
                 EInkTextField(
                     value = newTagInput,
-                    onValueChange = { newTagInput = it },
+                    onValueChange = { if (it.length <= 20) newTagInput = it },
                     placeholder = strings.addTagToConversation,
                     modifier = Modifier.weight(1f)
                 )

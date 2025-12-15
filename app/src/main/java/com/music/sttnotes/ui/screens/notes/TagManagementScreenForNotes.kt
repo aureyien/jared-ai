@@ -111,7 +111,7 @@ fun TagManagementScreenForNotes(
             ) {
                 EInkTextField(
                     value = newTagInput,
-                    onValueChange = { newTagInput = it },
+                    onValueChange = { if (it.length <= 20) newTagInput = it },
                     placeholder = strings.addTag,
                     singleLine = true,
                     modifier = Modifier.weight(1f)
