@@ -33,9 +33,9 @@ fun TagManagementScreenForNotes(
     onNavigateBack: () -> Unit,
     viewModel: NotesListViewModel = hiltViewModel()
 ) {
-    val notes by viewModel.filteredNotes.collectAsState()
+    val allNotes by viewModel.notes.collectAsState()
     val allTagsSet by viewModel.allTags.collectAsState()
-    val note = notes.find { it.id == noteId } ?: run {
+    val note = allNotes.find { it.id == noteId } ?: run {
         LaunchedEffect(Unit) { onNavigateBack() }
         return
     }
@@ -45,8 +45,8 @@ fun TagManagementScreenForNotes(
     var tagToDelete by remember { mutableStateOf<String?>(null) }
 
     // Calculate tag counts across all notes
-    val tagCounts = remember(notes) {
-        notes
+    val tagCounts = remember(allNotes) {
+        allNotes
             .flatMap { it.tags }
             .groupingBy { it }
             .eachCount()
