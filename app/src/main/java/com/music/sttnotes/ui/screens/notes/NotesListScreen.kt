@@ -89,6 +89,7 @@ fun NotesListScreen(
     onAddNote: () -> Unit,
     onNavigateBack: () -> Unit,
     onManageTags: (String) -> Unit = {},
+    onManageTagsGlobal: () -> Unit = {},
     viewModel: NotesListViewModel = hiltViewModel()
 ) {
     val allNotes by viewModel.filteredNotes.collectAsState()
@@ -185,6 +186,13 @@ fun NotesListScreen(
                             onClick = { isListView = !isListView },
                             icon = if (isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
                             contentDescription = if (isListView) strings.gridView else strings.listView
+                        )
+                        // Tag manager icon
+                        EInkIconButton(
+                            onClick = {},
+                            onLongClick = onManageTagsGlobal,
+                            icon = Icons.Default.LocalOffer,
+                            contentDescription = strings.manageTags
                         )
                     }
                 },

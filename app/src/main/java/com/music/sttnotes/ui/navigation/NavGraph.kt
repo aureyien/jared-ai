@@ -39,6 +39,7 @@ sealed class Screen(val route: String) {
     data object TagManagementNote : Screen("tag_management_note/{noteId}") {
         fun createRoute(noteId: String) = "tag_management_note/$noteId"
     }
+    data object TagManagementNoteGlobal : Screen("tag_management_note_global")
     data object TagManagementKB : Screen("tag_management_kb/{folder}/{filename}") {
         fun createRoute(folder: String, filename: String) = "tag_management_kb/$folder/$filename"
     }
@@ -92,6 +93,9 @@ fun NavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onManageTags = { noteId ->
                     navController.navigate(Screen.TagManagementNote.createRoute(noteId))
+                },
+                onManageTagsGlobal = {
+                    navController.navigate(Screen.TagManagementNoteGlobal.route)
                 }
             )
         }
@@ -131,7 +135,13 @@ fun NavGraph(
             ChatScreen(
                 conversationId = if (conversationId == "new") null else conversationId,
                 startRecording = startRecording,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onManageTags = {
+                    val actualId = if (conversationId == "new") null else conversationId
+                    actualId?.let {
+                        navController.navigate("tag_management/$it")
+                    }
+                }
             )
         }
 
@@ -189,6 +199,14 @@ fun NavGraph(
             val noteId = backStackEntry.arguments?.getString("noteId") ?: return@composable
             TagManagementScreenForNotes(
                 noteId = noteId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Tag Management Note Global
+        composable(Screen.TagManagementNoteGlobal.route) {
+            TagManagementScreenForNotes(
+                noteId = null,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
