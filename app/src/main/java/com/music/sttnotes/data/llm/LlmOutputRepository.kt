@@ -324,11 +324,15 @@ class LlmOutputRepository @Inject constructor(
     }
 
     private fun sanitizePath(path: String): String {
-        return path.replace(Regex("[^a-zA-Z0-9_\\-/]"), "_")
+        // Allow alphanumeric (including accented), spaces, underscores, hyphens, and forward slashes
+        // Remove only dangerous characters: null bytes, path separators (except /), special chars
+        return path.replace(Regex("[\\x00-\\x1F<>:\"|?*\\\\]"), "_")
     }
 
     private fun sanitizeFilename(filename: String): String {
-        val name = filename.replace(Regex("[^a-zA-Z0-9_\\-.]"), "_")
+        // Allow alphanumeric (including accented), spaces, underscores, hyphens, periods
+        // Remove only dangerous characters: null bytes, path separators, special chars
+        val name = filename.replace(Regex("[\\x00-\\x1F<>:\"|?*\\\\/]"), "_")
         return if (name.endsWith(".md")) name else "$name.md"
     }
 }
