@@ -87,3 +87,6 @@ Thumbs.db
 
 # Task files
 .vvhisper/
+
+# Claude Code configuration
+.claude/
