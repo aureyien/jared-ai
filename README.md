@@ -4,6 +4,8 @@
 
 A privacy-focused Android note-taking app with **offline voice transcription** powered by [whisper.cpp](https://github.com/ggerganov/whisper.cpp) and optional **AI-powered chat** integration.
 
+**Optimized for E-Ink Devices**: Designed specifically for Boox Palma 2 Pro and similar e-ink devices with rounded screen corners (24-40dp border radius), high-contrast UI, and zero animations to prevent ghosting.
+
 > **Note**: This entire codebase was generated exclusively by [Claude Code](https://claude.ai/claude-code) (Anthropic's AI coding assistant).
 
 ## Overview
@@ -108,13 +110,6 @@ whisper-notes/
 - JDK 17
 - Android SDK 35 (compile) / SDK 26+ (minimum)
 - NDK (for building whisper.cpp)
-
-### Clone and Build
-
-```bash
-git clone https://github.com/yourusername/whisper-notes.git
-cd whisper-notes
-```
 
 ### Download Whisper Models
 
