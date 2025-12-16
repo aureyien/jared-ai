@@ -1,5 +1,9 @@
 # Jared AI
 
+<img width="412" height="824" alt="Screenshot_20251216-110924" src="https://github.com/user-attachments/assets/e431edcd-a462-4329-849e-d5dc0e50ad2a" />
+<img width="412" height="824" alt="Screenshot_20251216-111010" src="https://github.com/user-attachments/assets/8fd98c1e-0873-461b-bd0d-fea71df46db4" />
+<img width="412" height="824" alt="Screenshot_20251216-111043" src="https://github.com/user-attachments/assets/c42800f0-9625-4b11-a4e2-708f54487cf9" />
+
 > **Jared** = **Jarvis** + **Alfred** — Your personal AI assistant combining the intelligence of Jarvis with the reliability of Alfred.
 
 A privacy-focused Android note-taking app with **offline voice transcription** powered by [whisper.cpp](https://github.com/ggerganov/whisper.cpp) and optional **AI-powered chat** integration.
