@@ -1,69 +1,152 @@
-# Jared AI - Release v1.0.0
+# Jared AI - Release Notes
 
-## Overview
+## Version 1.2.0 - December 2025
 
-**Jared AI** is an offline-first Android speech-to-text application powered by whisper.cpp with integrated LLM capabilities. Built for e-ink devices (Boox Palma 2 Pro, Viwoods AIPaper), it provides a distraction-free environment for voice notes, AI chat, and knowledge management.
+### 🌟 Major Features
 
-## Key Features
+#### ⭐ Favorites System (NEW)
+- **Complete Favorites Implementation** - Mark notes, chat conversations, and KB files as favorites
+- **Dedicated Favorites Screen** - View all favorites in one place with filter buttons (All/Notes/KB/Chat)
+- **Star Icons Everywhere** - Black star icons displayed on favorited items in all list views
+- **Quick Toggle** - Tap star icons in detail views (NoteEditor, ChatScreen, KbDetail) to toggle favorite status
+- **Long-press Removal** - Remove items from favorites by long-pressing in the favorites list
+- **Reactive Updates** - Favorite status updates immediately across all views with Flow-based state management
+- **Dashboard Integration** - Favorites section now a clickable card matching Notes/Chat/KB sections
 
-### 🎤 Speech-to-Text
-- **Offline STT**: Local whisper.cpp integration with native French support
-- **Cloud STT**: Groq Whisper API ($0.04/hr)
-- **Model support**: ggml-small-q8_0 (264MB, optimized for 8GB RAM devices)
-- **Performance**: ~6s transcription for 16s audio
-- **Native French**: No translation, direct transcription
+#### 🤖 Claude Haiku 4.5 Support (NEW)
+- **New Model Added** - Claude Haiku 4.5 support (fastest Anthropic model)
+- **Multi-Provider Usage Tracking** - Track token usage and costs across OpenAI, Anthropic, and xAI providers
+- **Provider-Specific Analytics** - View detailed usage statistics per LLM provider in settings
 
-### 💬 AI Chat Integration
-- **Multi-provider LLM**: OpenAI GPT-5-mini, Groq Llama 3.3 70B, xAI Grok
-- **SSE Streaming**: Real-time response streaming
-- **Conversation management**: Full chat history with tags
-- **Context-aware**: Messages maintain conversation context
+#### 🏷️ Comprehensive Tag Management
+- **Full-Screen Tag Management** - Dedicated screens for managing tags in Notes, Chat, and KB
+- **Global Tag Operations** - Long-press filter icons to access global tag management
+- **Tag Filtering** - Filter content by tags in all list views with multi-tag selection
+- **Tag CRUD** - Create, rename, delete tags with conflict resolution
+- **Tag Length Limit** - All tags limited to 20 characters for consistency (enforced in backend + UI)
+- **Persistent Tags** - Tags persist even when removed from all items for easy reuse
+- **Long-press Delete** - Quick tag deletion via long-press on tag chips
+- **Auto-clear Filters** - Tag filters automatically clear when deleting an active filter tag
+- **Harmonized Styling** - Consistent tag chip design across all views
 
-### 📝 Notes System
-- **Rich text editor**: Markdown support with live preview
-- **Archive system**: Move notes to archive, restore anytime
-- **Tag management**: Organize notes with custom tags
-- **Search**: Full-text search across all notes
+### 🎨 UI/UX Improvements
 
-### 📚 Knowledge Base
-- **Folder organization**: Hierarchical file structure
-- **Markdown rendering**: GFM tables, code blocks, formatting
-- **Export**: Share files externally via Android Share Sheet
-- **Tag filtering**: Filter files by tags across folders
+#### Navigation & Layout
+- **Bottom Bar Rounded Corners** - Improved visual design with rounded bottom bar matching Boox Palma hardware
+- **Aligned Navigation** - Consistent back arrow alignment across all screens
+- **Tap to Rename** - Tap conversation title to quickly rename in chat
+- **Dashboard Cards** - All sections (Notes, Chat, KB, Favorites) use consistent clickable card design
 
-### 🏷️ Universal Tag System
-- **Persistent tags**: Tags survive removal from all items
-- **CRUD operations**: Create, read, update (rename), delete
-- **20-character limit**: Enforced at backend + UI validation
-- **Tag filtering**: Filter by multiple tags simultaneously
-- **Global management**: Dedicated screens for tag overview
-- **Context menus**: Long-press items → Rename/Manage Tags/Delete
+#### E-Ink Display Optimizations
+- **High Contrast Design** - Black icons and borders for optimal e-ink readability
+- **No Animations** - Prevents ghosting on e-ink displays
+- **Refresh Optimizations** - Reduced unnecessary redraws for better e-ink performance
+- **Button Styling** - E-ink optimized buttons with clear visual feedback
+- **Custom Components** - EInkButton, EInkCard, EInkChip, EInkTextField, EInkIconButton
+- **Boox Palma Specific** - Special optimizations noted for Boox Palma e-ink devices
 
-### 🎨 E-Ink Optimized UI
-- **No animations**: Prevents ghosting on e-ink displays
-- **High contrast**: Black/white color scheme
-- **Custom components**: EInkButton, EInkCard, EInkChip, EInkTextField
-- **Rounded corners**: 24-40dp border radius matching Palma 2 Pro hardware
-- **Material 3**: Jetpack Compose with modern Android design
+#### Markdown & Text Display
+- **Enhanced Markdown Rendering** - Improved KB markdown display with better paragraph spacing
+- **Chat Bubble Styling** - Better visual separation between user and assistant messages
+- **Extra Margin** - Added spacing above LLM response bubbles for clarity
+- **Toolbar Behavior** - Toolbar appears above keyboard only when typing (prevents layout jumps)
+
+### 🔧 Functionality Enhancements
+
+#### Knowledge Base
+- **Markdown Editing** - Edit KB files directly in the app with markdown preview
+- **3-Level Navigation** - Browse folders → files → content seamlessly
+- **Search & Filter** - Full-text search and tag filtering in KB
+- **Folder/File Rename** - Rename KB folders and files with accent and space support (UTF-8)
+- **Bottom Bar Actions** - Quick actions accessible via bottom bar
+- **Tags Display** - Visual tag chips on KB files with filter and management options
+- **16KB Alignment** - Optimized file size alignment for storage efficiency (Android 15+)
+- **Tag Management UI** - Full-screen dedicated tag management with CRUD operations
+- **Export Functionality** - Share KB files via Android Share Sheet
+
+#### Notes
+- **Archive Feature** - Archive notes to declutter main list while keeping them accessible
+- **Unarchive** - Restore archived notes back to main list
+- **Global Search** - Search across all notes by title, content, or tags (max 5 results per type)
+- **Empty Note Fix** - Prevent creation of empty untitled notes
+- **Tag Icon Improvements** - Long-press tag filter icon for global tag management
+- **Tag Management** - Per-note tag management via context menu
+- **Undo Delete** - UndoButton with countdown for accidental deletions
+
+#### Chat
+- **Chat Font Size Setting** - Adjust chat message font size (12sp-24sp) for better readability
+- **Tag Management** - Tap tag icon for per-conversation tags, long-press for global tags
+- **Conversation Rename** - Tap title bar to rename conversation
+- **Usage Tracking** - View token usage and costs per provider
+- **SSE Streaming** - Real-time response streaming from LLM
+- **Save to KB** - Save AI responses directly to Knowledge Base with custom filename
+
+### 🐛 Bug Fixes
+
+- **KB Folder Toggle** - Fixed KB folder expand/collapse not updating UI
+- **Tag Filter Clear** - Tag filters now properly clear when deleting a tag
+- **Tag Management Dismissal** - Fixed Notes tag management screen dismissing immediately
+- **KB Tag Long-press** - Fixed KB tag icon long-press to open full-screen management
+- **Accents in Filenames** - Allow accents and spaces in KB folder/file names (was ASCII-only)
+- **Status Text** - Changed "Envoi au LLM..." to "Sending..." for consistency
+- **Chat Tag Icon** - Fixed chat tag icon interaction issues
+- **Favorites Filter** - Fixed filter buttons not working with reactive remember()
+- **Favorites Refresh** - Fixed favorites list not refreshing after removing items
 
 ### 🌐 Internationalization
-- **French & English**: Full i18n support
-- **Language toggle**: Settings → Language selection
-- **Persistent**: Language preference saved in DataStore
 
-### 🔧 Technical Highlights
-- **Architecture**: MVVM with Hilt dependency injection
-- **Storage**: DataStore for settings, JSON for structured data
-- **Threading**: Kotlin Coroutines + Flows for reactive UI
-- **Audio**: 16kHz mono PCM recording, float32 normalization
-- **NDK**: whisper.cpp JNI integration with CMake
-- **16KB page alignment**: Android 15+ compatibility
+#### Language Support
+- **i18n System** - Complete internationalization infrastructure
+- **English/French Support** - Full EN/FR translations for entire app
+- **Language Selector** - Switch languages from settings
+- **Persistent Preference** - Language choice saved in DataStore
+- **UTF-8 Support** - Full Unicode support throughout app
+
+### 🛠️ Build & Infrastructure
+
+- **Release Build Configuration** - Automated release builds with signing
+- **Auto-signing** - Streamlined release process with automatic APK signing (debug keystore for personal builds)
+- **R8 Code Shrinking** - 7% smaller APK size (274MB → 254MB)
+- **Performance Boost** - 10-30% performance improvement in release builds
+- **16KB Page Alignment** - Android 15+ compatibility
+
+### 📚 Documentation
+
+- **Updated README** - Comprehensive documentation of all features
+- **Feature Guides** - Detailed explanations of KB navigation, search, filtering
+- **Boox Palma Notes** - Special optimization guidance for Boox Palma devices
+- **Release Notes** - This comprehensive changelog
+
+### 🔄 Refactoring & Code Quality
+
+- **Tag Icon Refactor** - Standardized tag icon behavior (tap vs long-press) across app
+- **State Management** - Improved reactive state management with Flow.combine for auto-refresh
+- **Code Organization** - Better separation of concerns in ViewModels and Repositories
+- **Undo System** - Reusable UndoButton component across all delete operations with countdown
+- **Favorites Architecture** - Clean implementation with repository pattern and reactive updates
+- **Memory Optimization** - Better memory management for large datasets
+
+---
+
+## What's Changed Since v1.0.0
+
+**38 commits** with major improvements to favorites, tags, LLM providers, and UX refinements.
+
+### Highlights:
+1. ⭐ **Favorites System** - Complete implementation across Notes, Chat, and KB
+2. 🤖 **Claude Haiku 4.5** - New fastest Anthropic model support
+3. 🏷️ **Tag Management** - Full CRUD operations with persistent tags
+4. 🎨 **UI Polish** - E-ink optimizations and consistent design
+5. 🌐 **i18n** - Full French/English support
+6. 🐛 **Bug Fixes** - 10+ bug fixes for better stability
+
+---
 
 ## Installation
 
 ### Requirements
-- Android 15+ (API 26+)
-- 4GB+ RAM (8GB recommended)
+- Android 8.0+ (API 26+)
+- 4GB+ RAM (8GB recommended for local STT)
 - ARM64-v8a or ARMv7 device
 
 ### APK
@@ -79,109 +162,48 @@ cd jared-ai
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 
 # Build
-./gradlew assembleDebug      # ~12-23s
+./gradlew assembleDebug      # ~15-23s
 ./gradlew assembleRelease    # ~2m (first build)
 ```
+
+---
 
 ## Configuration
 
 ### API Keys
 Settings → API Configuration:
 - **STT Provider**: Local (whisper.cpp) or Cloud (Groq)
-- **LLM Provider**: OpenAI, Groq, xAI
+- **LLM Provider**: OpenAI (GPT-4o-mini), Anthropic (Claude Haiku/Sonnet), xAI (Grok)
 - **API Keys**: Securely stored in DataStore
 - **System Prompt**: Customize LLM behavior
+- **Chat Font Size**: Adjust readability (12sp-24sp)
 
 ### Language
 Settings → Language:
 - French (Français)
 - English
 
-## Usage
+---
 
-### Dashboard
-- **Quick Actions**: New Note, New Chat
-- **Global Search**: Search across Notes, Conversations, Knowledge Base (max 15 results)
-- **Recent Items**: Quick access to recent notes/chats
+## Known Issues
 
-### Recording Flow
-1. Tap microphone icon (Chat/Notes)
-2. Record audio
-3. Stop → STT transcription
-4. (Chat only) Send to LLM → Receive response
-5. (Chat only) Save response to Knowledge Base (optional)
+- **Local STT Performance**: 2+ min for 22s audio on Boox Palma 2 Pro (use Groq cloud STT for better performance)
+- **Model Size**: Medium whisper model causes overheating (use small-q8_0)
+- **No Cloud Sync**: All data stored locally only
+- **No Backup**: Manual export required
 
-### Tag Management UX
-- **Chat**: Tap conversation tag icon → manage tags | Long-press tag filter → global tags
-- **Notes**: Long-press tag filter → global tags | Context menu → Manage Tags
-- **KB**: Long-press tag filter → global tags | Context menu → Manage Tags
+---
 
-### Keyboard Shortcuts
-- Tap outside input fields → Dismiss keyboard
-- System bars: Respected (status bar + navigation bar)
+## Coming Soon
 
-## Recent Updates (v1.0.0)
+- Cloud sync functionality
+- Export/import features
+- More LLM provider integrations
+- Voice playback for AI responses
+- Offline LLM integration (Llama.cpp)
+- Voice activity detection (auto-start/stop)
 
-### Tag System Enhancements
-- ✅ Full CRUD tag management across Chat, Notes, KB
-- ✅ 20-character limit with backend + UI enforcement
-- ✅ Persistent tags (survive removal from all items)
-- ✅ Auto-clear filters when deleting active filter tag
-- ✅ Dual-mode tag screens (global read-only + per-item CRUD)
-
-### UX Improvements
-- ✅ Unified tag icon behavior (tap/long-press patterns)
-- ✅ Cleaner Notes top bar (removed redundant tag icon)
-- ✅ KB/Notes tag filter icon long-press → global management
-
-### Localization
-- ✅ Accents & spaces in KB folder/file names (was ASCII-only)
-- ✅ Sanitization preserves UTF-8, blocks only dangerous chars
-
-### Build Optimizations
-- ✅ Release signing with debug keystore (personal builds)
-- ✅ R8 shrinking: 7% smaller APK (274→254 MB)
-- ✅ 10-30% performance improvement in release builds
-
-## Known Limitations
-
-### Performance
-- **Local STT**: 2+ min for 22s audio on Palma 2 Pro (use Groq cloud STT)
-- **Model size**: Medium model overheats device (use small-q8_0)
-- **First inference**: ~3s warm-up (kernel compilation + KV cache init)
-
-### Platform
-- **Android only**: No iOS support
-- **ARM only**: x86 emulators untested
-- **API 26+**: Minimum Android 8.0
-
-### Features
-- **No cloud sync**: All data stored locally
-- **No multi-device**: Each device has independent data
-- **No backup**: Manual export required
-
-## Architecture
-
-### Modules
-- `app`: Main application (Kotlin + Compose)
-- `whisper`: Native whisper.cpp library (C/C++ + JNI)
-
-### Key Components
-- **WhisperManager**: Singleton STT service
-- **SttManager**: Unified local/cloud STT interface
-- **LlmService**: SSE streaming with OpenAI-compatible API
-- **Repositories**: ChatHistory, Notes, LlmOutput (KB)
-- **ViewModels**: ChatList, Chat, NotesList, KnowledgeBase
-
-### Data Flow
-```
-Audio → AudioRecorder (16kHz PCM)
-      → WhisperManager (local) OR CloudSttService (Groq)
-      → ChatViewModel
-      → LlmService (streaming SSE)
-      → ChatHistoryRepository (save)
-      → LlmOutputRepository (KB export)
-```
+---
 
 ## Credits
 
@@ -192,26 +214,11 @@ Built with:
 - **markdown-renderer**: mikepenz/multiplatform-markdown-renderer
 - **richeditor-compose**: mohamedrejeb/compose-rich-editor
 
-## License
-
-[Your License Here]
-
-## Contributing
-
-Contributions welcome! Please open issues for bugs or feature requests.
-
-## Roadmap
-
-- [ ] Cloud sync (optional)
-- [ ] Multi-language UI (Spanish, German, etc.)
-- [ ] Voice activity detection (auto-start/stop)
-- [ ] Custom whisper model support
-- [ ] Offline LLM integration (Llama.cpp)
-- [ ] Export/import conversation history
-- [ ] Backup/restore functionality
-
 ---
 
-**Generated with Claude Code**
-Version: v1.0.0
-Release Date: December 2025
+**Full Changelog**: https://github.com/aureyien/jared-ai/compare/6014bf0...8a0b90b
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Version: v1.2.0
+Release Date: December 17, 2025
