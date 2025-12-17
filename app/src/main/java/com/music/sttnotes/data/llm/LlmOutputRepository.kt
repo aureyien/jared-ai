@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
@@ -24,6 +26,17 @@ class LlmOutputRepository @Inject constructor(
         get() = File(context.filesDir, ROOT_DIR).also { it.mkdirs() }
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault())
+
+    // StateFlow to notify changes in KB files (for reactive UI updates)
+    private val _kbChangeCounter = MutableStateFlow(0)
+    val kbChangeCounter: StateFlow<Int> = _kbChangeCounter
+
+    /**
+     * Emit a change event to trigger observers (Dashboard favorites refresh)
+     */
+    private fun notifyChange() {
+        _kbChangeCounter.value += 1
+    }
 
     /**
      * Save LLM output to a markdown file
@@ -48,6 +61,7 @@ class LlmOutputRepository @Inject constructor(
                 appendLine("---")
                 appendLine("created: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
                 appendLine("folder: $folder")
+                appendLine("favorite: false")
                 appendLine("---")
                 appendLine()
                 appendLine("## Original transcription")
@@ -61,6 +75,7 @@ class LlmOutputRepository @Inject constructor(
 
             file.writeText(mdContent)
             Log.d(TAG, "Saved LLM output to: ${file.absolutePath}")
+            notifyChange()
 
             Result.success(file)
         } catch (e: Exception) {
@@ -243,6 +258,7 @@ class LlmOutputRepository @Inject constructor(
         try {
             val file = File(File(rootDir, sanitizePath(folder)), sanitizeFilename(filename))
             file.delete()
+            notifyChange()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -266,6 +282,7 @@ class LlmOutputRepository @Inject constructor(
 
             if (oldFile.renameTo(newFile)) {
                 Log.d(TAG, "Renamed file from $oldFilename to $sanitizedNewName")
+                notifyChange()
                 Result.success(sanitizedNewName)
             } else {
                 Result.failure(Exception("Rename failed"))
@@ -283,6 +300,7 @@ class LlmOutputRepository @Inject constructor(
         try {
             val folderDir = File(rootDir, sanitizePath(folder))
             folderDir.deleteRecursively()
+            notifyChange()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -305,6 +323,7 @@ class LlmOutputRepository @Inject constructor(
 
             if (oldFolder.renameTo(newFolder)) {
                 Log.d(TAG, "Renamed folder from $oldName to $sanitizedNewName")
+                notifyChange()
                 Result.success(sanitizedNewName)
             } else {
                 Result.failure(Exception("Rename failed"))
@@ -321,6 +340,80 @@ class LlmOutputRepository @Inject constructor(
      */
     fun getFilePath(folder: String, filename: String): File {
         return File(File(rootDir, sanitizePath(folder)), filename)
+    }
+
+    /**
+     * Toggle favorite status for a KB file
+     */
+    suspend fun toggleFileFavorite(folder: String, filename: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val file = File(File(rootDir, sanitizePath(folder)), sanitizeFilename(filename))
+            if (!file.exists()) return@withContext Result.failure(Exception("File not found"))
+
+            val content = file.readText()
+            val (meta, body) = FrontmatterParser.parse(content)
+            val newFavoriteState = !meta.favorite
+
+            // Update metadata with new favorite state
+            val updatedMeta = meta.copy(favorite = newFavoriteState)
+            val updatedContent = FrontmatterParser.combine(updatedMeta, body)
+
+            file.writeText(updatedContent)
+            Log.d(TAG, "Toggled favorite for $filename to $newFavoriteState")
+            notifyChange()
+            Result.success(newFavoriteState)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to toggle favorite", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get favorite status for a KB file
+     * Optimized: reads only first 15 lines (frontmatter) instead of entire file
+     */
+    fun getFileFavoriteStatus(folder: String, filename: String): Boolean {
+        return try {
+            val file = File(File(rootDir, sanitizePath(folder)), sanitizeFilename(filename))
+            if (!file.exists()) return false
+
+            // Read only first 15 lines (frontmatter is always at top)
+            val lines = file.bufferedReader().use { reader ->
+                (1..15).mapNotNull { reader.readLine() }
+            }
+
+            // Check if frontmatter exists
+            if (lines.isEmpty() || lines.first().trim() != "---") return false
+
+            // Find closing --- and favorite field
+            var foundFavorite = false
+            for (line in lines.drop(1)) {
+                if (line.trim() == "---") break  // End of frontmatter
+                if (line.startsWith("favorite:")) {
+                    foundFavorite = line.substringAfter(":").trim().toBoolean()
+                    break
+                }
+            }
+            foundFavorite
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * List all favorite KB files
+     * Returns list of (folder, filename) pairs
+     */
+    fun listFavoriteFiles(): List<Pair<String, String>> {
+        val favorites = mutableListOf<Pair<String, String>>()
+        listFolders().forEach { folder ->
+            listFiles(folder).forEach { file ->
+                if (getFileFavoriteStatus(folder, file.name)) {
+                    favorites.add(folder to file.name)
+                }
+            }
+        }
+        return favorites
     }
 
     private fun sanitizePath(path: String): String {

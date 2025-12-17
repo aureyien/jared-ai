@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -304,7 +306,8 @@ fun ChatListScreen(
                                 )
                             },
                             onManageTags = { onManageTags(conversation.id) },
-                            showTags = showTagFilter
+                            showTags = showTagFilter,
+                            onToggleFavorite = { viewModel.toggleConversationFavorite(conversation.id) }
                         )
                     }
                 }
@@ -333,7 +336,8 @@ private fun ConversationCard(
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onManageTags: () -> Unit,
-    showTags: Boolean
+    showTags: Boolean,
+    onToggleFavorite: () -> Unit
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -366,6 +370,15 @@ private fun ConversationCard(
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(8.dp))
+                    if (conversation.isFavorite) {
+                        Icon(
+                            Icons.Filled.Star,
+                            contentDescription = strings.favorites,
+                            modifier = Modifier.size(18.dp),
+                            tint = EInkBlack
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Text(
                         text = formatRelativeTime(conversation.updatedAt),
                         style = MaterialTheme.typography.bodySmall,
@@ -436,6 +449,19 @@ private fun ConversationCard(
             expanded = showContextMenu,
             onDismissRequest = { showContextMenu = false }
         ) {
+            DropdownMenuItem(
+                text = { Text(if (conversation.isFavorite) strings.removeFromFavorites else strings.addToFavorites) },
+                onClick = {
+                    showContextMenu = false
+                    onToggleFavorite()
+                },
+                leadingIcon = {
+                    Icon(
+                        if (conversation.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = null
+                    )
+                }
+            )
             DropdownMenuItem(
                 text = { Text(strings.rename) },
                 onClick = {

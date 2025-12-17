@@ -14,7 +14,8 @@ data class ChatConversation(
     val messages: List<ChatMessageEntity> = emptyList(),
     val tags: List<String> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isFavorite: Boolean = false
 ) {
     /**
      * Get a preview of the last assistant message (for list display)

@@ -6,7 +6,8 @@ package com.music.sttnotes.data.llm
 data class KbFileMeta(
     val created: String = "",
     val folder: String = "",
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val favorite: Boolean = false
 )
 
 /**
@@ -35,6 +36,7 @@ object FrontmatterParser {
         var created = ""
         var folder = ""
         var tags = emptyList<String>()
+        var favorite = false
 
         frontmatterLines.forEach { line ->
             when {
@@ -44,10 +46,11 @@ object FrontmatterParser {
                     val tagsStr = line.substringAfter(":").trim()
                     tags = parseTags(tagsStr)
                 }
+                line.startsWith("favorite:") -> favorite = line.substringAfter(":").trim().toBoolean()
             }
         }
 
-        return KbFileMeta(created, folder, tags) to bodyContent
+        return KbFileMeta(created, folder, tags, favorite) to bodyContent
     }
 
     /**
@@ -75,6 +78,7 @@ object FrontmatterParser {
             if (meta.created.isNotEmpty()) appendLine("created: ${meta.created}")
             if (meta.folder.isNotEmpty()) appendLine("folder: ${meta.folder}")
             if (meta.tags.isNotEmpty()) appendLine("tags: [${meta.tags.joinToString(", ")}]")
+            appendLine("favorite: ${meta.favorite}")
             appendLine("---")
             appendLine()
         }

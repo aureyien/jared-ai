@@ -75,6 +75,10 @@ class KnowledgeBaseViewModel @Inject constructor(
     private val _selectedTagFilters = MutableStateFlow<Set<String>>(emptySet())
     val selectedTagFilters: StateFlow<Set<String>> = _selectedTagFilters
 
+    // Favorite status for current file
+    private val _isFavorite = MutableStateFlow(false)
+    val isFavorite: StateFlow<Boolean> = _isFavorite
+
     private var currentMeta: KbFileMeta? = null
     private var currentFolder: String? = null
     private var currentFilename: String? = null
@@ -218,6 +222,7 @@ class KnowledgeBaseViewModel @Inject constructor(
             llmOutputRepository.readFileWithMeta(folder, filename).onSuccess { (meta, content) ->
                 currentMeta = meta
                 _fileTags.value = meta.tags
+                _isFavorite.value = meta.favorite
                 // Only store the body content, not the frontmatter
                 _fileContent.value = content
             }.onFailure {
@@ -227,6 +232,7 @@ class KnowledgeBaseViewModel @Inject constructor(
                     _fileContent.value = bodyContent
                     currentMeta = meta
                     _fileTags.value = meta.tags
+                    _isFavorite.value = meta.favorite
                 }
             }
         }
@@ -357,6 +363,18 @@ class KnowledgeBaseViewModel @Inject constructor(
             llmOutputRepository.getFilePath(folder, filename).readText()
         } catch (e: Exception) {
             null
+        }
+    }
+
+    fun isFileFavorite(folder: String, filename: String): Boolean {
+        return llmOutputRepository.getFileFavoriteStatus(folder, filename)
+    }
+
+    fun toggleFileFavorite(folder: String, filename: String) {
+        viewModelScope.launch {
+            llmOutputRepository.toggleFileFavorite(folder, filename)
+            // Update local state immediately
+            _isFavorite.value = !_isFavorite.value
         }
     }
 }

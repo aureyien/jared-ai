@@ -90,6 +90,10 @@ class ChatViewModel @Inject constructor(
     private val _conversationTitle = MutableStateFlow("")
     val conversationTitle: StateFlow<String> = _conversationTitle
 
+    // Conversation favorite status
+    private val _isFavorite = MutableStateFlow(false)
+    val isFavorite: StateFlow<Boolean> = _isFavorite
+
     // Current LLM provider (can be changed from UI)
     private val _currentLlmProvider = MutableStateFlow(LlmProvider.OPENAI)
     val currentLlmProvider: StateFlow<LlmProvider> = _currentLlmProvider
@@ -160,6 +164,7 @@ class ChatViewModel @Inject constructor(
         if (conversation != null) {
             _currentConversationId.value = conversationId
             _conversationTitle.value = conversation.title
+            _isFavorite.value = conversation.isFavorite
             _messages.value = conversation.messages.map { entity ->
                 UiChatMessage(
                     id = entity.id,
@@ -462,6 +467,15 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             chatHistoryRepository.updateConversationTitle(convId, newTitle)
             _conversationTitle.value = newTitle.trim()
+        }
+    }
+
+    fun toggleFavorite() {
+        val convId = _currentConversationId.value ?: return
+        viewModelScope.launch {
+            chatHistoryRepository.toggleConversationFavorite(convId)
+            // Update local state
+            _isFavorite.value = !_isFavorite.value
         }
     }
 

@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
@@ -110,6 +112,7 @@ fun ChatScreen(
     val inputText by viewModel.inputText.collectAsState()
     val whisperReady by viewModel.whisperReady.collectAsState()
     val conversationTitle by viewModel.conversationTitle.collectAsState()
+    val isFavoriteConversation by viewModel.isFavorite.collectAsState()
     val existingFolders by viewModel.existingFolders.collectAsState()
     val currentLlmProvider by viewModel.currentLlmProvider.collectAsState()
     val actualConversationId by viewModel.currentConversationId.collectAsState()
@@ -267,6 +270,14 @@ fun ChatScreen(
                             }
                         }
                     }
+                }
+                // Favorite button (only for existing conversations)
+                if (actualConversationId != null) {
+                    EInkIconButton(
+                        onClick = { viewModel.toggleFavorite() },
+                        icon = if (isFavoriteConversation) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (isFavoriteConversation) strings.removeFromFavorites else strings.addToFavorites
+                    )
                 }
                 // Tag manager icon
                 EInkIconButton(

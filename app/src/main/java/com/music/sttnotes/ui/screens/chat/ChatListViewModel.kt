@@ -103,4 +103,10 @@ class ChatListViewModel @Inject constructor(
             }
         }
     }
+
+    fun toggleConversationFavorite(conversationId: String) {
+        viewModelScope.launch {
+            chatHistoryRepository.toggleConversationFavorite(conversationId)
+        }
+    }
 }

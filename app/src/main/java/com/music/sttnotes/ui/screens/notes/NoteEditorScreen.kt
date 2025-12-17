@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
@@ -183,6 +185,16 @@ fun NoteEditorScreen(
                     }
                 },
                 actions = {
+                    // Favorite button (only for existing notes)
+                    if (noteId != null) {
+                        IconButton(onClick = { viewModel.toggleFavorite() }) {
+                            Icon(
+                                if (note.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                contentDescription = if (note.isFavorite) strings.removeFromFavorites else strings.addToFavorites,
+                                tint = EInkBlack
+                            )
+                        }
+                    }
                     // Archive button (only for existing notes)
                     if (noteId != null) {
                         IconButton(onClick = {

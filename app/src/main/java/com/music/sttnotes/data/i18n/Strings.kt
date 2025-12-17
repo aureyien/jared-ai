@@ -206,6 +206,16 @@ interface StringResources {
 
     // KB Folder
     val renameFolder: String
+
+    // Favorites
+    val favorites: String
+    val allFavorites: String
+    val filterNotes: String
+    val filterChat: String
+    val filterKb: String
+    val noFavoritesYet: String
+    val addToFavorites: String
+    val removeFromFavorites: String
 }
 
 object EnglishStrings : StringResources {
@@ -385,6 +395,16 @@ object EnglishStrings : StringResources {
 
     // KB Folder
     override val renameFolder = "Rename folder"
+
+    // Favorites
+    override val favorites = "Favorites"
+    override val allFavorites = "All"
+    override val filterNotes = "Notes"
+    override val filterChat = "Chat"
+    override val filterKb = "KB"
+    override val noFavoritesYet = "No favorites yet"
+    override val addToFavorites = "Add to favorites"
+    override val removeFromFavorites = "Remove from favorites"
 }
 
 object FrenchStrings : StringResources {
@@ -564,6 +584,16 @@ object FrenchStrings : StringResources {
 
     // KB Folder
     override val renameFolder = "Renommer le dossier"
+
+    // Favorites
+    override val favorites = "Favoris"
+    override val allFavorites = "Tous"
+    override val filterNotes = "Notes"
+    override val filterChat = "Chat"
+    override val filterKb = "KB"
+    override val noFavoritesYet = "Aucun favori pour le moment"
+    override val addToFavorites = "Ajouter aux favoris"
+    override val removeFromFavorites = "Retirer des favoris"
 }
 
 /**

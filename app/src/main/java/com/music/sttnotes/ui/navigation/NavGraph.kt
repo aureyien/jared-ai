@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.music.sttnotes.ui.screens.chat.ChatListScreen
 import com.music.sttnotes.ui.screens.chat.ChatScreen
 import com.music.sttnotes.ui.screens.chat.TagManagementScreen
+import com.music.sttnotes.ui.screens.favorites.FavoritesScreen
 import com.music.sttnotes.ui.screens.home.DashboardScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseDetailScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseFolderScreen
@@ -22,6 +23,7 @@ import com.music.sttnotes.ui.screens.settings.SettingsScreen
 
 sealed class Screen(val route: String) {
     data object Dashboard : Screen("dashboard")
+    data object Favorites : Screen("favorites")
     data object NotesList : Screen("notes_list")
     data object NoteEditor : Screen("note_editor/{noteId}?autoRecord={autoRecord}") {
         fun createRoute(noteId: String?, autoRecord: Boolean = false) =
@@ -75,7 +77,18 @@ fun NavGraph(
                 onNewConversation = { navController.navigate(Screen.Chat.createRoute(null)) },
                 onNewConversationWithRecording = { navController.navigate(Screen.Chat.createRoute(null, startRecording = true)) },
                 onKnowledgeBaseClick = { navController.navigate(Screen.KnowledgeBase.route) },
+                onFavoritesClick = { navController.navigate(Screen.Favorites.route) },
                 onSettings = { navController.navigate(Screen.Settings.route) },
+                onNoteClick = { noteId -> navController.navigate(Screen.NoteEditor.createRoute(noteId)) },
+                onConversationClick = { convId -> navController.navigate(Screen.Chat.createRoute(conversationId = convId)) },
+                onKbFileClick = { folder, filename -> navController.navigate(Screen.KnowledgeBaseDetail.createRoute(folder, filename)) }
+            )
+        }
+
+        // Favorites screen
+        composable(Screen.Favorites.route) {
+            FavoritesScreen(
+                onBack = { navController.popBackStack() },
                 onNoteClick = { noteId -> navController.navigate(Screen.NoteEditor.createRoute(noteId)) },
                 onConversationClick = { convId -> navController.navigate(Screen.Chat.createRoute(conversationId = convId)) },
                 onKbFileClick = { folder, filename -> navController.navigate(Screen.KnowledgeBaseDetail.createRoute(folder, filename)) }

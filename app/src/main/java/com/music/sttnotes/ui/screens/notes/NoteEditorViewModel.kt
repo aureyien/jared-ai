@@ -208,12 +208,23 @@ class NoteEditorViewModel @Inject constructor(
         viewModelScope.launch {
             // Save first to persist any changes
             val content = richTextState.toMarkdown()
-            if (content.isNotBlank() || !isNewNote) {
+            val noteToArchive = if (content.isNotBlank() || !isNewNote) {
                 val currentNote = _note.value.copy(content = content)
                 notesRepository.saveNote(currentNote)
+                currentNote
+            } else {
+                _note.value
             }
-            // Then archive
-            notesRepository.archiveNote(_note.value.id)
+            // Then archive (wait for save to complete)
+            notesRepository.archiveNote(noteToArchive.id)
+        }
+    }
+
+    fun toggleFavorite() {
+        viewModelScope.launch {
+            notesRepository.toggleNoteFavorite(_note.value.id)
+            // Update local state
+            _note.value = _note.value.copy(isFavorite = !_note.value.isFavorite)
         }
     }
 

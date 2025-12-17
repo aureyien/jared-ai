@@ -150,7 +150,12 @@ class NotesRepository @Inject constructor(
 
     suspend fun archiveNote(noteId: String) = withContext(Dispatchers.IO) {
         mutex.withLock {
-            val noteToArchive = _notes.value.find { it.id == noteId } ?: return@withLock
+            val noteToArchive = _notes.value.find { it.id == noteId }
+            if (noteToArchive == null) {
+                // Note already archived or doesn't exist
+                Log.w(TAG, "Cannot archive note $noteId - not found in active notes")
+                return@withLock
+            }
             val archivedNote = noteToArchive.copy(isArchived = true, updatedAt = System.currentTimeMillis())
 
             val currentNotes = _notes.value.filter { it.id != noteId }
@@ -161,6 +166,7 @@ class NotesRepository @Inject constructor(
             _archivedNotes.value = currentArchived.sortedByDescending { it.updatedAt }
             updateAllTags(currentNotes)
             persistNotes(currentNotes + currentArchived)
+            Log.d(TAG, "Archived note $noteId")
         }
     }
 
@@ -202,6 +208,24 @@ class NotesRepository @Inject constructor(
     fun searchByTag(tag: String): List<Note> {
         val matchingIds = indexBuilder.searchByTag(tag)
         return _notes.value.filter { it.id in matchingIds }
+    }
+
+    suspend fun toggleNoteFavorite(noteId: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val currentNotes = _notes.value.toMutableList()
+            val index = currentNotes.indexOfFirst { it.id == noteId }
+            if (index >= 0) {
+                val updated = currentNotes[index].copy(isFavorite = !currentNotes[index].isFavorite)
+                currentNotes[index] = updated
+                _notes.value = currentNotes.sortedByDescending { it.updatedAt }
+                persistNotes(currentNotes)
+                Log.d(TAG, "Toggled favorite for note $noteId to ${updated.isFavorite}")
+            }
+        }
+    }
+
+    fun getFavoriteNotes(): List<Note> {
+        return _notes.value.filter { it.isFavorite }
     }
 
     private fun rebuildIndex(notes: List<Note>) {

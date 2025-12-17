@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,6 +67,7 @@ fun DashboardScreen(
     onNewConversation: () -> Unit,
     onNewConversationWithRecording: () -> Unit,
     onKnowledgeBaseClick: () -> Unit,
+    onFavoritesClick: () -> Unit,
     onSettings: () -> Unit,
     onNoteClick: (String) -> Unit = {},
     onConversationClick: (String) -> Unit = {},
@@ -180,16 +183,50 @@ fun DashboardScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-            // Notes Section
+                    // Favorites Section - clickable card
+                    if (state.favoriteItems.isNotEmpty()) {
+                        DashboardSection(
+                            title = strings.favorites,
+                            count = state.favoriteItems.size,
+                            icon = Icons.Filled.Star,
+                            onClick = onFavoritesClick,
+                            onNew = null,
+                            isEmpty = false,
+                            emptyText = "",
+                            newButtonText = null
+                        ) {
+                            // Show preview of favorite items types
+                            val noteCount = state.favoriteItems.count { it is FavoriteItem.NoteItem }
+                            val chatCount = state.favoriteItems.count { it is FavoriteItem.ConversationItem }
+                            val kbCount = state.favoriteItems.count { it is FavoriteItem.KbItem }
+
+                            Text(
+                                text = buildString {
+                                    val parts = mutableListOf<String>()
+                                    if (noteCount > 0) parts.add("$noteCount ${strings.filterNotes}")
+                                    if (chatCount > 0) parts.add("$chatCount ${strings.filterChat}")
+                                    if (kbCount > 0) parts.add("$kbCount ${strings.filterKb}")
+                                    append(parts.joinToString(" • "))
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = EInkGrayMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+            // Notes Section - always clickable (to access archives even when no active notes)
             DashboardSection(
                 title = strings.notes,
                 count = state.notesCount,
                 icon = Icons.Default.Description,
-                onClick = onNotesClick,
+                onClick = onNotesClick,  // Always enabled - can access archives
                 onNew = null,
                 isEmpty = state.notesCount == 0,
                 emptyText = strings.noNotes,
-                newButtonText = null
+                newButtonText = null,
+                alwaysClickable = true  // Enable click to access archives
             ) {
                 state.lastNote?.let { note ->
                     Text(
@@ -351,11 +388,12 @@ private fun DashboardSection(
     isEmpty: Boolean,
     emptyText: String,
     newButtonText: String?,
+    alwaysClickable: Boolean = false,  // Allow click even when empty (e.g., to access archives)
     content: @Composable () -> Unit
 ) {
     EInkCard(
         modifier = Modifier.fillMaxWidth(),
-        onClick = if (!isEmpty) onClick else null
+        onClick = if (!isEmpty || alwaysClickable) onClick else null
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

@@ -23,6 +23,17 @@ sealed class GlobalSearchResult {
     data class KbResult(val folder: String, val filename: String, val preview: String) : GlobalSearchResult()
 }
 
+// Favorite filter types
+enum class FavoriteFilter {
+    ALL, NOTES, KB, CHAT
+}
+
+sealed class FavoriteItem {
+    data class NoteItem(val note: Note) : FavoriteItem()
+    data class ConversationItem(val conversation: ChatConversation) : FavoriteItem()
+    data class KbItem(val folder: String, val filename: String) : FavoriteItem()
+}
+
 data class DashboardState(
     val notesCount: Int = 0,
     val lastNote: Note? = null,
@@ -36,7 +47,10 @@ data class DashboardState(
     // Search state
     val searchQuery: String = "",
     val searchResults: List<GlobalSearchResult> = emptyList(),
-    val isSearching: Boolean = false
+    val isSearching: Boolean = false,
+    // Favorites state
+    val favoriteItems: List<FavoriteItem> = emptyList(),
+    val favoriteFilter: FavoriteFilter = FavoriteFilter.ALL
 )
 
 @HiltViewModel
@@ -52,10 +66,50 @@ class DashboardViewModel @Inject constructor(
 
     init {
         loadData()
+        observeFavoritesChanges()
     }
 
     fun refresh() {
         loadData()
+    }
+
+    /**
+     * Observe changes in repositories to auto-refresh favorites
+     */
+    private fun observeFavoritesChanges() {
+        viewModelScope.launch {
+            // Watch for changes in notes, conversations, and KB files
+            kotlinx.coroutines.flow.combine(
+                notesRepository.notes,
+                chatHistoryRepository.conversations,
+                llmOutputRepository.kbChangeCounter
+            ) { _, _, _ ->
+                // Trigger on any change
+            }.collect {
+                // Refresh favorites when data changes
+                refreshFavorites()
+            }
+        }
+    }
+
+    /**
+     * Refresh only favorites without full reload
+     */
+    private fun refreshFavorites() {
+        viewModelScope.launch {
+            val favoriteNotes = notesRepository.getFavoriteNotes()
+            val favoriteConversations = chatHistoryRepository.getFavoriteConversations()
+            val favoriteKbFiles = llmOutputRepository.listFavoriteFiles()
+
+            val favoriteItems = mutableListOf<FavoriteItem>()
+            favoriteNotes.forEach { favoriteItems.add(FavoriteItem.NoteItem(it)) }
+            favoriteConversations.forEach { favoriteItems.add(FavoriteItem.ConversationItem(it)) }
+            favoriteKbFiles.forEach { (folder, filename) ->
+                favoriteItems.add(FavoriteItem.KbItem(folder, filename))
+            }
+
+            _state.value = _state.value.copy(favoriteItems = favoriteItems)
+        }
     }
 
     fun onSearchQueryChange(query: String) {
@@ -118,6 +172,20 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun setFavoriteFilter(filter: FavoriteFilter) {
+        _state.value = _state.value.copy(favoriteFilter = filter)
+    }
+
+    fun getFilteredFavorites(): List<FavoriteItem> {
+        val items = _state.value.favoriteItems
+        return when (_state.value.favoriteFilter) {
+            FavoriteFilter.ALL -> items
+            FavoriteFilter.NOTES -> items.filterIsInstance<FavoriteItem.NoteItem>()
+            FavoriteFilter.KB -> items.filterIsInstance<FavoriteItem.KbItem>()
+            FavoriteFilter.CHAT -> items.filterIsInstance<FavoriteItem.ConversationItem>()
+        }
+    }
+
     private fun loadData() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
@@ -151,6 +219,18 @@ class DashboardViewModel @Inject constructor(
                 }
             }
 
+            // Load favorite items
+            val favoriteNotes = notesRepository.getFavoriteNotes()
+            val favoriteConversations = chatHistoryRepository.getFavoriteConversations()
+            val favoriteKbFiles = llmOutputRepository.listFavoriteFiles()
+
+            val favoriteItems = mutableListOf<FavoriteItem>()
+            favoriteNotes.forEach { favoriteItems.add(FavoriteItem.NoteItem(it)) }
+            favoriteConversations.forEach { favoriteItems.add(FavoriteItem.ConversationItem(it)) }
+            favoriteKbFiles.forEach { (folder, filename) ->
+                favoriteItems.add(FavoriteItem.KbItem(folder, filename))
+            }
+
             // Check LLM configuration
             val llmProvider = apiConfig.llmProvider.first()
             val isLlmConfigured = when (llmProvider) {
@@ -170,8 +250,29 @@ class DashboardViewModel @Inject constructor(
                 lastKbFolder = lastFolder,
                 lastKbFile = lastFile,
                 isLlmConfigured = isLlmConfigured,
-                isLoading = false
+                isLoading = false,
+                favoriteItems = favoriteItems,
+                favoriteFilter = FavoriteFilter.ALL
             )
+        }
+    }
+
+    // Toggle favorite methods
+    fun toggleNoteFavorite(noteId: String) {
+        viewModelScope.launch {
+            notesRepository.toggleNoteFavorite(noteId)
+        }
+    }
+
+    fun toggleConversationFavorite(conversationId: String) {
+        viewModelScope.launch {
+            chatHistoryRepository.toggleConversationFavorite(conversationId)
+        }
+    }
+
+    fun toggleFileFavorite(folder: String, filename: String) {
+        viewModelScope.launch {
+            llmOutputRepository.toggleFileFavorite(folder, filename)
         }
     }
 }

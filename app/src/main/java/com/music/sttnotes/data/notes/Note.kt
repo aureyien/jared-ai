@@ -11,7 +11,8 @@ data class Note(
     val tags: List<String> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+    val isFavorite: Boolean = false
 )
 
 @Serializable

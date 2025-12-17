@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -319,7 +320,8 @@ fun KnowledgeBaseFolderScreen(
                                     },
                                     onCopyContent = {
                                         viewModel.getFileContent(folderName, filePreview.file.name)
-                                    }
+                                    },
+                                    isFavorite = viewModel.isFileFavorite(folderName, filePreview.file.name)
                                 )
                             }
                         }
@@ -366,7 +368,8 @@ private fun FolderFileItem(
     file: FilePreview,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onCopyContent: () -> String?
+    onCopyContent: () -> String?,
+    isFavorite: Boolean = false
 ) {
     val strings = rememberStrings()
     var showMenu by remember { mutableStateOf(false) }
@@ -402,6 +405,15 @@ private fun FolderFileItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = EInkGrayMedium
                     )
+                }
+                if (isFavorite) {
+                    Icon(
+                        Icons.Filled.Star,
+                        contentDescription = strings.favorites,
+                        modifier = Modifier.size(18.dp),
+                        tint = EInkBlack
+                    )
+                    Spacer(Modifier.width(8.dp))
                 }
                 EInkIconButton(
                     onClick = { showMenu = true },

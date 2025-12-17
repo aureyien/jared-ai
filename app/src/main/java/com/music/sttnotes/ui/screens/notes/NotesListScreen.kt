@@ -39,7 +39,9 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Unarchive
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -404,7 +406,8 @@ fun NotesListScreen(
                                             message = strings.noteDeleted
                                         )
                                     },
-                                    onManageTags = { onManageTags(note.id) }
+                                    onManageTags = { onManageTags(note.id) },
+                                    onToggleFavorite = { viewModel.toggleNoteFavorite(note.id) }
                                 )
                             }
                         }
@@ -440,7 +443,8 @@ fun NotesListScreen(
                                             message = strings.noteDeleted
                                         )
                                     },
-                                    onManageTags = { onManageTags(note.id) }
+                                    onManageTags = { onManageTags(note.id) },
+                                    onToggleFavorite = { viewModel.toggleNoteFavorite(note.id) }
                                 )
                             }
                         }
@@ -461,7 +465,8 @@ private fun NoteListItem(
     onClick: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
-    onManageTags: () -> Unit = {}
+    onManageTags: () -> Unit = {},
+    onToggleFavorite: () -> Unit
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -552,6 +557,17 @@ private fun NoteListItem(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
+                // Favorite star icon
+                if (note.isFavorite) {
+                    Icon(
+                        Icons.Filled.Star,
+                        contentDescription = strings.favorites,
+                        modifier = Modifier.size(18.dp),
+                        tint = EInkBlack
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
                 // Delete button
                 EInkIconButton(
                     onClick = onDelete,
@@ -566,6 +582,20 @@ private fun NoteListItem(
             expanded = showContextMenu,
             onDismissRequest = { showContextMenu = false }
         ) {
+            DropdownMenuItem(
+                text = { Text(if (note.isFavorite) strings.removeFromFavorites else strings.addToFavorites) },
+                onClick = {
+                    showContextMenu = false
+                    onToggleFavorite()
+                },
+                leadingIcon = {
+                    Icon(
+                        if (note.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            )
             DropdownMenuItem(
                 text = { Text(strings.manageTags) },
                 onClick = {
@@ -601,7 +631,8 @@ private fun NoteGridCard(
     onClick: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
-    onManageTags: () -> Unit = {}
+    onManageTags: () -> Unit = {},
+    onToggleFavorite: () -> Unit
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -698,6 +729,20 @@ private fun NoteGridCard(
             expanded = showContextMenu,
             onDismissRequest = { showContextMenu = false }
         ) {
+            DropdownMenuItem(
+                text = { Text(if (note.isFavorite) strings.removeFromFavorites else strings.addToFavorites) },
+                onClick = {
+                    showContextMenu = false
+                    onToggleFavorite()
+                },
+                leadingIcon = {
+                    Icon(
+                        if (note.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            )
             DropdownMenuItem(
                 text = { Text(strings.manageTags) },
                 onClick = {

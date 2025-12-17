@@ -110,4 +110,10 @@ class NotesListViewModel @Inject constructor(
             }
         }
     }
+
+    fun toggleNoteFavorite(noteId: String) {
+        viewModelScope.launch {
+            notesRepository.toggleNoteFavorite(noteId)
+        }
+    }
 }

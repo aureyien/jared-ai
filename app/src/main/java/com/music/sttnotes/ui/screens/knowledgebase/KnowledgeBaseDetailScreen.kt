@@ -31,7 +31,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -91,6 +93,7 @@ fun KnowledgeBaseDetailScreen(
     val fileTags by viewModel.fileTags.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
     val tagInput by viewModel.tagInput.collectAsState()
+    val isFavorite by viewModel.isFavorite.collectAsState()
     var showUndoSnackbar by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showTagsSection by remember { mutableStateOf(false) }
@@ -164,6 +167,12 @@ fun KnowledgeBaseDetailScreen(
                     )
                 },
                 actions = {
+                    // Favorite button
+                    EInkIconButton(
+                        onClick = { viewModel.toggleFileFavorite(folder, filename) },
+                        icon = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites"
+                    )
                     // Manage tags button
                     EInkIconButton(
                         onClick = onManageTags,

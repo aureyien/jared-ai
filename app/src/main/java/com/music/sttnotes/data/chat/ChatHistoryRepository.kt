@@ -234,6 +234,24 @@ class ChatHistoryRepository @Inject constructor(
         return _conversations.value.find { it.id == id }
     }
 
+    suspend fun toggleConversationFavorite(conversationId: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val current = _conversations.value.toMutableList()
+            val index = current.indexOfFirst { it.id == conversationId }
+            if (index >= 0) {
+                val updated = current[index].copy(isFavorite = !current[index].isFavorite)
+                current[index] = updated
+                _conversations.value = current.sortedByDescending { it.updatedAt }
+                persistConversations(current)
+                Log.d(TAG, "Toggled favorite for conversation $conversationId to ${updated.isFavorite}")
+            }
+        }
+    }
+
+    fun getFavoriteConversations(): List<ChatConversation> {
+        return _conversations.value.filter { it.isFavorite }
+    }
+
     private suspend fun persistConversations(conversations: List<ChatConversation>) {
         try {
             val data = ChatHistoryData(
