@@ -522,7 +522,8 @@ private fun RenameDialog(
                 value = newTitle,
                 onValueChange = { newTitle = it },
                 placeholder = strings.newTitle,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                showClearButton = true
             )
         },
         confirmButton = {

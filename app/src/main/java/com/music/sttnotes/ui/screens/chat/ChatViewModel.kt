@@ -22,6 +22,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import android.util.Log
@@ -65,7 +66,8 @@ class ChatViewModel @Inject constructor(
     private val navConversationId: String? = savedStateHandle.get<String>("conversationId")
         ?.takeIf { it != "new" }
 
-    private var currentConversationId: String? = navConversationId
+    private val _currentConversationId = MutableStateFlow<String?>(navConversationId)
+    val currentConversationId: StateFlow<String?> = _currentConversationId.asStateFlow()
 
     private val _messages = MutableStateFlow<List<UiChatMessage>>(emptyList())
     val messages: StateFlow<List<UiChatMessage>> = _messages
@@ -139,9 +141,10 @@ class ChatViewModel @Inject constructor(
 
     private suspend fun refreshAvailableProviders() {
         val available = mutableListOf<LlmProvider>()
-        // Only GPT and Grok for LLM analysis (Groq is STT only)
+        // Only GPT, Grok, and Claude for LLM analysis (Groq is STT only)
         if (!apiConfig.openaiApiKey.first().isNullOrBlank()) available.add(LlmProvider.OPENAI)
         if (!apiConfig.xaiApiKey.first().isNullOrBlank()) available.add(LlmProvider.XAI)
+        if (!apiConfig.anthropicApiKey.first().isNullOrBlank()) available.add(LlmProvider.ANTHROPIC)
         _availableLlmProviders.value = available
     }
 
@@ -155,7 +158,7 @@ class ChatViewModel @Inject constructor(
     private fun loadConversation(conversationId: String) {
         val conversation = chatHistoryRepository.getConversation(conversationId)
         if (conversation != null) {
-            currentConversationId = conversationId
+            _currentConversationId.value = conversationId
             _conversationTitle.value = conversation.title
             _messages.value = conversation.messages.map { entity ->
                 UiChatMessage(
@@ -208,9 +211,9 @@ class ChatViewModel @Inject constructor(
     private suspend fun ensureConversation(firstMessage: String) {
         // Skip creating conversation in ephemeral mode
         if (_isEphemeral.value) return
-        if (currentConversationId == null) {
+        if (_currentConversationId.value == null) {
             val conversation = chatHistoryRepository.createConversation(firstMessage)
-            currentConversationId = conversation.id
+            _currentConversationId.value = conversation.id
             _conversationTitle.value = conversation.title
         }
     }
@@ -218,7 +221,7 @@ class ChatViewModel @Inject constructor(
     private suspend fun persistMessage(uiMessage: UiChatMessage) {
         // Skip persisting messages in ephemeral mode
         if (_isEphemeral.value) return
-        currentConversationId?.let { convId ->
+        _currentConversationId.value?.let { convId ->
             val entity = ChatMessageEntity(
                 id = uiMessage.id,
                 role = uiMessage.role,
@@ -310,6 +313,7 @@ class ChatViewModel @Inject constructor(
             LlmProvider.GROQ -> apiConfig.groqApiKey.first()
             LlmProvider.OPENAI -> apiConfig.openaiApiKey.first()
             LlmProvider.XAI -> apiConfig.xaiApiKey.first()
+            LlmProvider.ANTHROPIC -> apiConfig.anthropicApiKey.first()
             LlmProvider.NONE -> null
         }
 
@@ -425,7 +429,7 @@ class ChatViewModel @Inject constructor(
                             if (msg.id == messageId) msg.copy(savedToFile = file.absolutePath) else msg
                         }
                         // Update in repository
-                        currentConversationId?.let { convId ->
+                        _currentConversationId.value?.let { convId ->
                             chatHistoryRepository.updateMessageSavedPath(convId, messageId, file.absolutePath)
                         }
                         // Refresh folders list
@@ -445,7 +449,7 @@ class ChatViewModel @Inject constructor(
 
     fun clearChat() {
         _messages.value = emptyList()
-        currentConversationId = null
+        _currentConversationId.value = null
         _conversationTitle.value = ""
     }
 
@@ -454,7 +458,7 @@ class ChatViewModel @Inject constructor(
     }
 
     fun renameConversation(newTitle: String) {
-        val convId = currentConversationId ?: return
+        val convId = _currentConversationId.value ?: return
         viewModelScope.launch {
             chatHistoryRepository.updateConversationTitle(convId, newTitle)
             _conversationTitle.value = newTitle.trim()

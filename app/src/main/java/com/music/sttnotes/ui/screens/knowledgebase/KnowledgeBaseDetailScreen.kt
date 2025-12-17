@@ -355,7 +355,8 @@ private fun RenameDialog(
                     value = newName,
                     onValueChange = { newName = it },
                     placeholder = "Nouveau nom",
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    showClearButton = true
                 )
                 if (error != null) {
                     Text(

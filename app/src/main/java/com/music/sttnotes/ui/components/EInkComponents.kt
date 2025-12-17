@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -253,6 +254,7 @@ fun EInkTextField(
     readOnly: Boolean = false,
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
+    showClearButton: Boolean = false,
     textStyle: androidx.compose.ui.text.TextStyle = androidx.compose.material3.LocalTextStyle.current
 ) {
     OutlinedTextField(
@@ -269,7 +271,23 @@ fun EInkTextField(
         singleLine = singleLine,
         readOnly = readOnly,
         leadingIcon = leadingIcon,
-        trailingIcon = trailingIcon,
+        trailingIcon = if (showClearButton && value.isNotEmpty()) {
+            {
+                IconButton(
+                    onClick = { onValueChange("") },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Clear,
+                        contentDescription = "Clear",
+                        tint = EInkGrayMedium,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        } else {
+            trailingIcon
+        },
         shape = RoundedCornerShape(4.dp),
         textStyle = textStyle,
         colors = OutlinedTextFieldDefaults.colors(

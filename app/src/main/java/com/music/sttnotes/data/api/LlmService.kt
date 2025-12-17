@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.encodeToString
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -48,6 +51,29 @@ data class ChatResponse(
     val choices: List<ChatChoice>
 )
 
+// Anthropic-specific data classes
+@Serializable
+data class AnthropicChatRequest(
+    val model: String,
+    val messages: List<ChatMessage>,
+    val max_tokens: Int,
+    val stream: Boolean = false,
+    val system: String? = null  // System prompt is separate field
+)
+
+@Serializable
+data class AnthropicDelta(
+    val type: String? = null,
+    val text: String? = null
+)
+
+@Serializable
+data class AnthropicContentBlockDelta(
+    val type: String,
+    val index: Int? = null,
+    val delta: AnthropicDelta? = null
+)
+
 @Singleton
 class LlmService @Inject constructor() {
     companion object {
@@ -57,6 +83,7 @@ class LlmService @Inject constructor() {
         const val GROQ_MODEL = "llama-3.3-70b-versatile"  // Fast, free tier
         const val OPENAI_MODEL = "gpt-5-mini"             // $0.25/1M input, $2/1M output
         const val XAI_MODEL = "grok-4-1-fast-reasoning"   // $0.20/1M input, $0.50/1M output
+        const val ANTHROPIC_MODEL = "claude-haiku-4-5"    // $1/1M input, $5/1M output
     }
 
     private val json = Json {
@@ -100,6 +127,11 @@ class LlmService @Inject constructor() {
                 systemPrompt = systemPrompt,
                 apiKey = apiKey
             )
+            LlmProvider.ANTHROPIC -> callAnthropicApi(
+                text = text,
+                systemPrompt = systemPrompt,
+                apiKey = apiKey
+            )
             LlmProvider.NONE -> Result.success(text)
         }
     }
@@ -119,6 +151,7 @@ class LlmService @Inject constructor() {
             LlmProvider.GROQ -> ApiConfig.GROQ_BASE_URL to GROQ_MODEL
             LlmProvider.OPENAI -> ApiConfig.OPENAI_BASE_URL to OPENAI_MODEL
             LlmProvider.XAI -> ApiConfig.XAI_BASE_URL to XAI_MODEL
+            LlmProvider.ANTHROPIC -> ApiConfig.ANTHROPIC_BASE_URL to ANTHROPIC_MODEL
             LlmProvider.NONE -> {
                 // Return last user message content if available
                 messages.lastOrNull { it.role == "user" }?.content?.let { emit(it) }
@@ -126,26 +159,51 @@ class LlmService @Inject constructor() {
             }
         }
 
-        // Build request with system prompt + full conversation history
-        val allMessages = listOf(ChatMessage(role = "system", content = systemPrompt)) +
-            messages.takeLast(50)  // Limit to last 50 messages to avoid token overflow
+        // Build request based on provider (Anthropic has different format)
+        val (requestBody, endpoint, headers) = if (provider == LlmProvider.ANTHROPIC) {
+            // Anthropic format: system prompt separate, different headers
+            val anthropicRequest = AnthropicChatRequest(
+                model = model,
+                messages = messages.takeLast(50),  // Only user/assistant messages
+                max_tokens = 4096,
+                stream = true,
+                system = systemPrompt
+            )
+            Triple(
+                json.encodeToString(anthropicRequest),
+                "${baseUrl}messages",
+                mapOf(
+                    "x-api-key" to apiKey,
+                    "anthropic-version" to "2023-06-01",
+                    "content-type" to "application/json"
+                )
+            )
+        } else {
+            // OpenAI-compatible format
+            val allMessages = listOf(ChatMessage(role = "system", content = systemPrompt)) +
+                messages.takeLast(50)
+            val standardRequest = ChatRequest(
+                model = model,
+                messages = allMessages,
+                stream = true
+            )
+            Triple(
+                json.encodeToString(standardRequest),
+                "${baseUrl}chat/completions",
+                mapOf(
+                    "Authorization" to "Bearer $apiKey",
+                    "Content-Type" to "application/json",
+                    "Accept" to "text/event-stream"
+                )
+            )
+        }
 
-        val requestBody = ChatRequest(
-            model = model,
-            messages = allMessages,
-            stream = true
-        )
+        Log.d(TAG, "Streaming request: $requestBody")
 
-        val jsonBody = json.encodeToString(requestBody)
-        Log.d(TAG, "Streaming request: $jsonBody")
-
-        val request = Request.Builder()
-            .url("${baseUrl}chat/completions")
-            .header("Authorization", "Bearer $apiKey")
-            .header("Content-Type", "application/json")
-            .header("Accept", "text/event-stream")
-            .post(jsonBody.toRequestBody("application/json".toMediaType()))
-            .build()
+        val requestBuilder = Request.Builder().url(endpoint)
+        headers.forEach { (key, value) -> requestBuilder.header(key, value) }
+        requestBuilder.post(requestBody.toRequestBody("application/json".toMediaType()))
+        val request = requestBuilder.build()
 
         Log.d(TAG, "Starting streaming LLM call ($model)...")
 
@@ -179,12 +237,24 @@ class LlmService @Inject constructor() {
                     // Skip empty data
                     if (data.isEmpty()) continue
 
-                    // Parse the JSON chunk
+                    // Parse the JSON chunk based on provider
                     try {
-                        val chunk = json.decodeFromString<ChatResponse>(data)
-                        val content = chunk.choices.firstOrNull()?.delta?.content
-                        if (!content.isNullOrEmpty()) {
-                            emit(content)
+                        if (provider == LlmProvider.ANTHROPIC) {
+                            // Parse Anthropic's event-based format
+                            val event = json.decodeFromString<AnthropicContentBlockDelta>(data)
+                            if (event.type == "content_block_delta") {
+                                val content = event.delta?.text
+                                if (!content.isNullOrEmpty()) {
+                                    emit(content)
+                                }
+                            }
+                        } else {
+                            // Parse OpenAI-compatible format
+                            val chunk = json.decodeFromString<ChatResponse>(data)
+                            val content = chunk.choices.firstOrNull()?.delta?.content
+                            if (!content.isNullOrEmpty()) {
+                                emit(content)
+                            }
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to parse chunk: $data", e)
@@ -196,6 +266,53 @@ class LlmService @Inject constructor() {
             response.close()
         }
     }.flowOn(Dispatchers.IO)
+
+    private suspend fun callAnthropicApi(
+        text: String,
+        systemPrompt: String,
+        apiKey: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val requestBody = AnthropicChatRequest(
+                model = ANTHROPIC_MODEL,
+                messages = listOf(ChatMessage(role = "user", content = text)),
+                max_tokens = 4096,
+                stream = false,
+                system = systemPrompt
+            )
+
+            val jsonBody = json.encodeToString(requestBody)
+
+            val request = Request.Builder()
+                .url("${ApiConfig.ANTHROPIC_BASE_URL}messages")
+                .header("x-api-key", apiKey)
+                .header("anthropic-version", "2023-06-01")
+                .header("content-type", "application/json")
+                .post(jsonBody.toRequestBody("application/json".toMediaType()))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: "Unknown error"
+                    return@withContext Result.failure(IOException("API error ${response.code}: $errorBody"))
+                }
+
+                val responseBody = response.body?.string()
+                    ?: return@withContext Result.failure(IOException("Empty response"))
+
+                // Parse Anthropic response format
+                val jsonResponse = json.parseToJsonElement(responseBody).jsonObject
+                val content = jsonResponse["content"]?.jsonArray?.firstOrNull()
+                    ?.jsonObject?.get("text")?.jsonPrimitive?.content
+                    ?: return@withContext Result.failure(IOException("No response content"))
+
+                Result.success(content)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Anthropic API call failed", e)
+            Result.failure(e)
+        }
+    }
 
     private suspend fun callLlmApi(
         baseUrl: String,

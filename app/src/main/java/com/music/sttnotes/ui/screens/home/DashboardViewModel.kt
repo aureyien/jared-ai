@@ -157,6 +157,7 @@ class DashboardViewModel @Inject constructor(
                 LlmProvider.GROQ -> apiConfig.groqApiKey.first()?.isNotEmpty() == true
                 LlmProvider.OPENAI -> apiConfig.openaiApiKey.first()?.isNotEmpty() == true
                 LlmProvider.XAI -> apiConfig.xaiApiKey.first()?.isNotEmpty() == true
+                LlmProvider.ANTHROPIC -> apiConfig.anthropicApiKey.first()?.isNotEmpty() == true
                 LlmProvider.NONE -> false
             }
 

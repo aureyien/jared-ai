@@ -8,7 +8,7 @@
 
 ### 🎤 Speech-to-Text
 - **Offline STT**: Local whisper.cpp integration with native French support
-- **Cloud STT**: Groq Whisper API ($0.04/hr, FREE 8h/day)
+- **Cloud STT**: Groq Whisper API ($0.04/hr)
 - **Model support**: ggml-small-q8_0 (264MB, optimized for 8GB RAM devices)
 - **Performance**: ~6s transcription for 16s audio
 - **Native French**: No translation, direct transcription

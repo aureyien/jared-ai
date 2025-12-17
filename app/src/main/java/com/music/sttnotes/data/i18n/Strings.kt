@@ -126,7 +126,16 @@ interface StringResources {
     val groqApiKey: String
     val openaiApiKey: String
     val xaiApiKey: String
+    val anthropicApiKey: String
+    val adminKeysForUsageTracking: String
+    val openaiAdminKey: String
+    val anthropicAdminKey: String
     val freeConsole: String
+    val usageStatistics: String
+    val last7Days: String
+    val last30Days: String
+    val refreshUsage: String
+    val requiresAdminKey: String
     val llmSystemPrompt: String
     val instructionsForLlm: String
     val resetToDefault: String
@@ -292,14 +301,23 @@ object EnglishStrings : StringResources {
     override val groqApiKey = "Groq API Key"
     override val openaiApiKey = "OpenAI API Key"
     override val xaiApiKey = "xAI API Key"
+    override val anthropicApiKey = "Anthropic API Key"
+    override val adminKeysForUsageTracking = "Admin Keys (Usage Tracking)"
+    override val openaiAdminKey = "OpenAI Admin Key (Billing API)"
+    override val anthropicAdminKey = "Anthropic Admin Key (sk-ant-admin...)"
     override val freeConsole = "Free: console.groq.com"
+    override val usageStatistics = "Usage Statistics"
+    override val last7Days = "Last 7 days"
+    override val last30Days = "Last 30 days"
+    override val refreshUsage = "Refresh Usage"
+    override val requiresAdminKey = "⚠️ Requires Admin API key (sk-ant-admin...)"
     override val llmSystemPrompt = "LLM System Prompt"
     override val instructionsForLlm = "Instructions for the LLM"
     override val resetToDefault = "Reset to default"
     override val about = "About"
     override val aboutText = """
         • Local: Whisper.cpp (offline, model included)
-        • Groq: Whisper v3 Turbo (free 8h/day)
+        • Groq: Whisper v3 Turbo
         • LLM: Formats and enhances transcriptions
     """.trimIndent()
     override val disabled = "Disabled"
@@ -462,7 +480,16 @@ object FrenchStrings : StringResources {
     override val groqApiKey = "Clé API Groq"
     override val openaiApiKey = "Clé API OpenAI"
     override val xaiApiKey = "Clé API xAI"
+    override val anthropicApiKey = "Clé API Anthropic"
+    override val adminKeysForUsageTracking = "Clés Admin (Suivi d'Utilisation)"
+    override val openaiAdminKey = "Clé Admin OpenAI (API Facturation)"
+    override val anthropicAdminKey = "Clé Admin Anthropic (sk-ant-admin...)"
     override val freeConsole = "Gratuit: console.groq.com"
+    override val usageStatistics = "Statistiques d'utilisation"
+    override val last7Days = "7 derniers jours"
+    override val last30Days = "30 derniers jours"
+    override val refreshUsage = "Actualiser"
+    override val requiresAdminKey = "⚠️ Nécessite une clé API Admin (sk-ant-admin...)"
     override val llmSystemPrompt = "Prompt système LLM"
     override val instructionsForLlm = "Instructions pour le LLM"
     override val resetToDefault = "Réinitialiser par défaut"

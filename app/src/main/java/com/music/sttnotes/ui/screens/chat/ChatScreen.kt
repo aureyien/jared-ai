@@ -102,7 +102,7 @@ fun ChatScreen(
     conversationId: String? = null,
     startRecording: Boolean = false,
     onNavigateBack: () -> Unit,
-    onManageTags: () -> Unit = {},
+    onManageTags: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val messages by viewModel.messages.collectAsState()
@@ -112,6 +112,7 @@ fun ChatScreen(
     val conversationTitle by viewModel.conversationTitle.collectAsState()
     val existingFolders by viewModel.existingFolders.collectAsState()
     val currentLlmProvider by viewModel.currentLlmProvider.collectAsState()
+    val actualConversationId by viewModel.currentConversationId.collectAsState()
     val availableLlmProviders by viewModel.availableLlmProviders.collectAsState()
     val chatFontSize by viewModel.chatFontSize.collectAsState()
     val isEphemeral by viewModel.isEphemeral.collectAsState()
@@ -269,7 +270,9 @@ fun ChatScreen(
                 }
                 // Tag manager icon
                 EInkIconButton(
-                    onClick = onManageTags,
+                    onClick = {
+                        actualConversationId?.let { onManageTags(it) }
+                    },
                     icon = Icons.Default.LocalOffer,
                     contentDescription = strings.manageTags
                 )

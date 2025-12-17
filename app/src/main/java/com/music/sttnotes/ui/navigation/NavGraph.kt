@@ -140,11 +140,8 @@ fun NavGraph(
                 conversationId = if (conversationId == "new") null else conversationId,
                 startRecording = startRecording,
                 onNavigateBack = { navController.popBackStack() },
-                onManageTags = {
-                    val actualId = if (conversationId == "new") null else conversationId
-                    actualId?.let {
-                        navController.navigate("tag_management/$it")
-                    }
+                onManageTags = { actualId ->
+                    navController.navigate("tag_management/$actualId")
                 }
             )
         }

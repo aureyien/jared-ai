@@ -338,7 +338,8 @@ fun KnowledgeBaseScreen(
                     value = newName,
                     onValueChange = { newName = it },
                     placeholder = strings.newFolderName,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    showClearButton = true
                 )
             },
             confirmButton = {

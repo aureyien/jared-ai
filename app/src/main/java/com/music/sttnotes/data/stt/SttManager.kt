@@ -95,6 +95,7 @@ class SttManager @Inject constructor(
             LlmProvider.GROQ -> apiConfig.groqApiKey.first()
             LlmProvider.OPENAI -> apiConfig.openaiApiKey.first()
             LlmProvider.XAI -> apiConfig.xaiApiKey.first()
+            LlmProvider.ANTHROPIC -> apiConfig.anthropicApiKey.first()
             LlmProvider.NONE -> null
         }
 
