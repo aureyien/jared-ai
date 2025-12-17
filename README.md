@@ -19,18 +19,28 @@ Whisper Notes is designed for users who want fast, private voice-to-text capabil
 
 - **Offline Speech-to-Text**: Uses whisper.cpp running locally on-device
 - **Rich Text Notes**: Markdown-based editor with formatting toolbar
-- **AI Chat Integration**: Optional LLM chat with multiple providers (Groq, OpenAI, xAI)
+- **AI Chat Integration**: Optional LLM chat with multiple providers (Anthropic, OpenAI, xAI, Groq)
 - **Knowledge Base**: Save and organize AI responses for future reference
 - **E-Ink Optimized UI**: High-contrast black & white design perfect for e-ink devices
 
 ## Features
+
+### ⭐ Favorites System (NEW in v1.2.0)
+
+- **Universal Favorites**: Mark notes, chat conversations, and KB files as favorites
+- **Dedicated Favorites Screen**: View all favorites in one place with filter buttons (All/Notes/KB/Chat)
+- **Star Icons**: Black star icons displayed on favorited items in all list views
+- **Quick Toggle**: Tap star icons in detail views to toggle favorite status instantly
+- **Long-press Removal**: Remove items from favorites by long-pressing in the favorites list
+- **Reactive Updates**: Favorite status updates immediately across all views
+- **Dashboard Integration**: Favorites section is a clickable card matching Notes/Chat/KB sections
 
 ### Voice Transcription
 
 | Feature | Description |
 |---------|-------------|
 | **Local STT** | On-device transcription using whisper.cpp (no internet required) |
-| **Cloud STT** | Optional cloud transcription via Groq or OpenAI Whisper API |
+| **Cloud STT** | Optional cloud transcription via Groq Whisper 3 Turbo API |
 | **Multi-language** | Support for French and English |
 | **Quick Record** | Long-press on Note or Chat buttons to start recording immediately |
 
@@ -43,16 +53,22 @@ Whisper Notes is designed for users who want fast, private voice-to-text capabil
 - **Tag Management**: Full-screen tag manager with search and filtering
 - **Preview Mode**: Toggle between edit and preview with rendered markdown
 - **Voice Dictation**: Record and transcribe directly into notes
+- **Archive System**: Archive notes to declutter main list while keeping them accessible
+- **Favorites**: Star notes for quick access from favorites screen
 
 ### AI Chat
 
-- **Multiple Providers**: Support for Groq (Llama), OpenAI (GPT), and xAI (Grok)
+- **Multiple Providers**: Support for Anthropic (Claude Haiku 4.5/Sonnet), OpenAI (GPT-5-mini), xAI (Grok), and Groq (Llama)
+- **Claude Haiku 4.5**: NEW - Fastest Anthropic model with excellent performance
 - **Conversation History**: Persistent chat conversations with rename/delete
 - **Voice Input**: Dictate messages using STT
 - **Save Responses**: Export AI responses to Knowledge Base
 - **Customizable System Prompt**: Configure AI behavior and language
 - **Tag Organization**: Add tags to conversations for easy filtering
 - **Tag Management**: Full-screen tag manager with long-press delete
+- **Chat Font Size**: Adjustable font size (12sp-24sp) for better readability
+- **Usage Tracking**: View token usage and costs per LLM provider
+- **Favorites**: Star conversations for quick access
 
 ### Knowledge Base
 
@@ -65,6 +81,8 @@ Whisper Notes is designed for users who want fast, private voice-to-text capabil
 - **Markdown Editor**: Edit saved content with rich text toolbar
 - **Preview Mode**: View formatted markdown content
 - **Clipboard Integration**: Copy content with one tap
+- **Export**: Share KB files via Android Share Sheet
+- **Favorites**: Star KB files for quick access
 
 ### Dashboard
 
@@ -72,6 +90,7 @@ Whisper Notes is designed for users who want fast, private voice-to-text capabil
 - **Quick Access**: Recently accessed items appear first
 - **Search Results**: Max 5 results per category with type-specific icons
 - **Direct Navigation**: Tap any result to jump directly to that item
+- **Favorites Card**: Quick access to all favorited items
 
 ## Architecture
 
@@ -164,7 +183,7 @@ Navigate to **Settings** to configure:
 
 | Setting | Options | Description |
 |---------|---------|-------------|
-| **STT Provider** | Local, Groq, OpenAI | Choose transcription backend |
+| **STT Provider** | Local, Groq (Whisper 3 Turbo) | Choose transcription backend |
 | **Language** | French, English | Transcription language |
 
 ### App Language
@@ -182,17 +201,20 @@ Change the UI language in **Settings** → **App Language**.
 
 | Setting | Options | Description |
 |---------|---------|-------------|
-| **LLM Provider** | Groq, OpenAI, xAI, None | Choose AI chat provider |
+| **LLM Provider** | Anthropic, OpenAI, xAI, Groq, None | Choose AI chat provider |
+| **Model** | Claude Haiku 4.5, Claude Sonnet 4.5, GPT-5-mini, Grok, Llama 3.3 70B | Select specific model |
 | **API Key** | Your API key | Required for cloud providers |
 | **System Prompt** | Custom text | Configure AI behavior |
+| **Chat Font Size** | 12sp - 24sp | Adjust message text size for readability |
 
 ### API Keys
 
 To use cloud services, you'll need API keys:
 
-- **Groq**: Get a free key at [console.groq.com](https://console.groq.com)
-- **OpenAI**: Get a key at [platform.openai.com](https://platform.openai.com)
-- **xAI**: Get a key at [console.x.ai](https://console.x.ai)
+- **Anthropic**: Get a key at [console.anthropic.com](https://console.anthropic.com) - Claude Haiku 4.5 and Sonnet 4.5
+- **OpenAI**: Get a key at [platform.openai.com](https://platform.openai.com) - GPT-5-mini
+- **xAI**: Get a key at [console.x.ai](https://console.x.ai) - Grok
+- **Groq**: Get a free key at [console.groq.com](https://console.groq.com) - Whisper 3 Turbo (STT), Llama 3.3 70B (LLM)
 
 ## Usage
 
@@ -203,6 +225,8 @@ To use cloud services, you'll need API keys:
 3. Use the formatting toolbar for rich text
 4. Tap the **tag icon** to add tags
 5. Tap the **mic icon** to dictate content
+6. Tap the **star icon** to add to favorites
+7. Tap the **archive icon** to archive the note
 
 ### Voice Recording
 
@@ -220,6 +244,8 @@ To use cloud services, you'll need API keys:
 3. Type or dictate your message
 4. View AI responses with markdown formatting
 5. Long-press a response to save to Knowledge Base
+6. Tap the **star icon** in the top bar to add conversation to favorites
+7. Adjust font size in Settings for better readability
 
 **Tip**: Long-press the **Chat** button to start a new conversation with voice recording.
 
@@ -231,7 +257,17 @@ To use cloud services, you'll need API keys:
 4. Tap a folder to see its files
 5. Tap a file to view/edit content
 6. Use the **tag icon** to filter by tags
-7. Long-press to copy or delete content
+7. Tap the **star icon** in file detail to add to favorites
+8. Long-press to copy or delete content
+
+### Using Favorites
+
+1. Tap the **Favorites** card on the dashboard
+2. View all favorited items (notes, chats, KB files)
+3. Use filter buttons to show specific types: All / Notes / KB / Chat
+4. Tap any item to open it
+5. Long-press an item to remove from favorites
+6. Star icons appear on favorited items in all list views
 
 ### Tag Management
 
@@ -273,6 +309,8 @@ When deleting items (notes, chats, KB files), an **UNDO button** appears in the 
 | `TagManagementScreen.kt` | Full-screen tag manager for Chat conversations |
 | `TagManagementScreenForNotes.kt` | Full-screen tag manager for Notes |
 | `TagManagementScreenForKB.kt` | Dual-mode tag manager for Knowledge Base (global/file-specific) |
+| `FavoritesScreen.kt` | Dedicated screen for viewing and managing favorites |
+| `FavoritesRepository.kt` | Manages favorites data across notes, chat, and KB |
 | `DashboardViewModel.kt` | Global search across all content types |
 | `KnowledgeBaseFolderScreen.kt` | KB folder files list with search and tag filter |
 | `KnowledgeBaseDetailScreen.kt` | KB file viewer/editor with markdown support |
