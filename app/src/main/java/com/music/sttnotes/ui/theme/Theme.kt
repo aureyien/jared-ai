@@ -2,12 +2,16 @@ package com.music.sttnotes.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 // E-Ink optimized color scheme - maximum contrast
@@ -69,6 +73,12 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Pink40
 )
 
+// Custom text selection colors - light blue selection
+private val customTextSelectionColors = TextSelectionColors(
+    handleColor = Color(0xFF64B5F6),  // Light blue handle
+    backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)  // Light blue background with transparency
+)
+
 @Composable
 fun WhisperNotesTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -88,9 +98,12 @@ fun WhisperNotesTheme(
 
     val typography = if (eInkMode) EInkTypography else Typography
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = typography,
-        content = content
-    )
+    // Wrap with custom text selection colors
+    CompositionLocalProvider(LocalTextSelectionColors provides customTextSelectionColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            content = content
+        )
+    }
 }

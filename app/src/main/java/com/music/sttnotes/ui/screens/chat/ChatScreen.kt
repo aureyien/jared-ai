@@ -23,7 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -63,6 +65,7 @@ import androidx.compose.material3.Text
 import com.music.sttnotes.data.api.LlmProvider
 import com.music.sttnotes.data.api.displayName
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -567,12 +570,20 @@ private fun ChatBubble(
                         fontSize = fontSize.sp
                     )
                 } else {
-                    Markdown(
-                        content = message.content,
-                        colors = einkMarkdownColors(),
-                        typography = chatMarkdownTypography(baseFontSize = fontSize),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    // Explicitly provide light blue selection colors for markdown
+                    CompositionLocalProvider(
+                        LocalTextSelectionColors provides TextSelectionColors(
+                            handleColor = Color(0xFF64B5F6),
+                            backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Markdown(
+                            content = message.content,
+                            colors = einkMarkdownColors(),
+                            typography = chatMarkdownTypography(baseFontSize = fontSize),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }

@@ -218,7 +218,7 @@ class NotesRepository @Inject constructor(
                 val updated = currentNotes[index].copy(isFavorite = !currentNotes[index].isFavorite)
                 currentNotes[index] = updated
                 _notes.value = currentNotes.sortedByDescending { it.updatedAt }
-                persistNotes(currentNotes)
+                persistNotes(currentNotes + _archivedNotes.value)
                 Log.d(TAG, "Toggled favorite for note $noteId to ${updated.isFavorite}")
             }
         }
