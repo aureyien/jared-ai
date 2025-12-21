@@ -98,7 +98,11 @@ class NotesRepository @Inject constructor(
             if (index >= 0) {
                 val note = current[index]
                 val updatedTags = (note.tags + tag).distinct()
-                current[index] = note.copy(tags = updatedTags)
+                val updatedNote = note.copy(tags = updatedTags)
+                current[index] = updatedNote
+                // Re-index the note with updated tags
+                indexBuilder.removeNote(noteId)
+                indexBuilder.indexNote(updatedNote)
                 _notes.value = current.sortedByDescending { it.updatedAt }
                 _allTags.value = _allTags.value + tag
                 persistNotes(current)
@@ -113,7 +117,11 @@ class NotesRepository @Inject constructor(
 
             if (index >= 0) {
                 val note = current[index]
-                current[index] = note.copy(tags = note.tags - tag)
+                val updatedNote = note.copy(tags = note.tags - tag)
+                current[index] = updatedNote
+                // Re-index the note with updated tags
+                indexBuilder.removeNote(noteId)
+                indexBuilder.indexNote(updatedNote)
                 _notes.value = current.sortedByDescending { it.updatedAt }
                 persistNotes(current)
             }
@@ -122,10 +130,16 @@ class NotesRepository @Inject constructor(
 
     suspend fun deleteTag(tag: String) = withContext(Dispatchers.IO) {
         mutex.withLock {
-            // Remove from all notes
+            // Remove from all notes and re-index affected notes
             val current = _notes.value.map { note ->
-                if (tag in note.tags) note.copy(tags = note.tags - tag)
-                else note
+                if (tag in note.tags) {
+                    val updatedNote = note.copy(tags = note.tags - tag)
+                    indexBuilder.removeNote(note.id)
+                    indexBuilder.indexNote(updatedNote)
+                    updatedNote
+                } else {
+                    note
+                }
             }
             _notes.value = current.sortedByDescending { it.updatedAt }
 

@@ -216,6 +216,22 @@ interface StringResources {
     val noFavoritesYet: String
     val addToFavorites: String
     val removeFromFavorites: String
+
+    // KB Merge
+    val merge: String
+    val mergeFiles: String
+    val mergeFilesConfirmation: String
+    val newFilename: String
+    val selectFile: String
+    val selectToMerge: String
+
+    // Chat Summary
+    val summarize: String
+    val conversationSummary: String
+    val saveToKb: String
+    val folderName: String
+    val fileName: String
+    val close: String
 }
 
 object EnglishStrings : StringResources {
@@ -405,6 +421,22 @@ object EnglishStrings : StringResources {
     override val noFavoritesYet = "No favorites yet"
     override val addToFavorites = "Add to favorites"
     override val removeFromFavorites = "Remove from favorites"
+
+    // KB Merge
+    override val merge = "Merge"
+    override val mergeFiles = "Merge files"
+    override val mergeFilesConfirmation = "Merge"
+    override val newFilename = "New filename"
+    override val selectFile = "Select"
+    override val selectToMerge = "Select to merge"
+
+    // Chat Summary
+    override val summarize = "Summarize"
+    override val conversationSummary = "Conversation Summary"
+    override val saveToKb = "Save to KB"
+    override val folderName = "Folder name"
+    override val fileName = "File name"
+    override val close = "Close"
 }
 
 object FrenchStrings : StringResources {
@@ -594,6 +626,22 @@ object FrenchStrings : StringResources {
     override val noFavoritesYet = "Aucun favori pour le moment"
     override val addToFavorites = "Ajouter aux favoris"
     override val removeFromFavorites = "Retirer des favoris"
+
+    // KB Merge
+    override val merge = "Fusionner"
+    override val mergeFiles = "Fusionner les fichiers"
+    override val mergeFilesConfirmation = "Fusionner"
+    override val newFilename = "Nouveau nom de fichier"
+    override val selectFile = "Sélectionner"
+    override val selectToMerge = "Sélectionner pour fusionner"
+
+    // Chat Summary
+    override val summarize = "Résumer"
+    override val conversationSummary = "Résumé de la conversation"
+    override val saveToKb = "Sauvegarder dans KB"
+    override val folderName = "Nom du dossier"
+    override val fileName = "Nom du fichier"
+    override val close = "Fermer"
 }
 
 /**

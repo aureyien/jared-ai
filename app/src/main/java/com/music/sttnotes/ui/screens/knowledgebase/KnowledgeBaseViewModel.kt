@@ -75,6 +75,13 @@ class KnowledgeBaseViewModel @Inject constructor(
     private val _selectedTagFilters = MutableStateFlow<Set<String>>(emptySet())
     val selectedTagFilters: StateFlow<Set<String>> = _selectedTagFilters
 
+    // Selection mode for merge feature
+    private val _selectionMode = MutableStateFlow(false)
+    val selectionMode: StateFlow<Boolean> = _selectionMode
+
+    private val _selectedFiles = MutableStateFlow<Set<String>>(emptySet()) // filenames in current folder
+    val selectedFiles: StateFlow<Set<String>> = _selectedFiles
+
     // Favorite status for current file
     private val _isFavorite = MutableStateFlow(false)
     val isFavorite: StateFlow<Boolean> = _isFavorite
@@ -160,12 +167,14 @@ class KnowledgeBaseViewModel @Inject constructor(
     fun loadFolders() {
         viewModelScope.launch {
             _isLoading.value = true
+            // Preserve expansion state of existing folders
+            val previousExpansionState = _folders.value.associate { it.name to it.isExpanded }
             val folderNames = llmOutputRepository.listFolders()
             _folders.value = folderNames.map { name ->
                 FolderWithFiles(
                     name = name,
                     files = loadFilePreviews(name),
-                    isExpanded = false
+                    isExpanded = previousExpansionState[name] ?: false
                 )
             }
             filterFolders() // Apply current search filter
@@ -375,6 +384,43 @@ class KnowledgeBaseViewModel @Inject constructor(
             llmOutputRepository.toggleFileFavorite(folder, filename)
             // Update local state immediately
             _isFavorite.value = !_isFavorite.value
+        }
+    }
+
+    // Selection mode functions for merge feature
+    fun toggleSelectionMode() {
+        _selectionMode.value = !_selectionMode.value
+        if (!_selectionMode.value) {
+            _selectedFiles.value = emptySet()
+        }
+    }
+
+    fun exitSelectionMode() {
+        _selectionMode.value = false
+        _selectedFiles.value = emptySet()
+    }
+
+    fun toggleFileSelection(filename: String) {
+        _selectedFiles.value = if (filename in _selectedFiles.value) {
+            _selectedFiles.value - filename
+        } else {
+            _selectedFiles.value + filename
+        }
+    }
+
+    fun canMergeSelection(): Boolean {
+        return _selectedFiles.value.size >= 2
+    }
+
+    fun mergeSelectedFiles(folder: String, newFilename: String) {
+        viewModelScope.launch {
+            val filenames = _selectedFiles.value.toList()
+            if (filenames.size < 2) return@launch
+
+            llmOutputRepository.mergeFiles(folder, filenames, newFilename).onSuccess {
+                exitSelectionMode()
+                loadFolders()
+            }
         }
     }
 }

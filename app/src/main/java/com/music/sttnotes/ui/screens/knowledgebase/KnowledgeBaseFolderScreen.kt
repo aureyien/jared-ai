@@ -28,6 +28,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.filled.CallMerge
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -80,10 +84,13 @@ fun KnowledgeBaseFolderScreen(
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
     val strings = rememberStrings()
-    val allFolders by viewModel.filteredFolders.collectAsState()
+    // Use unfiltered folders - filtering is done locally in this screen
+    val allFolders by viewModel.folders.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
     val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
+    val selectionMode by viewModel.selectionMode.collectAsState()
+    val selectedFiles by viewModel.selectedFiles.collectAsState()
 
     // Local search query for this folder
     var searchQuery by remember { mutableStateOf("") }
@@ -93,6 +100,10 @@ fun KnowledgeBaseFolderScreen(
 
     // Tag deletion state
     var tagToDelete by remember { mutableStateOf<String?>(null) }
+
+    // Merge dialog state
+    var showMergeDialog by remember { mutableStateOf(false) }
+    var mergeFilename by remember { mutableStateOf("") }
 
     // Find the current folder's files
     val files = remember(allFolders, folderName) {
@@ -125,18 +136,23 @@ fun KnowledgeBaseFolderScreen(
         filteredFiles.filter { pendingFileDeletion?.item != it.file.name }
     }
 
-    // Load folders on entry
+    // Load folders on entry and clear any global tag filters
     LaunchedEffect(Unit) {
+        viewModel.clearTagFilters()
         viewModel.loadFolders()
     }
 
     // Handle system back button
     BackHandler {
-        pendingFileDeletion?.let { deletion ->
-            viewModel.deleteFile(folderName, deletion.item)
+        if (selectionMode) {
+            viewModel.exitSelectionMode()
+        } else {
+            pendingFileDeletion?.let { deletion ->
+                viewModel.deleteFile(folderName, deletion.item)
+            }
+            pendingFileDeletion = null
+            onNavigateBack()
         }
-        pendingFileDeletion = null
-        onNavigateBack()
     }
 
     Scaffold(
@@ -144,7 +160,7 @@ fun KnowledgeBaseFolderScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = folderName,
+                        text = if (selectionMode) "${selectedFiles.size} ${strings.selected}" else folderName,
                         style = MaterialTheme.typography.headlineSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -153,31 +169,57 @@ fun KnowledgeBaseFolderScreen(
                 navigationIcon = {
                     EInkIconButton(
                         onClick = {
-                            pendingFileDeletion?.let { deletion ->
-                                viewModel.deleteFile(folderName, deletion.item)
+                            if (selectionMode) {
+                                viewModel.exitSelectionMode()
+                            } else {
+                                pendingFileDeletion?.let { deletion ->
+                                    viewModel.deleteFile(folderName, deletion.item)
+                                }
+                                pendingFileDeletion = null
+                                onNavigateBack()
                             }
-                            pendingFileDeletion = null
-                            onNavigateBack()
                         },
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = strings.back
+                        icon = if (selectionMode) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = if (selectionMode) strings.cancel else strings.back
                     )
                 },
                 actions = {
-                    // Undo button in TopAppBar
-                    pendingFileDeletion?.let { deletion ->
-                        UndoButton(
-                            onUndo = { pendingFileDeletion = null },
-                            onTimeout = {
-                                viewModel.deleteFile(folderName, deletion.item)
-                                pendingFileDeletion = null
-                                // If folder becomes empty, go back
-                                if (files.size <= 1) {
-                                    onNavigateBack()
-                                }
-                            },
-                            itemKey = deletion.item // Restart countdown when different file deleted
-                        )
+                    if (selectionMode) {
+                        // In selection mode: show merge button when 2+ selected
+                        if (selectedFiles.size >= 2) {
+                            EInkIconButton(
+                                onClick = {
+                                    mergeFilename = ""
+                                    showMergeDialog = true
+                                },
+                                icon = Icons.AutoMirrored.Filled.CallMerge,
+                                contentDescription = strings.merge
+                            )
+                        }
+                    } else {
+                        // Normal mode: show undo and selection button
+                        pendingFileDeletion?.let { deletion ->
+                            UndoButton(
+                                onUndo = { pendingFileDeletion = null },
+                                onTimeout = {
+                                    viewModel.deleteFile(folderName, deletion.item)
+                                    pendingFileDeletion = null
+                                    // If folder becomes empty, go back
+                                    if (files.size <= 1) {
+                                        onNavigateBack()
+                                    }
+                                },
+                                itemKey = deletion.item // Restart countdown when different file deleted
+                            )
+                        }
+                        // Selection mode button (only if more than 1 file)
+                        if (displayFiles.size > 1) {
+                            EInkIconButton(
+                                onClick = { viewModel.toggleSelectionMode() },
+                                icon = Icons.Default.Checklist,
+                                contentDescription = strings.selectToMerge
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -302,12 +344,18 @@ fun KnowledgeBaseFolderScreen(
                             items(displayFiles, key = { it.file.name }) { filePreview ->
                                 FolderFileItem(
                                     file = filePreview,
+                                    selectionMode = selectionMode,
+                                    isSelected = filePreview.file.name in selectedFiles,
                                     onClick = {
-                                        pendingFileDeletion?.let { deletion ->
-                                            viewModel.deleteFile(folderName, deletion.item)
+                                        if (selectionMode) {
+                                            viewModel.toggleFileSelection(filePreview.file.name)
+                                        } else {
+                                            pendingFileDeletion?.let { deletion ->
+                                                viewModel.deleteFile(folderName, deletion.item)
+                                            }
+                                            pendingFileDeletion = null
+                                            onFileClick(filePreview.file.name)
                                         }
-                                        pendingFileDeletion = null
-                                        onFileClick(filePreview.file.name)
                                     },
                                     onDelete = {
                                         pendingFileDeletion?.let { prev ->
@@ -359,6 +407,48 @@ fun KnowledgeBaseFolderScreen(
                 containerColor = EInkWhite
             )
         }
+
+        // Merge files dialog
+        if (showMergeDialog) {
+            AlertDialog(
+                onDismissRequest = { showMergeDialog = false },
+                title = { Text(strings.mergeFiles) },
+                text = {
+                    Column {
+                        Text("${strings.mergeFilesConfirmation} ${selectedFiles.size} ${strings.files}")
+                        Spacer(Modifier.height(16.dp))
+                        EInkTextField(
+                            value = mergeFilename,
+                            onValueChange = { mergeFilename = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = strings.newFilename
+                        )
+                    }
+                },
+                confirmButton = {
+                    EInkButton(
+                        onClick = {
+                            if (mergeFilename.isNotBlank()) {
+                                viewModel.mergeSelectedFiles(folderName, mergeFilename)
+                                showMergeDialog = false
+                            }
+                        },
+                        filled = true
+                    ) {
+                        Text(strings.merge)
+                    }
+                },
+                dismissButton = {
+                    EInkButton(
+                        onClick = { showMergeDialog = false },
+                        filled = false
+                    ) {
+                        Text(strings.cancel)
+                    }
+                },
+                containerColor = EInkWhite
+            )
+        }
     }
 }
 
@@ -366,6 +456,8 @@ fun KnowledgeBaseFolderScreen(
 @Composable
 private fun FolderFileItem(
     file: FilePreview,
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onCopyContent: () -> String?,
@@ -380,17 +472,32 @@ private fun FolderFileItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = { showMenu = true }
+                onLongClick = {
+                    // Long-press shows context menu (only when not in selection mode)
+                    if (!selectionMode) {
+                        showMenu = true
+                    }
+                }
             )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Description,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = EInkBlack
-                )
+                // Selection checkbox or file icon
+                if (selectionMode) {
+                    Icon(
+                        if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
+                        contentDescription = if (isSelected) strings.selected else strings.selectFile,
+                        modifier = Modifier.size(24.dp),
+                        tint = EInkBlack
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Description,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = EInkBlack
+                    )
+                }
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -406,7 +513,7 @@ private fun FolderFileItem(
                         color = EInkGrayMedium
                     )
                 }
-                if (isFavorite) {
+                if (isFavorite && !selectionMode) {
                     Icon(
                         Icons.Filled.Star,
                         contentDescription = strings.favorites,
@@ -415,11 +522,14 @@ private fun FolderFileItem(
                     )
                     Spacer(Modifier.width(8.dp))
                 }
-                EInkIconButton(
-                    onClick = { showMenu = true },
-                    icon = Icons.Default.Delete,
-                    contentDescription = strings.delete
-                )
+                // Hide delete button in selection mode
+                if (!selectionMode) {
+                    EInkIconButton(
+                        onClick = { showMenu = true },
+                        icon = Icons.Default.Delete,
+                        contentDescription = strings.delete
+                    )
+                }
             }
             if (file.preview.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))

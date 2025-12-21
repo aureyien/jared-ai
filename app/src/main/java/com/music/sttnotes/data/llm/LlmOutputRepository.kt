@@ -401,6 +401,72 @@ class LlmOutputRepository @Inject constructor(
     }
 
     /**
+     * Merge multiple KB files into one
+     * @param folder The folder containing all files
+     * @param filenames List of files to merge (in order)
+     * @param newFilename Name for the merged file
+     * @return Result with the new file
+     */
+    suspend fun mergeFiles(
+        folder: String,
+        filenames: List<String>,
+        newFilename: String
+    ): Result<File> = withContext(Dispatchers.IO) {
+        try {
+            val folderDir = File(rootDir, sanitizePath(folder))
+
+            // Read and parse all files
+            val contents = filenames.mapNotNull { filename ->
+                val file = File(folderDir, filename)
+                if (!file.exists()) return@mapNotNull null
+                val content = file.readText()
+                val (meta, body) = FrontmatterParser.parse(content)
+                Triple(filename, meta, body)
+            }
+
+            if (contents.size < 2) {
+                return@withContext Result.failure(Exception("Need at least 2 valid files to merge"))
+            }
+
+            // Merge tags from all files
+            val allTags = contents.flatMap { it.second.tags }.distinct()
+
+            // Merge content with separators
+            val mergedBody = buildString {
+                contents.forEachIndexed { index, (filename, _, body) ->
+                    if (index > 0) {
+                        appendLine()
+                        appendLine("---")
+                        appendLine()
+                    }
+                    appendLine("## From: ${filename.removeSuffix(".md")}")
+                    appendLine()
+                    append(body.trim())
+                }
+            }
+
+            // Create merged metadata
+            val mergedMeta = KbFileMeta(
+                created = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
+                folder = folder,
+                tags = allTags,
+                favorite = contents.any { it.second.favorite }
+            )
+
+            // Write merged file
+            val newFile = File(folderDir, sanitizeFilename(newFilename))
+            newFile.writeText(FrontmatterParser.combine(mergedMeta, mergedBody))
+
+            Log.d(TAG, "Merged ${contents.size} files into ${newFile.name}")
+            notifyChange()
+            Result.success(newFile)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to merge files", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * List all favorite KB files
      * Returns list of (folder, filename) pairs
      */

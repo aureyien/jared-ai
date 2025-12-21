@@ -204,18 +204,23 @@ class DashboardViewModel @Inject constructor(
             val conversationsCount = conversations.size
             val lastConversation = conversations.firstOrNull()
 
-            // Get KB data
+            // Get KB data - find most recently modified file across all folders
             val folders = llmOutputRepository.listFolders()
             var totalFiles = 0
             var lastFolder: String? = null
             var lastFile: String? = null
+            var lastModifiedTime: Long = 0
 
             folders.forEach { folder ->
                 val files = llmOutputRepository.listFiles(folder)
                 totalFiles += files.size
-                if (lastFolder == null && files.isNotEmpty()) {
-                    lastFolder = folder
-                    lastFile = files.firstOrNull()?.name
+                // Check if this folder has a more recent file
+                files.firstOrNull()?.let { file ->
+                    if (file.lastModified() > lastModifiedTime) {
+                        lastModifiedTime = file.lastModified()
+                        lastFolder = folder
+                        lastFile = file.name
+                    }
                 }
             }
 

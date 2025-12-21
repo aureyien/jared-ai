@@ -31,9 +31,19 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import com.mikepenz.markdown.m3.Markdown
+import com.music.sttnotes.ui.components.einkMarkdownColors
+import com.music.sttnotes.ui.components.einkMarkdownTypography
+import com.music.sttnotes.ui.components.einkMarkdownComponents
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -90,6 +100,8 @@ fun ChatListScreen(
     val usedTags by viewModel.usedTags.collectAsState()
     val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
     val showTagFilter by viewModel.showTagFilter.collectAsState()
+    val summaryInProgress by viewModel.summaryInProgress.collectAsState()
+    val generatedSummary by viewModel.generatedSummary.collectAsState()
     val strings = rememberStrings()
 
     // Refresh list when screen becomes visible (returning from conversation)
@@ -306,8 +318,10 @@ fun ChatListScreen(
                                 )
                             },
                             onManageTags = { onManageTags(conversation.id) },
+                            onSummarize = { viewModel.generateSummary(conversation.id) },
                             showTags = showTagFilter,
-                            onToggleFavorite = { viewModel.toggleConversationFavorite(conversation.id) }
+                            onToggleFavorite = { viewModel.toggleConversationFavorite(conversation.id) },
+                            isSummarizing = summaryInProgress == conversation.id
                         )
                     }
                 }
@@ -326,6 +340,29 @@ fun ChatListScreen(
             }
         )
     }
+
+    // Full-screen loading view while generating summary
+    summaryInProgress?.let { convId ->
+        val conversation = conversations.find { it.id == convId }
+        SummaryLoadingView(
+            title = conversation?.title ?: strings.conversationSummary,
+            onCancel = { viewModel.clearSummaryProgress() }
+        )
+    }
+
+    // Full-screen summary view
+    generatedSummary?.let { (convId, summary) ->
+        val conversation = conversations.find { it.id == convId }
+        SummaryFullScreenView(
+            title = conversation?.title ?: strings.conversationSummary,
+            summary = summary,
+            onClose = { viewModel.clearSummary() },
+            onSaveToKb = { folderName, filename ->
+                viewModel.saveSummaryToKb(convId, summary, folderName, filename)
+                viewModel.clearSummary()
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -336,8 +373,10 @@ private fun ConversationCard(
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onManageTags: () -> Unit,
+    onSummarize: () -> Unit,
     showTags: Boolean,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    isSummarizing: Boolean = false
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -479,6 +518,27 @@ private fun ConversationCard(
                 leadingIcon = { Icon(Icons.Default.LocalOffer, contentDescription = null) }
             )
             DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(strings.summarize)
+                        if (isSummarizing) {
+                            Spacer(Modifier.width(8.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = EInkBlack
+                            )
+                        }
+                    }
+                },
+                onClick = {
+                    showContextMenu = false
+                    onSummarize()
+                },
+                leadingIcon = { Icon(Icons.Default.Summarize, contentDescription = null) },
+                enabled = !isSummarizing && conversation.messages.isNotEmpty()
+            )
+            DropdownMenuItem(
                 text = { Text(strings.delete) },
                 onClick = {
                     showContextMenu = false
@@ -596,5 +656,188 @@ private fun formatRelativeTime(timestamp: Long): String {
             format.format(Date(timestamp))
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SummaryFullScreenView(
+    title: String,
+    summary: String,
+    onClose: () -> Unit,
+    onSaveToKb: (folderName: String, filename: String) -> Unit
+) {
+    val strings = rememberStrings()
+    var showSaveDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        strings.conversationSummary,
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                navigationIcon = {
+                    EInkIconButton(
+                        onClick = onClose,
+                        icon = Icons.Default.Close,
+                        contentDescription = strings.close
+                    )
+                },
+                actions = {
+                    EInkIconButton(
+                        onClick = { showSaveDialog = true },
+                        icon = Icons.Default.Save,
+                        contentDescription = strings.saveToKb
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = EInkWhite,
+                    titleContentColor = EInkBlack
+                )
+            )
+        },
+        containerColor = EInkWhite
+    ) { padding ->
+        SelectionContainer {
+            Markdown(
+                content = summary,
+                colors = einkMarkdownColors(),
+                typography = einkMarkdownTypography(),
+                components = einkMarkdownComponents(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .verticalScroll(rememberScrollState())
+            )
+        }
+    }
+
+    // Save to KB dialog
+    if (showSaveDialog) {
+        SaveToKbDialog(
+            suggestedTitle = title,
+            onDismiss = { showSaveDialog = false },
+            onConfirm = { folderName, filename ->
+                showSaveDialog = false
+                onSaveToKb(folderName, filename)
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SummaryLoadingView(
+    title: String,
+    onCancel: () -> Unit
+) {
+    val strings = rememberStrings()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        strings.conversationSummary,
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                navigationIcon = {
+                    EInkIconButton(
+                        onClick = onCancel,
+                        icon = Icons.Default.Close,
+                        contentDescription = strings.cancel
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = EInkWhite,
+                    titleContentColor = EInkBlack
+                )
+            )
+        },
+        containerColor = EInkWhite
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = EInkBlack,
+                strokeWidth = 3.dp
+            )
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = strings.thinking,
+                style = MaterialTheme.typography.titleMedium,
+                color = EInkBlack
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = EInkGrayMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SaveToKbDialog(
+    suggestedTitle: String,
+    onDismiss: () -> Unit,
+    onConfirm: (folderName: String, filename: String) -> Unit
+) {
+    val strings = rememberStrings()
+    var folderName by remember { mutableStateOf("Summaries") }
+    var filename by remember { mutableStateOf(suggestedTitle) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.saveToKb) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                EInkTextField(
+                    value = folderName,
+                    onValueChange = { folderName = it },
+                    placeholder = strings.folderName,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                EInkTextField(
+                    value = filename,
+                    onValueChange = { filename = it },
+                    placeholder = strings.fileName,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            EInkButton(
+                onClick = { onConfirm(folderName, filename) },
+                filled = true,
+                enabled = folderName.isNotBlank() && filename.isNotBlank()
+            ) {
+                Text(strings.save)
+            }
+        },
+        dismissButton = {
+            EInkButton(onClick = onDismiss, filled = false) {
+                Text(strings.cancel)
+            }
+        },
+        containerColor = EInkWhite
+    )
 }
 

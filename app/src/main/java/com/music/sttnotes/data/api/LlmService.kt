@@ -61,6 +61,34 @@ data class AnthropicChatRequest(
     val system: String? = null  // System prompt is separate field
 )
 
+// Anthropic prompt caching data classes
+@Serializable
+data class CacheControl(
+    val type: String = "ephemeral"
+)
+
+@Serializable
+data class AnthropicContentBlock(
+    val type: String,
+    val text: String,
+    val cache_control: CacheControl? = null
+)
+
+@Serializable
+data class AnthropicMessageWithCache(
+    val role: String,
+    val content: List<AnthropicContentBlock>
+)
+
+@Serializable
+data class AnthropicChatRequestWithCache(
+    val model: String,
+    val messages: List<AnthropicMessageWithCache>,
+    val max_tokens: Int,
+    val stream: Boolean = false,
+    val system: List<AnthropicContentBlock>? = null  // System as array for cache_control
+)
+
 @Serializable
 data class AnthropicDelta(
     val type: String? = null,
@@ -162,15 +190,47 @@ class LlmService @Inject constructor() {
         // Build request based on provider (Anthropic has different format)
         val (requestBody, endpoint, headers) = if (provider == LlmProvider.ANTHROPIC) {
             // Anthropic format: system prompt separate, different headers
-            val anthropicRequest = AnthropicChatRequest(
-                model = model,
-                messages = messages.takeLast(50),  // Only user/assistant messages
-                max_tokens = 4096,
-                stream = true,
-                system = systemPrompt
-            )
+            // Use prompt caching for long system prompts (> 4000 chars)
+            val usePromptCaching = systemPrompt.length > 4000
+
+            val anthropicRequestBody = if (usePromptCaching) {
+                // Convert messages to cached format
+                val cachedMessages = messages.takeLast(50).map { msg ->
+                    AnthropicMessageWithCache(
+                        role = msg.role,
+                        content = listOf(AnthropicContentBlock(type = "text", text = msg.content))
+                    )
+                }
+
+                val cachedRequest = AnthropicChatRequestWithCache(
+                    model = model,
+                    messages = cachedMessages,
+                    max_tokens = 4096,
+                    stream = true,
+                    system = listOf(
+                        AnthropicContentBlock(
+                            type = "text",
+                            text = systemPrompt,
+                            cache_control = CacheControl(type = "ephemeral")
+                        )
+                    )
+                )
+                Log.d(TAG, "Using Anthropic prompt caching for system prompt (${systemPrompt.length} chars)")
+                json.encodeToString(cachedRequest)
+            } else {
+                // Standard request without caching
+                val anthropicRequest = AnthropicChatRequest(
+                    model = model,
+                    messages = messages.takeLast(50),
+                    max_tokens = 4096,
+                    stream = true,
+                    system = systemPrompt
+                )
+                json.encodeToString(anthropicRequest)
+            }
+
             Triple(
-                json.encodeToString(anthropicRequest),
+                anthropicRequestBody,
                 "${baseUrl}messages",
                 mapOf(
                     "x-api-key" to apiKey,

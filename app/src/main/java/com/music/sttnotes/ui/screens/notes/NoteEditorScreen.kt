@@ -86,8 +86,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mikepenz.markdown.m3.Markdown
 import com.mohamedrejeb.richeditor.model.RichTextState
@@ -403,17 +406,24 @@ fun NoteEditorScreen(
                             )
                         }
                     } else {
-                        // Edit mode: RichTextEditor
-                        RichTextEditor(
-                            state = viewModel.richTextState,
-                            modifier = Modifier.fillMaxSize(),
-                            colors = RichTextEditorDefaults.richTextEditorColors(
-                                containerColor = EInkWhite,
-                                textColor = EInkBlack,
-                                cursorColor = EInkBlack
-                            ),
-                            placeholder = { Text(strings.startWritingOrRecord, color = EInkGrayMedium) }
-                        )
+                        // Edit mode: RichTextEditor with blue text selection
+                        CompositionLocalProvider(
+                            LocalTextSelectionColors provides TextSelectionColors(
+                                handleColor = Color(0xFF64B5F6),
+                                backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
+                            )
+                        ) {
+                            RichTextEditor(
+                                state = viewModel.richTextState,
+                                modifier = Modifier.fillMaxSize(),
+                                colors = RichTextEditorDefaults.richTextEditorColors(
+                                    containerColor = EInkWhite,
+                                    textColor = EInkBlack,
+                                    cursorColor = EInkBlack
+                                ),
+                                placeholder = { Text(strings.startWritingOrRecord, color = EInkGrayMedium) }
+                            )
+                        }
                     }
                 }
 

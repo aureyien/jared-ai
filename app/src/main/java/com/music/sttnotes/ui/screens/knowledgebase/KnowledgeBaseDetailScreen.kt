@@ -31,9 +31,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import com.music.sttnotes.data.i18n.rememberStrings
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -94,7 +98,9 @@ fun KnowledgeBaseDetailScreen(
     val allTags by viewModel.allTags.collectAsState()
     val tagInput by viewModel.tagInput.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsState()
+    val strings = rememberStrings()
     var showUndoSnackbar by remember { mutableStateOf(false) }
+    var showActionMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showTagsSection by remember { mutableStateOf(false) }
     var currentFilename by remember { mutableStateOf(filename) }
@@ -167,36 +173,60 @@ fun KnowledgeBaseDetailScreen(
                     )
                 },
                 actions = {
-                    // Favorite button
+                    // Favorite button - standalone
                     EInkIconButton(
                         onClick = { viewModel.toggleFileFavorite(folder, filename) },
                         icon = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites"
+                        contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites
                     )
-                    // Manage tags button
-                    EInkIconButton(
-                        onClick = onManageTags,
-                        icon = Icons.Default.LocalOffer,
-                        contentDescription = "Tags"
-                    )
-                    // Toggle Edit/Preview
-                    EInkIconButton(
-                        onClick = {
-                            if (isEditMode) {
-                                // Save before switching to preview
-                                viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
-                            }
-                            viewModel.toggleEditMode()
-                        },
-                        icon = if (isEditMode) Icons.Default.Visibility else Icons.Default.Edit,
-                        contentDescription = if (isEditMode) "Aperçu" else "Modifier"
-                    )
-                    // Delete button
-                    EInkIconButton(
-                        onClick = { showUndoSnackbar = true },
-                        icon = Icons.Default.Delete,
-                        contentDescription = "Supprimer"
-                    )
+                    // 3-dot menu for other actions
+                    Box {
+                        EInkIconButton(
+                            onClick = { showActionMenu = true },
+                            icon = Icons.Default.MoreVert,
+                            contentDescription = strings.settings
+                        )
+                        DropdownMenu(
+                            expanded = showActionMenu,
+                            onDismissRequest = { showActionMenu = false }
+                        ) {
+                            // Tags option
+                            DropdownMenuItem(
+                                text = { Text(strings.tags) },
+                                onClick = {
+                                    showActionMenu = false
+                                    onManageTags()
+                                },
+                                leadingIcon = { Icon(Icons.Default.LocalOffer, null) }
+                            )
+                            // Edit/Preview toggle
+                            DropdownMenuItem(
+                                text = { Text(if (isEditMode) strings.preview else strings.edit) },
+                                onClick = {
+                                    showActionMenu = false
+                                    if (isEditMode) {
+                                        viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
+                                    }
+                                    viewModel.toggleEditMode()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (isEditMode) Icons.Default.Visibility else Icons.Default.Edit,
+                                        null
+                                    )
+                                }
+                            )
+                            // Delete option
+                            DropdownMenuItem(
+                                text = { Text(strings.delete) },
+                                onClick = {
+                                    showActionMenu = false
+                                    showUndoSnackbar = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.Delete, null) }
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = EInkWhite,
