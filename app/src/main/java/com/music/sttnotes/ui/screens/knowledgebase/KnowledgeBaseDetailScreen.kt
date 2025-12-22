@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.outlined.StarBorder
@@ -84,6 +85,7 @@ import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.MarkdownToolbar
+import com.music.sttnotes.ui.components.ShareResultModal
 import com.music.sttnotes.ui.components.UndoSnackbar
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayMedium
@@ -105,6 +107,8 @@ fun KnowledgeBaseDetailScreen(
     val allTags by viewModel.allTags.collectAsState()
     val tagInput by viewModel.tagInput.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsState()
+    val shareEnabled by viewModel.shareEnabled.collectAsState(initial = false)
+    val shareResult by viewModel.shareResult.collectAsState()
     val strings = rememberStrings()
     var showUndoSnackbar by remember { mutableStateOf(false) }
     var showActionMenu by remember { mutableStateOf(false) }
@@ -187,6 +191,14 @@ fun KnowledgeBaseDetailScreen(
                         icon = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                         contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites
                     )
+                    // Share button (conditionally visible)
+                    if (shareEnabled && !isEditMode) {
+                        EInkIconButton(
+                            onClick = { viewModel.shareArticle(folder, filename) },
+                            icon = Icons.Default.Share,
+                            contentDescription = strings.shareArticle
+                        )
+                    }
                     // 3-dot menu for other actions
                     Box {
                         EInkIconButton(
@@ -398,6 +410,14 @@ fun KnowledgeBaseDetailScreen(
                     )
                 }
             }
+        )
+    }
+
+    // Share result modal
+    shareResult?.let { (_, response) ->
+        ShareResultModal(
+            shareResponse = response,
+            onDismiss = { viewModel.clearShareResult() }
         )
     }
 }
