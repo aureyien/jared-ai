@@ -164,6 +164,7 @@ class NotesRepository @Inject constructor(
 
     suspend fun archiveNote(noteId: String) = withContext(Dispatchers.IO) {
         mutex.withLock {
+            Log.d(TAG, "archiveNote: BEFORE - _notes has ${_notes.value.size} notes, contains $noteId: ${_notes.value.any { it.id == noteId }}")
             val noteToArchive = _notes.value.find { it.id == noteId }
             if (noteToArchive == null) {
                 // Note already archived or doesn't exist
@@ -180,6 +181,7 @@ class NotesRepository @Inject constructor(
             _archivedNotes.value = currentArchived.sortedByDescending { it.updatedAt }
             updateAllTags(currentNotes)
             persistNotes(currentNotes + currentArchived)
+            Log.d(TAG, "archiveNote: AFTER - _notes has ${_notes.value.size} notes, contains $noteId: ${_notes.value.any { it.id == noteId }}")
             Log.d(TAG, "Archived note $noteId")
         }
     }

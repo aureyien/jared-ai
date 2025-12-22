@@ -108,7 +108,7 @@ class LlmService @Inject constructor() {
         private const val TAG = "LlmService"
 
         // Model recommendations (Dec 2025)
-        const val GROQ_MODEL = "llama-3.3-70b-versatile"  // Fast, free tier
+        const val GROQ_MODEL = "llama-3.1-8b-instant"     // Cheapest: $0.05/1M input, $0.08/1M output, 840 TPS
         const val OPENAI_MODEL = "gpt-5-mini"             // $0.25/1M input, $2/1M output
         const val XAI_MODEL = "grok-4-1-fast-reasoning"   // $0.20/1M input, $0.50/1M output
         const val ANTHROPIC_MODEL = "claude-haiku-4-5"    // $1/1M input, $5/1M output

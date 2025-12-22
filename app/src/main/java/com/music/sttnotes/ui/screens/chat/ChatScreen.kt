@@ -414,6 +414,7 @@ fun ChatScreen(
     messageToSave?.let { message ->
         SaveResponseDialog(
             message = message,
+            viewModel = viewModel,
             existingFolders = existingFolders,
             onSave = { filename, folder ->
                 viewModel.saveResponseToFile(message.id, filename, folder)
@@ -648,24 +649,24 @@ private fun MiniIconButton(
 @Composable
 private fun SaveResponseDialog(
     message: UiChatMessage,
+    viewModel: ChatViewModel,
     existingFolders: List<String>,
     onSave: (filename: String, folder: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val strings = rememberStrings()
-    // Generate default filename from content
-    val defaultFilename = message.content
-        .take(40)
-        .replace(Regex("[^a-zA-Z0-9\\s]"), "")
-        .trim()
-        .replace(Regex("\\s+"), "-")
-        .lowercase()
-        .ifEmpty { "response" }
-
-    var filename by remember { mutableStateOf(defaultFilename) }
+    var filename by remember { mutableStateOf("") }
+    var isGeneratingFilename by remember { mutableStateOf(true) }
     var selectedFolder by remember { mutableStateOf(existingFolders.firstOrNull() ?: "") }
     var showNewFolderInput by remember { mutableStateOf(existingFolders.isEmpty()) }
     var newFolderName by remember { mutableStateOf("") }
+
+    // Generate filename using LLM when dialog opens
+    LaunchedEffect(message.id) {
+        isGeneratingFilename = true
+        filename = viewModel.generateFilenameForMessage(message.id)
+        isGeneratingFilename = false
+    }
 
     val finalFolder = if (showNewFolderInput) newFolderName else selectedFolder
 
@@ -687,8 +688,8 @@ private fun SaveResponseDialog(
             Spacer(Modifier.height(4.dp))
             EInkTextField(
                 value = filename,
-                onValueChange = { filename = it },
-                placeholder = strings.filename,
+                onValueChange = { if (!isGeneratingFilename) filename = it },
+                placeholder = if (isGeneratingFilename) "Generating filename..." else strings.filename,
                 modifier = Modifier.fillMaxWidth()
             )
 

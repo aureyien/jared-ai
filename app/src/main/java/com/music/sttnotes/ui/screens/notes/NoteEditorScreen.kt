@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.StrikethroughS
 import androidx.compose.material.icons.filled.Title
@@ -99,10 +100,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mikepenz.markdown.m3.Markdown
+import com.music.sttnotes.ui.components.convertCheckboxesToUnicode
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.einkMarkdownColors
+import com.music.sttnotes.ui.components.einkMarkdownComponents
 import com.music.sttnotes.ui.components.einkMarkdownTypography
 import com.music.sttnotes.ui.components.EInkTextField
+import com.music.sttnotes.ui.components.PlainTextMarkdownToolbar
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayLight
 import com.music.sttnotes.ui.theme.EInkGrayMedium
@@ -149,6 +153,7 @@ fun NoteEditorScreen(
     // Navigate back when note is archived
     LaunchedEffect(isArchived) {
         if (isArchived) {
+            android.util.Log.d("NoteEditorScreen", "isArchived is true, calling onNavigateBack()")
             onNavigateBack()
         }
     }
@@ -252,10 +257,10 @@ fun NoteEditorScreen(
                             )
                         }
                     }
-                    // Preview toggle only (no save icon)
+                    // Preview toggle with save icon when in edit mode
                     IconButton(onClick = { viewModel.togglePreviewMode() }) {
                         Icon(
-                            if (isPreviewMode) Icons.Default.Edit else Icons.Default.Visibility,
+                            if (isPreviewMode) Icons.Default.Edit else Icons.Default.Save,
                             contentDescription = if (isPreviewMode) strings.edit else strings.preview,
                             tint = EInkBlack
                         )
@@ -279,11 +284,7 @@ fun NoteEditorScreen(
                     // Stop recording button - show when recording (rightmost position)
                     if (recordingState is RecordingState.Recording) {
                         IconButton(onClick = { viewModel.stopRecording() }) {
-                            Icon(
-                                Icons.Default.Stop,
-                                contentDescription = strings.recording,
-                                tint = EInkBlack
-                            )
+                            StopRecordingIcon()
                         }
                     }
                 },
@@ -439,9 +440,8 @@ fun NoteEditorScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Content editor with toolbar overlay
-            // imePadding on edit mode so content scrolls up when keyboard shows
             Box(
-                modifier = Modifier.weight(1f).then(if (!isPreviewMode) Modifier.imePadding() else Modifier)
+                modifier = Modifier.weight(1f)
             ) {
                 // Editor or Preview
                 Box(
@@ -450,12 +450,13 @@ fun NoteEditorScreen(
                         .border(0.5.dp, EInkGrayMedium, RoundedCornerShape(6.dp))
                 ) {
                     if (isPreviewMode) {
-                        // Preview mode: render Markdown
+                        // Preview mode: render Markdown with checkbox support
                         SelectionContainer {
                             Markdown(
-                                content = markdownContent,
+                                content = convertCheckboxesToUnicode(markdownContent),
                                 colors = einkMarkdownColors(),
                                 typography = einkMarkdownTypography(),
+                                components = einkMarkdownComponents(),
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(16.dp)
@@ -494,7 +495,24 @@ fun NoteEditorScreen(
                     }
                 }
 
-                // Markdown toolbar removed - now using plain text editor for markdown
+                // Markdown toolbar above keyboard (only in edit mode when keyboard is visible)
+                if (!isPreviewMode && isKeyboardVisible) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .imePadding()
+                    ) {
+                        PlainTextMarkdownToolbar(
+                            textFieldValue = localContent,
+                            onTextChange = { newValue ->
+                                localContent = newValue
+                                viewModel.updateContent(newValue.text)
+                                viewModel.updateCursorPosition(newValue.selection.start)
+                            }
+                        )
+                    }
+                }
             }
 
             // Recording status indicator - show when processing or error
@@ -563,4 +581,36 @@ private fun formatDuration(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60
     return String.format("%02d:%02d", mins, secs)
+}
+
+/**
+ * Custom stop recording icon - circle with square inside (like media players)
+ */
+@Composable
+private fun StopRecordingIcon() {
+    Box(
+        modifier = Modifier.size(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.foundation.Canvas(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Draw outer circle
+            drawCircle(
+                color = androidx.compose.ui.graphics.Color.Black,
+                radius = size.minDimension / 2,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+            )
+            // Draw inner square (stop symbol)
+            val squareSize = size.minDimension * 0.45f
+            drawRect(
+                color = androidx.compose.ui.graphics.Color.Black,
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    x = (size.width - squareSize) / 2,
+                    y = (size.height - squareSize) / 2
+                ),
+                size = androidx.compose.ui.geometry.Size(squareSize, squareSize)
+            )
+        }
+    }
 }

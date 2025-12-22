@@ -434,14 +434,17 @@ class LlmOutputRepository @Inject constructor(
             // Merge content with separators
             val mergedBody = buildString {
                 contents.forEachIndexed { index, (filename, _, body) ->
-                    if (index > 0) {
-                        appendLine()
-                        appendLine("---")
-                        appendLine()
-                    }
-                    appendLine("## From: ${filename.removeSuffix(".md")}")
+                    appendLine("#### *From: ${filename.removeSuffix(".md")}*")
                     appendLine()
                     append(body.trim())
+
+                    // Add markdown separator after each note
+                    appendLine()
+                    appendLine()
+                    appendLine("---")
+                    if (index < contents.size - 1) {
+                        appendLine()
+                    }
                 }
             }
 

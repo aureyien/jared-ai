@@ -34,6 +34,13 @@ sealed class FavoriteItem {
     data class KbItem(val folder: String, val filename: String) : FavoriteItem()
 }
 
+data class KbPreviewItem(
+    val folder: String,
+    val filename: String,
+    val preview: String,
+    val lastModified: Long
+)
+
 data class DashboardState(
     val notesCount: Int = 0,
     val lastNote: Note? = null,
@@ -42,6 +49,7 @@ data class DashboardState(
     val kbItemsCount: Int = 0,
     val lastKbFolder: String? = null,
     val lastKbFile: String? = null,
+    val lastKbItems: List<KbPreviewItem> = emptyList(),
     val isLlmConfigured: Boolean = false,
     val isLoading: Boolean = true,
     // Search state
@@ -204,12 +212,15 @@ class DashboardViewModel @Inject constructor(
             val conversationsCount = conversations.size
             val lastConversation = conversations.firstOrNull()
 
-            // Get KB data - find most recently modified file across all folders
+            // Get KB data - find most recently modified files across all folders
             val folders = llmOutputRepository.listFolders()
             var totalFiles = 0
             var lastFolder: String? = null
             var lastFile: String? = null
             var lastModifiedTime: Long = 0
+
+            // Collect all KB files with their metadata for sorting
+            val allKbItems = mutableListOf<KbPreviewItem>()
 
             folders.forEach { folder ->
                 val files = llmOutputRepository.listFiles(folder)
@@ -222,7 +233,46 @@ class DashboardViewModel @Inject constructor(
                         lastFile = file.name
                     }
                 }
+
+                // Collect all files with previews
+                files.forEach { file ->
+                    val content = llmOutputRepository.readFile(folder, file.name).getOrNull() ?: ""
+                    // Extract only the LLM answer (skip frontmatter and original transcription)
+                    // Regular file structure: ---\nmetadata\n---\n\n## Original transcription\n...\n---\n\nLLM ANSWER
+                    // Merged file structure: ---\nmetadata\n---\n\n## From: file1\n\n## Original transcription\n...\n---\n\nAnswer1\n\n---\n\n## From: file2...
+
+                    val answerContent = if (content.contains("---")) {
+                        val parts = content.split("---")
+                        if (parts.size >= 3) {
+                            // Skip parts[0] (empty) and parts[1] (frontmatter)
+                            // Join the rest and extract content after "## Original transcription" section
+                            val bodyParts = parts.drop(2)
+                            val fullBody = bodyParts.joinToString("---")
+
+                            // Find last occurrence of "## Original transcription" block and take content after its separator
+                            val transcriptionPattern = """## Original transcription.*?---""".toRegex(RegexOption.DOT_MATCHES_ALL)
+                            transcriptionPattern.replace(fullBody, "").trim()
+                        } else {
+                            content
+                        }
+                    } else {
+                        content
+                    }
+
+                    val preview = answerContent.take(200).replace("\n", " ")
+                    allKbItems.add(KbPreviewItem(
+                        folder = folder,
+                        filename = file.name,
+                        preview = preview,
+                        lastModified = file.lastModified()
+                    ))
+                }
             }
+
+            // Get the last 3 most recently modified KB items
+            val lastKbItems = allKbItems
+                .sortedByDescending { it.lastModified }
+                .take(3)
 
             // Load favorite items
             val favoriteNotes = notesRepository.getFavoriteNotes()
@@ -254,6 +304,7 @@ class DashboardViewModel @Inject constructor(
                 kbItemsCount = totalFiles,
                 lastKbFolder = lastFolder,
                 lastKbFile = lastFile,
+                lastKbItems = lastKbItems,
                 isLlmConfigured = isLlmConfigured,
                 isLoading = false,
                 favoriteItems = favoriteItems,

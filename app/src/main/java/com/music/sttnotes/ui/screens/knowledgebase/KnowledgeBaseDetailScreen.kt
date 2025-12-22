@@ -33,14 +33,17 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Slider
 import com.music.sttnotes.data.i18n.rememberStrings
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Icon
@@ -51,6 +54,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -68,14 +73,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mikepenz.markdown.m3.Markdown
-import com.mohamedrejeb.richeditor.model.rememberRichTextState
-import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
-import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
+import com.music.sttnotes.ui.components.convertCheckboxesToUnicode
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.einkMarkdownColors
 import com.music.sttnotes.ui.components.einkMarkdownComponents
@@ -84,7 +89,7 @@ import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
-import com.music.sttnotes.ui.components.MarkdownToolbar
+import com.music.sttnotes.ui.components.PlainTextMarkdownToolbar
 import com.music.sttnotes.ui.components.ShareResultModal
 import com.music.sttnotes.ui.components.UndoSnackbar
 import com.music.sttnotes.ui.theme.EInkBlack
@@ -98,6 +103,8 @@ fun KnowledgeBaseDetailScreen(
     folder: String,
     filename: String,
     onNavigateBack: () -> Unit,
+    onOpenParentFolder: (() -> Unit)? = null,
+    onNavigateToHome: (() -> Unit)? = null,
     onManageTags: () -> Unit = {},
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
@@ -109,23 +116,20 @@ fun KnowledgeBaseDetailScreen(
     val isFavorite by viewModel.isFavorite.collectAsState()
     val shareEnabled by viewModel.shareEnabled.collectAsState(initial = false)
     val shareResult by viewModel.shareResult.collectAsState()
+    val kbPreviewFontSize by viewModel.kbPreviewFontSize.collectAsState()
     val strings = rememberStrings()
     var showUndoSnackbar by remember { mutableStateOf(false) }
     var showActionMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showTagsSection by remember { mutableStateOf(false) }
+    var showFontSizeDialog by remember { mutableStateOf(false) }
     var currentFilename by remember { mutableStateOf(filename) }
     var renameError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
 
-    // Rich text editor state
-    val richTextState = rememberRichTextState()
-
-    // Configure list indentation
-    LaunchedEffect(Unit) {
-        richTextState.config.listIndent = 16  // Reduce from default 38
-    }
+    // Plain text state for markdown editing (preserves all markdown syntax)
+    var editText by remember { mutableStateOf(TextFieldValue("")) }
 
     // Keyboard detection
     val density = LocalDensity.current
@@ -137,10 +141,10 @@ fun KnowledgeBaseDetailScreen(
         currentFilename = filename
     }
 
-    // Load content into RichTextState when fileContent changes
+    // Load content into edit text when fileContent changes
     LaunchedEffect(fileContent) {
         fileContent?.let { content ->
-            richTextState.setMarkdown(content)
+            editText = TextFieldValue(content)
         }
     }
 
@@ -148,7 +152,7 @@ fun KnowledgeBaseDetailScreen(
     DisposableEffect(Unit) {
         onDispose {
             if (isEditMode) {
-                viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
+                viewModel.saveFileContent(folder, currentFilename, editText.text)
             }
         }
     }
@@ -166,11 +170,12 @@ fun KnowledgeBaseDetailScreen(
                     )
                 },
                 navigationIcon = {
+                    // Always show single back button in top bar
                     EInkIconButton(
                         onClick = {
                             // Save content if in edit mode
                             if (isEditMode) {
-                                viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
+                                viewModel.saveFileContent(folder, currentFilename, editText.text)
                             }
                             // Commit pending deletion before navigating back
                             if (showUndoSnackbar) {
@@ -185,6 +190,17 @@ fun KnowledgeBaseDetailScreen(
                     )
                 },
                 actions = {
+                    // Save/Preview button when in edit mode
+                    if (isEditMode) {
+                        EInkIconButton(
+                            onClick = {
+                                viewModel.saveFileContent(folder, currentFilename, editText.text)
+                                viewModel.toggleEditMode()
+                            },
+                            icon = Icons.Default.Save,
+                            contentDescription = strings.preview
+                        )
+                    }
                     // Favorite button - standalone
                     EInkIconButton(
                         onClick = { viewModel.toggleFileFavorite(folder, filename) },
@@ -236,7 +252,7 @@ fun KnowledgeBaseDetailScreen(
                                 onClick = {
                                     showActionMenu = false
                                     if (isEditMode) {
-                                        viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
+                                        viewModel.saveFileContent(folder, currentFilename, editText.text)
                                     }
                                     viewModel.toggleEditMode()
                                 },
@@ -246,6 +262,15 @@ fun KnowledgeBaseDetailScreen(
                                         null
                                     )
                                 }
+                            )
+                            // Font size option for grid preview
+                            DropdownMenuItem(
+                                text = { Text("Preview Font Size") },
+                                onClick = {
+                                    showActionMenu = false
+                                    showFontSizeDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.FormatSize, null) }
                             )
                             // Delete option
                             DropdownMenuItem(
@@ -265,6 +290,103 @@ fun KnowledgeBaseDetailScreen(
                 )
             )
         },
+        bottomBar = {
+            // Show two-button navigation when opened from home
+            if (onOpenParentFolder != null && onNavigateToHome != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = EInkWhite,
+                    border = BorderStroke(1.dp, EInkBlack)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        val leftButtonShape = RoundedCornerShape(
+                            topStart = 0.dp,
+                            topEnd = 0.dp,
+                            bottomStart = 24.dp,
+                            bottomEnd = 0.dp
+                        )
+                        val rightButtonShape = RoundedCornerShape(
+                            topStart = 0.dp,
+                            topEnd = 0.dp,
+                            bottomStart = 0.dp,
+                            bottomEnd = 24.dp
+                        )
+
+                        // Open Folder button - LEFT
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clickable {
+                                    if (isEditMode) {
+                                        viewModel.saveFileContent(folder, currentFilename, editText.text)
+                                    }
+                                    if (showUndoSnackbar) {
+                                        viewModel.deleteFile(folder, currentFilename)
+                                        showUndoSnackbar = false
+                                    }
+                                    viewModel.clearFileContent()
+                                    onOpenParentFolder()
+                                },
+                            shape = leftButtonShape,
+                            color = EInkBlack
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Open Folder",
+                                    color = EInkWhite,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.width(8.dp))
+
+                        // Close button - RIGHT
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clickable {
+                                    if (isEditMode) {
+                                        viewModel.saveFileContent(folder, currentFilename, editText.text)
+                                    }
+                                    if (showUndoSnackbar) {
+                                        viewModel.deleteFile(folder, currentFilename)
+                                        showUndoSnackbar = false
+                                    }
+                                    viewModel.clearFileContent()
+                                    onNavigateToHome()
+                                },
+                            shape = rightButtonShape,
+                            color = EInkWhite,
+                            border = BorderStroke(1.dp, EInkBlack)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Close",
+                                    color = EInkBlack,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
         containerColor = EInkWhite
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -275,7 +397,7 @@ fun KnowledgeBaseDetailScreen(
                     isEditMode = showTagsSection,
                     onRemoveTag = { tag ->
                         viewModel.removeTag(tag)
-                        viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
+                        viewModel.saveFileContent(folder, currentFilename, editText.text)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -292,7 +414,7 @@ fun KnowledgeBaseDetailScreen(
                     onTagInputChange = viewModel::updateTagInput,
                     onAddTag = { tag ->
                         viewModel.addTag(tag)
-                        viewModel.saveFileContent(folder, currentFilename, richTextState.toMarkdown())
+                        viewModel.saveFileContent(folder, currentFilename, editText.text)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -308,8 +430,7 @@ fun KnowledgeBaseDetailScreen(
                     }
                     else -> {
                         // Editor or Preview based on mode
-                        // imePadding on edit mode so content scrolls up when keyboard shows
-                        Box(modifier = Modifier.fillMaxSize().then(if (isEditMode) Modifier.imePadding() else Modifier)) {
+                        Box(modifier = Modifier.fillMaxSize()) {
                             CompositionLocalProvider(
                                 LocalTextSelectionColors provides TextSelectionColors(
                                     handleColor = Color(0xFF64B5F6),
@@ -317,28 +438,39 @@ fun KnowledgeBaseDetailScreen(
                                 )
                             ) {
                                 if (isEditMode) {
-                                    // Edit mode: RichTextEditor
-                                    // Add bottom padding when keyboard is visible to prevent content from being hidden by toolbar
-                                    val bottomPadding = if (isKeyboardVisible) 56.dp else 16.dp
-                                    RichTextEditor(
-                                        state = richTextState,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = bottomPadding),
-                                        colors = RichTextEditorDefaults.richTextEditorColors(
-                                            containerColor = EInkWhite,
-                                            textColor = EInkBlack,
-                                            cursorColor = EInkBlack
-                                        ),
-                                        placeholder = { Text("Commencez à écrire...", color = EInkGrayMedium) }
-                                    )
+                                    // Edit mode: Plain TextField for markdown editing
+                                    CompositionLocalProvider(
+                                        LocalTextSelectionColors provides TextSelectionColors(
+                                            handleColor = Color(0xFF64B5F6),
+                                            backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
+                                        )
+                                    ) {
+                                        TextField(
+                                            value = editText,
+                                            onValueChange = { editText = it },
+                                            modifier = Modifier.fillMaxSize(),
+                                            colors = TextFieldDefaults.colors(
+                                                focusedContainerColor = EInkWhite,
+                                                unfocusedContainerColor = EInkWhite,
+                                                focusedTextColor = EInkBlack,
+                                                unfocusedTextColor = EInkBlack,
+                                                cursorColor = EInkBlack,
+                                                focusedIndicatorColor = Color.Transparent,
+                                                unfocusedIndicatorColor = Color.Transparent
+                                            ),
+                                            textStyle = MaterialTheme.typography.bodyLarge,
+                                            placeholder = { Text("Start writing...", color = EInkGrayMedium) }
+                                        )
+                                    }
                                 } else {
-                                    // Preview mode: Markdown renderer with text selection
+                                    // Preview mode: Markdown renderer with text selection and checkbox support
+                                    // Convert grid preview font size (7-12sp) to content multiplier (0.778-1.333)
+                                    val fontMultiplier = kbPreviewFontSize / 9f // 9sp is baseline (1.0x)
                                     SelectionContainer {
                                         Markdown(
-                                            content = fileContent ?: "",
+                                            content = convertCheckboxesToUnicode(fileContent ?: ""),
                                             colors = einkMarkdownColors(),
-                                            typography = einkMarkdownTypography(),
+                                            typography = einkMarkdownTypography(fontMultiplier),
                                             components = einkMarkdownComponents(),
                                             modifier = Modifier
                                                 .fillMaxSize()
@@ -355,8 +487,12 @@ fun KnowledgeBaseDetailScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .align(Alignment.BottomCenter)
+                                        .imePadding()
                                 ) {
-                                    MarkdownToolbar(richTextState = richTextState)
+                                    PlainTextMarkdownToolbar(
+                                        textFieldValue = editText,
+                                        onTextChange = { editText = it }
+                                    )
                                 }
                             }
                         }
@@ -413,6 +549,15 @@ fun KnowledgeBaseDetailScreen(
         )
     }
 
+    // Font size dialog
+    if (showFontSizeDialog) {
+        FontSizeDialog(
+            currentSize = kbPreviewFontSize,
+            onDismiss = { showFontSizeDialog = false },
+            onSizeChange = { viewModel.setKbPreviewFontSize(it) }
+        )
+    }
+
     // Share result modal
     shareResult?.let { (_, response) ->
         ShareResultModal(
@@ -454,6 +599,52 @@ private fun RenameDialog(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun FontSizeDialog(
+    currentSize: Float,
+    onDismiss: () -> Unit,
+    onSizeChange: (Float) -> Unit
+) {
+    EInkFormModal(
+        onDismiss = onDismiss,
+        onConfirm = onDismiss,
+        title = "Preview Font Size",
+        confirmText = "Done",
+        dismissText = "Cancel"
+    ) {
+        Text(
+            "Adjust the font size for KB grid previews",
+            style = MaterialTheme.typography.bodySmall,
+            color = EInkGrayMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("7", style = MaterialTheme.typography.labelSmall, color = EInkBlack)
+            Spacer(Modifier.width(8.dp))
+            Slider(
+                value = currentSize,
+                onValueChange = onSizeChange,
+                valueRange = 7f..12f,
+                steps = 4, // 7, 8, 9, 10, 11, 12
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("12", style = MaterialTheme.typography.labelSmall, color = EInkBlack)
+        }
+
+        Text(
+            "Current: ${currentSize.toInt()}sp",
+            style = MaterialTheme.typography.labelLarge,
+            color = EInkBlack,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
 

@@ -167,6 +167,7 @@ fun EInkIconButton(
 fun EInkCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    backgroundColor: androidx.compose.ui.graphics.Color = EInkWhite,
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (onClick != null) {
@@ -176,7 +177,7 @@ fun EInkCard(
             shape = RoundedCornerShape(4.dp),
             border = BorderStroke(1.dp, EInkBlack),
             colors = CardDefaults.outlinedCardColors(
-                containerColor = EInkWhite
+                containerColor = backgroundColor
             ),
             content = content
         )
@@ -186,7 +187,7 @@ fun EInkCard(
             shape = RoundedCornerShape(4.dp),
             border = BorderStroke(1.dp, EInkBlack),
             colors = CardDefaults.outlinedCardColors(
-                containerColor = EInkWhite
+                containerColor = backgroundColor
             ),
             content = content
         )

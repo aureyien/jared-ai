@@ -422,6 +422,81 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
+     * Generate a suitable filename for a message using LLM
+     */
+    suspend fun generateFilenameForMessage(messageId: String): String {
+        val message = _messages.value.find { it.id == messageId }
+        if (message == null || message.role != "assistant") {
+            return "response"
+        }
+
+        // Find the preceding user message for context
+        val messageIndex = _messages.value.indexOfFirst { it.id == messageId }
+        val userMessage = if (messageIndex > 0) {
+            _messages.value.getOrNull(messageIndex - 1)?.content ?: ""
+        } else ""
+
+        return try {
+            val provider = apiConfig.llmProvider.first()
+            val apiKey = when (provider) {
+                LlmProvider.GROQ -> apiConfig.groqApiKey.first()
+                LlmProvider.OPENAI -> apiConfig.openaiApiKey.first()
+                LlmProvider.XAI -> apiConfig.xaiApiKey.first()
+                LlmProvider.ANTHROPIC -> apiConfig.anthropicApiKey.first()
+                LlmProvider.NONE -> null
+            } ?: ""
+
+            // Get app language for filename generation
+            val appLanguage = apiConfig.appLanguage.first()
+            val languageInstruction = when (appLanguage) {
+                com.music.sttnotes.data.i18n.AppLanguage.FRENCH -> "en français"
+                com.music.sttnotes.data.i18n.AppLanguage.ENGLISH -> "in English"
+            }
+
+            val prompt = buildString {
+                if (userMessage.isNotEmpty()) {
+                    appendLine("User: $userMessage")
+                }
+                appendLine("Assistant: ${message.content.take(200)}")
+            }
+
+            val systemPrompt = "Generate a concise filename (2-5 words, no file extension) $languageInstruction based on the conversation. Return ONLY the filename, with spaces between words, no special characters, no hyphens."
+
+            val result = llmService.processWithLlm(
+                text = prompt,
+                systemPrompt = systemPrompt,
+                provider = provider,
+                apiKey = apiKey
+            )
+
+            result.getOrNull()
+                ?.trim()
+                ?.take(50)
+                ?.replace(Regex("[^a-zA-Z0-9\\s\u00C0-\u017F]"), "") // Allow accented characters for French
+                ?.replace(Regex("\\s+"), " ")
+                ?.ifEmpty { "response" }
+                ?: run {
+                    // Fallback if LLM call failed
+                    message.content
+                        .take(40)
+                        .replace(Regex("[^a-zA-Z0-9\\s\u00C0-\u017F]"), "")
+                        .trim()
+                        .replace(Regex("\\s+"), " ")
+                        .ifEmpty { "response" }
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to generate filename", e)
+            // Fallback to simple truncation
+            message.content
+                .take(40)
+                .replace(Regex("[^a-zA-Z0-9\\s\u00C0-\u017F]"), "")
+                .trim()
+                .replace(Regex("\\s+"), " ")
+                .ifEmpty { "response" }
+        }
+    }
+
+    /**
      * Save a specific assistant response to a markdown file
      */
     fun saveResponseToFile(messageId: String, filename: String, folder: String) {

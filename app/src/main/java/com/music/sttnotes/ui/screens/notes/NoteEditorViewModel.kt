@@ -254,18 +254,21 @@ class NoteEditorViewModel @Inject constructor(
 
     fun archiveNote() {
         viewModelScope.launch {
+            Log.d(TAG, "archiveNote() called for note id: ${_note.value.id}")
             // Save first to persist any changes
             // Always use markdown content state
             val content = _markdownContent.value
             val noteToArchive = if (content.isNotBlank() || !isNewNote) {
                 val currentNote = _note.value.copy(content = content)
                 notesRepository.saveNote(currentNote)
+                Log.d(TAG, "Note saved before archiving")
                 currentNote
             } else {
                 _note.value
             }
             // Then archive (wait for save to complete)
             notesRepository.archiveNote(noteToArchive.id)
+            Log.d(TAG, "Note archived, setting _isArchived to true")
             // Signal that archiving is complete
             _isArchived.value = true
         }

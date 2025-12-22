@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Save
@@ -57,6 +58,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -85,6 +87,8 @@ import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkModal
+import com.music.sttnotes.ui.components.chatMarkdownTypography
+import com.music.sttnotes.ui.components.einkMarkdownColors
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
 import com.music.sttnotes.ui.components.ShareResultModal
@@ -134,6 +138,12 @@ fun KnowledgeBaseFolderScreen(
 
     // View mode state from ViewModel (persisted)
     val isListView by viewModel.kbIsListView.collectAsState()
+
+    // Preview font size from ViewModel (persisted)
+    val previewFontSize by viewModel.kbPreviewFontSize.collectAsState()
+
+    // Font size menu state
+    var showFontSizeMenu by remember { mutableStateOf(false) }
 
     // Merge dialog state
     var showMergeDialog by remember { mutableStateOf(false) }
@@ -264,6 +274,53 @@ fun KnowledgeBaseFolderScreen(
                             icon = if (isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
                             contentDescription = if (isListView) strings.gridView else strings.listView
                         )
+                        // Font size menu (only in grid view)
+                        if (!isListView) {
+                            Box {
+                                EInkIconButton(
+                                    onClick = { showFontSizeMenu = true },
+                                    icon = Icons.Default.FormatSize,
+                                    contentDescription = "Font Size"
+                                )
+                                DropdownMenu(
+                                    expanded = showFontSizeMenu,
+                                    onDismissRequest = { showFontSizeMenu = false }
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    ) {
+                                        Text(
+                                            "Preview Font Size",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            modifier = Modifier.padding(bottom = 12.dp)
+                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("6", style = MaterialTheme.typography.labelSmall)
+                                            Spacer(Modifier.width(8.dp))
+                                            Slider(
+                                                value = previewFontSize,
+                                                onValueChange = { viewModel.setKbPreviewFontSize(it) },
+                                                valueRange = 6f..12f,
+                                                steps = 5,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("12", style = MaterialTheme.typography.labelSmall)
+                                        }
+                                        Text(
+                                            "${previewFontSize.toInt()}sp",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            modifier = Modifier.padding(top = 8.dp).align(Alignment.CenterHorizontally)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -438,6 +495,7 @@ fun KnowledgeBaseFolderScreen(
                                         folderName = folderName,
                                         selectionMode = selectionMode,
                                         isSelected = filePreview.file.name in selectedFiles,
+                                        previewFontSize = previewFontSize,
                                         onClick = {
                                             if (selectionMode) {
                                                 viewModel.toggleFileSelection(filePreview.file.name)
@@ -971,6 +1029,7 @@ private fun KbFileGridCard(
     folderName: String,
     selectionMode: Boolean,
     isSelected: Boolean,
+    previewFontSize: Float = 9f,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     isFavorite: Boolean,
@@ -988,7 +1047,7 @@ private fun KbFileGridCard(
         EInkCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp) // Fixed height for uniform grid
+                .height(140.dp) // Fixed height for uniform grid
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = { if (!selectionMode) showContextMenu = true }
@@ -1003,25 +1062,26 @@ private fun KbFileGridCard(
                     // File name (without extension)
                     Text(
                         text = file.file.nameWithoutExtension,
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Content preview - small font for overview
-                    Text(
-                        text = file.preview.take(800).replace("\n", " "),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = androidx.compose.ui.unit.TextUnit(9f, androidx.compose.ui.unit.TextUnitType.Sp),
-                            lineHeight = androidx.compose.ui.unit.TextUnit(11f, androidx.compose.ui.unit.TextUnitType.Sp)
-                        ),
-                        color = EInkGrayMedium,
-                        maxLines = 14,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
+                    // Content preview - rendered markdown with limited height
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        Markdown(
+                            content = file.preview.take(1200).replace("\n", "  \n"),
+                            colors = einkMarkdownColors(),
+                            typography = chatMarkdownTypography(baseFontSize = previewFontSize),
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(4.dp))
 

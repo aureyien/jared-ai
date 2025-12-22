@@ -1,5 +1,6 @@
 package com.music.sttnotes.ui.screens.knowledgebase
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.music.sttnotes.data.api.ApiConfig
@@ -84,6 +85,12 @@ class KnowledgeBaseViewModel @Inject constructor(
         initialValue = true
     )
 
+    val kbPreviewFontSize: StateFlow<Float> = uiPreferences.kbPreviewFontSize.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 9f
+    )
+
     private val _tagInput = MutableStateFlow("")
     val tagInput: StateFlow<String> = _tagInput
 
@@ -153,6 +160,13 @@ class KnowledgeBaseViewModel @Inject constructor(
         }
     }
 
+    fun setKbPreviewFontSize(fontSize: Float) {
+        viewModelScope.launch {
+            Log.d("KnowledgeBaseViewModel", "Setting KB preview font size to: $fontSize")
+            uiPreferences.setKbPreviewFontSize(fontSize)
+        }
+    }
+
     private fun loadAllTags() {
         viewModelScope.launch {
             _allTags.value = llmOutputRepository.getAllTags()
@@ -213,9 +227,9 @@ class KnowledgeBaseViewModel @Inject constructor(
         return lines.drop(startIndex)
             .filter { it.isNotBlank() && !it.startsWith("#") && !it.startsWith(">") }
             .joinToString(" ")
-            .take(120)
+            .take(300)
             .trim()
-            .let { if (it.length >= 120) "$it..." else it }
+            .let { if (it.length >= 300) "$it..." else it }
     }
 
     fun toggleFolder(folderName: String) {
@@ -301,13 +315,26 @@ class KnowledgeBaseViewModel @Inject constructor(
         _editedContent.value = content
     }
 
+    /**
+     * Normalize separator formats to standard markdown horizontal rules (---)
+     * Useful for cleaning up Unicode separators from merged files
+     */
+    private fun normalizeSeparators(content: String): String {
+        return content
+            // Replace lines containing only Unicode box-drawing characters with ---
+            .replace(Regex("^[━─═]+$", RegexOption.MULTILINE), "---")
+    }
+
     fun saveFileContent(folder: String, filename: String, content: String) {
         viewModelScope.launch {
             // Content is now pure body (no frontmatter), use currentMeta for metadata
             val meta = currentMeta?.copy(tags = _fileTags.value) ?: KbFileMeta(tags = _fileTags.value)
 
-            llmOutputRepository.writeFileWithMeta(folder, filename, meta, content).onSuccess {
-                _fileContent.value = content
+            // Normalize separators before saving
+            val normalizedContent = normalizeSeparators(content)
+
+            llmOutputRepository.writeFileWithMeta(folder, filename, meta, normalizedContent).onSuccess {
+                _fileContent.value = normalizedContent
                 _editedContent.value = null
                 currentMeta = meta
                 loadAllTags() // Refresh all tags after save

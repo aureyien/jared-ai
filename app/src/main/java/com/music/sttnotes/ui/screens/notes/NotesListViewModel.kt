@@ -1,5 +1,6 @@
 package com.music.sttnotes.ui.screens.notes
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.music.sttnotes.data.api.ApiConfig
@@ -57,10 +58,13 @@ class NotesListViewModel @Inject constructor(
         _searchQuery,
         _selectedTagFilters
     ) { notes, query, tagFilters ->
+        Log.d(TAG, "filteredNotes: combine triggered with ${notes.size} notes, query='$query', tagFilters=$tagFilters")
         when {
             tagFilters.isNotEmpty() -> notes.filter { note -> note.tags.any { it in tagFilters } }
             query.isNotBlank() -> notesRepository.search(query)
             else -> notes
+        }.also { result ->
+            Log.d(TAG, "filteredNotes: returning ${result.size} filtered notes")
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -263,5 +267,9 @@ Use proper markdown formatting (headers, bullet points, bold for emphasis). Be t
             }
             llmOutputRepository.writeFile(folderName, filename, content)
         }
+    }
+
+    companion object {
+        private const val TAG = "NotesListViewModel"
     }
 }

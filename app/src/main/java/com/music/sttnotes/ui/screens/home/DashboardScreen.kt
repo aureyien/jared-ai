@@ -35,9 +35,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -77,6 +81,14 @@ fun DashboardScreen(
     val state by viewModel.state.collectAsState()
     val strings = rememberStrings()
     val isSearching = state.searchQuery.isNotEmpty()
+    var showSearchField by rememberSaveable { mutableStateOf(false) }
+
+    // Keep search field visible if there's a search query
+    LaunchedEffect(isSearching) {
+        if (isSearching) {
+            showSearchField = true
+        }
+    }
 
     // Refresh on resume
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -95,6 +107,11 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text("Jared AI", style = MaterialTheme.typography.headlineMedium) },
                 actions = {
+                    EInkIconButton(
+                        onClick = { showSearchField = !showSearchField },
+                        icon = Icons.Default.Search,
+                        contentDescription = strings.search
+                    )
                     EInkIconButton(
                         onClick = onSettings,
                         icon = Icons.Default.Settings,
@@ -126,31 +143,34 @@ fun DashboardScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Global Search Bar
-            EInkTextField(
-                value = state.searchQuery,
-                onValueChange = viewModel::onSearchQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                placeholder = strings.searchPlaceholder,
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        tint = EInkBlack
-                    )
-                },
-                trailingIcon = {
-                    if (state.searchQuery.isNotEmpty()) {
+            // Global Search Bar - only show when search icon is clicked or there's a query
+            if (showSearchField || isSearching) {
+                EInkTextField(
+                    value = state.searchQuery,
+                    onValueChange = viewModel::onSearchQueryChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    placeholder = strings.searchPlaceholder,
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            tint = EInkBlack
+                        )
+                    },
+                    trailingIcon = {
                         EInkIconButton(
-                            onClick = { viewModel.onSearchQueryChange("") },
+                            onClick = {
+                                viewModel.onSearchQueryChange("")
+                                showSearchField = false
+                            },
                             icon = Icons.Default.Close,
                             contentDescription = strings.clear
                         )
                     }
-                }
-            )
+                )
+            }
 
             if (isSearching) {
                 // Search Results
@@ -283,34 +303,16 @@ fun DashboardScreen(
             }
             // If LLM not configured, section is hidden and Chat button in bottom bar is also hidden
 
-            // Knowledge Base Section
-            DashboardSection(
-                title = strings.knowledgeBase,
+            // Knowledge Base Section - Custom inverted design
+            KnowledgeBaseSection(
                 count = state.kbItemsCount,
-                icon = Icons.AutoMirrored.Filled.LibraryBooks,
-                onClick = onKnowledgeBaseClick,
-                onNew = null, // KB doesn't have "new" - items are saved from chat
+                items = state.lastKbItems,
                 isEmpty = state.kbItemsCount == 0,
+                onSectionClick = onKnowledgeBaseClick,
+                onItemClick = onKbFileClick,
                 emptyText = strings.noSavedFiles,
-                newButtonText = null
-            ) {
-                if (state.lastKbFolder != null && state.lastKbFile != null) {
-                    Text(
-                        text = state.lastKbFolder!!,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = state.lastKbFile!!.removeSuffix(".md"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = EInkGrayMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
                 }
             }
         }
@@ -447,6 +449,121 @@ private fun DashboardSection(
                 }
             } else {
                 content()
+            }
+        }
+    }
+}
+
+@Composable
+private fun KnowledgeBaseSection(
+    count: Int,
+    items: List<KbPreviewItem>,
+    isEmpty: Boolean,
+    onSectionClick: () -> Unit,
+    onItemClick: (String, String) -> Unit,
+    emptyText: String,
+    modifier: Modifier = Modifier
+) {
+    val strings = rememberStrings()
+
+    EInkCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(if (isEmpty) 120.dp else 300.dp),
+        onClick = if (isEmpty) onSectionClick else null,
+        backgroundColor = EInkBlack
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.LibraryBooks,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = EInkWhite
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = strings.knowledgeBase,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = EInkWhite
+                    )
+                }
+                Text(
+                    text = "($count)",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = EInkWhite.copy(alpha = 0.7f)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            if (isEmpty) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = emptyText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = EInkWhite.copy(alpha = 0.7f)
+                    )
+                }
+            } else {
+                // List of last 3 items
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items.forEach { item ->
+                        EInkCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { onItemClick(item.folder, item.filename) },
+                            backgroundColor = EInkWhite
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                // Folder - Title on same line
+                                Text(
+                                    text = "${item.folder} - ${item.filename.removeSuffix(".md")}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = EInkBlack,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                // Preview
+                                if (item.preview.isNotEmpty()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = item.preview,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = EInkGrayMedium,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // "View All" button at the bottom
+                    if (count > 3) {
+                        EInkButton(
+                            onClick = onSectionClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            filled = false
+                        ) {
+                            Text("View All ($count)", color = EInkWhite)
+                        }
+                    }
+                }
             }
         }
     }

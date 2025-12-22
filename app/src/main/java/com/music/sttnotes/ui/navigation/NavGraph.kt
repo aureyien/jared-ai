@@ -276,10 +276,30 @@ fun NavGraph(
         ) { backStackEntry ->
             val folder = backStackEntry.arguments?.getString("folder") ?: ""
             val filename = backStackEntry.arguments?.getString("filename") ?: ""
+
+            // Check if we came from the home screen
+            val previousRoute = navController.previousBackStackEntry?.destination?.route
+            val isFromHome = previousRoute == Screen.Dashboard.route
+
             KnowledgeBaseDetailScreen(
                 folder = folder,
                 filename = filename,
                 onNavigateBack = { navController.popBackStack() },
+                onOpenParentFolder = if (isFromHome) {
+                    {
+                        // Pop the current detail screen
+                        navController.popBackStack()
+                        // Navigate to main KB list, then to folder
+                        navController.navigate(Screen.KnowledgeBase.route)
+                        navController.navigate(Screen.KnowledgeBaseFolder.createRoute(folder))
+                    }
+                } else null,
+                onNavigateToHome = if (isFromHome) {
+                    {
+                        // Pop all the way back to home
+                        navController.popBackStack(Screen.Dashboard.route, inclusive = false)
+                    }
+                } else null,
                 onManageTags = {
                     navController.navigate(Screen.TagManagementKB.createRoute(folder, filename))
                 }

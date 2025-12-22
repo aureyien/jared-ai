@@ -656,8 +656,8 @@ private fun SttProviderSelector(
                     Text(
                         text = when (provider) {
                             SttProvider.LOCAL -> "Hors-ligne, ~6s pour 16s audio"
-                            SttProvider.GROQ -> "En ligne, ~1s, gratuit 8h/jour"
-                            SttProvider.OPENAI -> "En ligne, \$0.006/min"
+                            SttProvider.GROQ -> "En ligne, ~1s, \$0.04/heure"
+                            SttProvider.OPENAI -> "En ligne, \$0.006/min (\$0.36/h)"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -697,7 +697,7 @@ private fun LlmProviderSelector(
                     Text(
                         text = when (provider) {
                             LlmProvider.NONE -> "Raw transcription"
-                            LlmProvider.GROQ -> "Free, very fast"
+                            LlmProvider.GROQ -> "\$0.05/1M input, \$0.08/1M output (cheapest)"
                             LlmProvider.OPENAI -> "\$0.25/1M input, \$2/1M output"
                             LlmProvider.XAI -> "\$0.20/1M input, \$0.50/1M output"
                             LlmProvider.ANTHROPIC -> "\$1/1M input, \$5/1M output"
