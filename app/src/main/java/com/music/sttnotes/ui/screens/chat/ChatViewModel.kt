@@ -219,11 +219,21 @@ class ChatViewModel @Inject constructor(
         // Skip creating conversation in ephemeral mode
         if (_isEphemeral.value) return
         if (_currentConversationId.value == null) {
-            // Generate intelligent title using LLM (with fallback)
-            val intelligentTitle = generateConversationTitle(firstMessage)
-            val conversation = chatHistoryRepository.createConversation(intelligentTitle)
+            // Create conversation with fallback title immediately (non-blocking)
+            val fallbackTitle = firstMessage.take(50).trim()
+            val conversation = chatHistoryRepository.createConversation(fallbackTitle)
             _currentConversationId.value = conversation.id
             _conversationTitle.value = conversation.title
+
+            // Generate intelligent title asynchronously in background
+            viewModelScope.launch {
+                val intelligentTitle = generateConversationTitle(firstMessage)
+                // Only update if the intelligent title is different from fallback
+                if (intelligentTitle != fallbackTitle) {
+                    chatHistoryRepository.updateConversationTitle(conversation.id, intelligentTitle)
+                    _conversationTitle.value = intelligentTitle
+                }
+            }
         }
     }
 
