@@ -121,10 +121,18 @@ fun NoteEditorScreen(
     val recordingState by viewModel.recordingState.collectAsState()
     val isPreviewMode by viewModel.isPreviewMode.collectAsState()
     val tagInput by viewModel.tagInput.collectAsState()
+    val isArchived by viewModel.isArchived.collectAsState()
 
     var showPermissionDenied by remember { mutableStateOf(false) }
     var showTagInput by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+
+    // Navigate back when note is archived
+    LaunchedEffect(isArchived) {
+        if (isArchived) {
+            onNavigateBack()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -202,7 +210,6 @@ fun NoteEditorScreen(
                     if (noteId != null) {
                         IconButton(onClick = {
                             viewModel.archiveNote()
-                            onNavigateBack()
                         }) {
                             Icon(
                                 Icons.Default.Archive,

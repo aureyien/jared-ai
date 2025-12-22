@@ -50,6 +50,9 @@ class NoteEditorViewModel @Inject constructor(
     private val _tagInput = MutableStateFlow("")
     val tagInput: StateFlow<String> = _tagInput
 
+    private val _isArchived = MutableStateFlow(false)
+    val isArchived: StateFlow<Boolean> = _isArchived
+
     val richTextState = RichTextState().apply {
         config.listIndent = 16  // Reduce from default 38 for tighter list indentation
     }
@@ -217,6 +220,8 @@ class NoteEditorViewModel @Inject constructor(
             }
             // Then archive (wait for save to complete)
             notesRepository.archiveNote(noteToArchive.id)
+            // Signal that archiving is complete
+            _isArchived.value = true
         }
     }
 
