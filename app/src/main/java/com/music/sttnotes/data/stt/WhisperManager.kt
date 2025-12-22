@@ -2,11 +2,13 @@ package com.music.sttnotes.data.stt
 
 import android.content.Context
 import android.util.Log
+import com.music.sttnotes.data.api.ApiConfig
 import com.whispercpp.whisper.WhisperContext
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -21,7 +23,9 @@ sealed class WhisperState {
 
 @Singleton
 class WhisperManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val modelDownloadService: ModelDownloadService,
+    private val apiConfig: ApiConfig
 ) {
     private var whisperContext: WhisperContext? = null
 
@@ -31,15 +35,40 @@ class WhisperManager @Inject constructor(
     private val _transcription = MutableStateFlow("")
     val transcription: StateFlow<String> = _transcription
 
-    suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun initialize(selectedModel: WhisperModel? = null): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             _state.value = WhisperState.Loading(0.1f)
 
-            Log.d(TAG, "Loading model directly from assets: models/$MODEL_FILENAME")
-            
-            // Optimization: Load directly from assets instead of copying to internal storage
-            // This saves ~200MB-500MB of space by avoiding file duplication
-            whisperContext = WhisperContext.createContextFromAsset(context.assets, "models/$MODEL_FILENAME")
+            // Determine which model to use
+            val model = selectedModel ?: run {
+                val savedModelName = apiConfig.selectedWhisperModel.first()
+                savedModelName?.let {
+                    try {
+                        WhisperModel.valueOf(it)
+                    } catch (e: IllegalArgumentException) {
+                        WhisperModel.SMALL
+                    }
+                } ?: WhisperModel.SMALL
+            }
+
+            // Try to load from downloaded models first
+            val downloadedFile = modelDownloadService.getModelFile(model)
+            if (downloadedFile.exists()) {
+                Log.d(TAG, "Loading model from file: ${downloadedFile.absolutePath}")
+                whisperContext = WhisperContext.createContextFromFile(downloadedFile.absolutePath)
+                Log.d(TAG, "Model loaded from downloaded file: ${model.displayName}")
+            } else {
+                // Fallback: Try to load from bundled assets
+                Log.d(TAG, "Attempting to load model from assets: models/${model.filename}")
+                try {
+                    whisperContext = WhisperContext.createContextFromAsset(context.assets, "models/${model.filename}")
+                    Log.d(TAG, "Model loaded from bundled assets: ${model.displayName}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Model not found in assets or downloaded", e)
+                    _state.value = WhisperState.Error("Model not downloaded. Please download a model in Settings.")
+                    return@withContext Result.failure(Exception("Model not available. Please download a model in Settings."))
+                }
+            }
 
             _state.value = WhisperState.Loading(0.5f)
 

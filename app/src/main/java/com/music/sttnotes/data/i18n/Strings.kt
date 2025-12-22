@@ -243,6 +243,17 @@ interface StringResources {
     val expirationDays: String
     val expiresOn: String
     val hiddenFeatureHint: String
+
+    // Whisper Model Download
+    val whisperModels: String
+    val downloadModel: String
+    val deleteModel: String
+    val modelDownloaded: String
+    val modelNotDownloaded: String
+    val downloading: String
+    val selectModel: String
+    val modelSelected: String
+    val download: String
 }
 
 object EnglishStrings : StringResources {
@@ -459,6 +470,17 @@ object EnglishStrings : StringResources {
     override val expirationDays = "Expiration (days)"
     override val expiresOn = "Expires on"
     override val hiddenFeatureHint = "Long-press section titles to unlock hidden features"
+
+    // Whisper Model Download
+    override val whisperModels = "Whisper Models"
+    override val downloadModel = "Download Model"
+    override val deleteModel = "Delete Model"
+    override val modelDownloaded = "Downloaded"
+    override val modelNotDownloaded = "Not Downloaded"
+    override val downloading = "Downloading"
+    override val selectModel = "Select Model"
+    override val modelSelected = "Selected"
+    override val download = "Download"
 }
 
 object FrenchStrings : StringResources {
@@ -675,6 +697,17 @@ object FrenchStrings : StringResources {
     override val expirationDays = "Expiration (jours)"
     override val expiresOn = "Expire le"
     override val hiddenFeatureHint = "Appuyez longuement sur les titres de section pour déverrouiller les fonctionnalités cachées"
+
+    // Whisper Model Download
+    override val whisperModels = "Modèles Whisper"
+    override val downloadModel = "Télécharger le modèle"
+    override val deleteModel = "Supprimer le modèle"
+    override val modelDownloaded = "Téléchargé"
+    override val modelNotDownloaded = "Non téléchargé"
+    override val downloading = "Téléchargement"
+    override val selectModel = "Sélectionner le modèle"
+    override val modelSelected = "Sélectionné"
+    override val download = "Télécharger"
 }
 
 /**

@@ -44,6 +44,7 @@ class ApiConfig @Inject constructor(
         private val SHARE_ENABLED = stringPreferencesKey("share_enabled")
         private val SHARE_API_TOKEN = stringPreferencesKey("share_api_token")
         private val SHARE_EXPIRATION_DAYS = stringPreferencesKey("share_expiration_days")
+        private val SELECTED_WHISPER_MODEL = stringPreferencesKey("selected_whisper_model")
 
         const val DEFAULT_CHAT_FONT_SIZE = 14f
         const val MIN_CHAT_FONT_SIZE = 10f
@@ -105,6 +106,9 @@ class ApiConfig @Inject constructor(
     val shareExpirationDays: Flow<Int> = context.apiDataStore.data.map {
         it[SHARE_EXPIRATION_DAYS]?.toIntOrNull() ?: DEFAULT_SHARE_EXPIRATION_DAYS
     }
+    val selectedWhisperModel: Flow<String?> = context.apiDataStore.data.map {
+        it[SELECTED_WHISPER_MODEL]
+    }
 
     suspend fun setGroqApiKey(key: String) {
         context.apiDataStore.edit { it[GROQ_API_KEY] = key }
@@ -161,4 +165,9 @@ class ApiConfig @Inject constructor(
     suspend fun setShareExpirationDays(days: Int) {
         context.apiDataStore.edit { it[SHARE_EXPIRATION_DAYS] = days.toString() }
     }
+
+    suspend fun setSelectedWhisperModel(modelName: String) {
+        context.apiDataStore.edit { it[SELECTED_WHISPER_MODEL] = modelName }
+    }
 }
+
