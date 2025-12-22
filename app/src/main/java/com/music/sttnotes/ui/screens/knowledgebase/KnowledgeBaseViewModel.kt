@@ -44,7 +44,8 @@ class KnowledgeBaseViewModel @Inject constructor(
     private val apiConfig: ApiConfig,
     private val llmService: LlmService,
     private val sttPreferences: SttPreferences,
-    private val shareService: ShareService
+    private val shareService: ShareService,
+    private val uiPreferences: com.music.sttnotes.data.ui.UiPreferences
 ) : ViewModel() {
 
     private val _folders = MutableStateFlow<List<FolderWithFiles>>(emptyList())
@@ -75,6 +76,13 @@ class KnowledgeBaseViewModel @Inject constructor(
 
     private val _allTags = MutableStateFlow<List<String>>(emptyList())
     val allTags: StateFlow<List<String>> = _allTags
+
+    // UI preferences - expose as StateFlow
+    val kbIsListView: StateFlow<Boolean> = uiPreferences.kbIsListView.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
 
     private val _tagInput = MutableStateFlow("")
     val tagInput: StateFlow<String> = _tagInput
@@ -136,6 +144,13 @@ class KnowledgeBaseViewModel @Inject constructor(
     // Toggle tag visibility
     fun toggleShowTagFilter() {
         _showTagFilter.value = !_showTagFilter.value
+    }
+
+    fun toggleKbViewMode() {
+        viewModelScope.launch {
+            val currentValue = kbIsListView.value
+            uiPreferences.setKbIsListView(!currentValue)
+        }
     }
 
     private fun loadAllTags() {

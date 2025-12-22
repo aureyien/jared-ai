@@ -132,8 +132,8 @@ fun KnowledgeBaseFolderScreen(
     // Tag deletion state
     var tagToDelete by remember { mutableStateOf<String?>(null) }
 
-    // View mode state (true = list, false = grid)
-    var isListView by remember { mutableStateOf(true) }
+    // View mode state from ViewModel (persisted)
+    val isListView by viewModel.kbIsListView.collectAsState()
 
     // Merge dialog state
     var showMergeDialog by remember { mutableStateOf(false) }
@@ -260,7 +260,7 @@ fun KnowledgeBaseFolderScreen(
                         }
                         // Grid/List view toggle
                         EInkIconButton(
-                            onClick = { isListView = !isListView },
+                            onClick = { viewModel.toggleKbViewMode() },
                             icon = if (isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
                             contentDescription = if (isListView) strings.gridView else strings.listView
                         )
