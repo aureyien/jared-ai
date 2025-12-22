@@ -25,8 +25,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.ContentCopy
@@ -126,6 +131,9 @@ fun KnowledgeBaseFolderScreen(
 
     // Tag deletion state
     var tagToDelete by remember { mutableStateOf<String?>(null) }
+
+    // View mode state (true = list, false = grid)
+    var isListView by remember { mutableStateOf(true) }
 
     // Merge dialog state
     var showMergeDialog by remember { mutableStateOf(false) }
@@ -250,6 +258,12 @@ fun KnowledgeBaseFolderScreen(
                                 contentDescription = strings.selectToMerge
                             )
                         }
+                        // Grid/List view toggle
+                        EInkIconButton(
+                            onClick = { isListView = !isListView },
+                            icon = if (isListView) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
+                            contentDescription = if (isListView) strings.gridView else strings.listView
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -355,56 +369,112 @@ fun KnowledgeBaseFolderScreen(
                             )
                         }
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(displayFiles, key = { it.file.name }) { filePreview ->
-                                FolderFileItem(
-                                    file = filePreview,
-                                    selectionMode = selectionMode,
-                                    isSelected = filePreview.file.name in selectedFiles,
-                                    onClick = {
-                                        if (selectionMode) {
-                                            viewModel.toggleFileSelection(filePreview.file.name)
-                                        } else {
-                                            pendingFileDeletion?.let { deletion ->
-                                                viewModel.deleteFile(folderName, deletion.item)
+                        if (isListView) {
+                            // List view
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(displayFiles, key = { it.file.name }) { filePreview ->
+                                    FolderFileItem(
+                                        file = filePreview,
+                                        selectionMode = selectionMode,
+                                        isSelected = filePreview.file.name in selectedFiles,
+                                        onClick = {
+                                            if (selectionMode) {
+                                                viewModel.toggleFileSelection(filePreview.file.name)
+                                            } else {
+                                                pendingFileDeletion?.let { deletion ->
+                                                    viewModel.deleteFile(folderName, deletion.item)
+                                                }
+                                                pendingFileDeletion = null
+                                                onFileClick(filePreview.file.name)
                                             }
-                                            pendingFileDeletion = null
-                                            onFileClick(filePreview.file.name)
-                                        }
-                                    },
-                                    onDelete = {
-                                        pendingFileDeletion?.let { prev ->
-                                            viewModel.deleteFile(folderName, prev.item)
-                                        }
-                                        pendingFileDeletion = PendingDeletion(
-                                            item = filePreview.file.name,
-                                            message = strings.fileDeleted
-                                        )
-                                    },
-                                    onCopyContent = {
-                                        viewModel.getFileContent(folderName, filePreview.file.name)
-                                    },
-                                    isFavorite = viewModel.isFileFavorite(folderName, filePreview.file.name),
-                                    onToggleFavorite = {
-                                        viewModel.toggleFileFavorite(folderName, filePreview.file.name)
-                                    },
-                                    onManageTags = {
-                                        onManageTags(folderName, filePreview.file.name)
-                                    },
-                                    onSummarize = {
-                                        viewModel.generateSummary(folderName, filePreview.file.name)
-                                    },
-                                    isSummarizing = summaryInProgress == "$folderName/${filePreview.file.name}",
-                                    showTags = showTagFilter,
-                                    onShare = {
-                                        viewModel.shareArticle(folderName, filePreview.file.name)
-                                    },
-                                    isShareEnabled = shareEnabled
-                                )
+                                        },
+                                        onDelete = {
+                                            pendingFileDeletion?.let { prev ->
+                                                viewModel.deleteFile(folderName, prev.item)
+                                            }
+                                            pendingFileDeletion = PendingDeletion(
+                                                item = filePreview.file.name,
+                                                message = strings.fileDeleted
+                                            )
+                                        },
+                                        onCopyContent = {
+                                            viewModel.getFileContent(folderName, filePreview.file.name)
+                                        },
+                                        isFavorite = viewModel.isFileFavorite(folderName, filePreview.file.name),
+                                        onToggleFavorite = {
+                                            viewModel.toggleFileFavorite(folderName, filePreview.file.name)
+                                        },
+                                        onManageTags = {
+                                            onManageTags(folderName, filePreview.file.name)
+                                        },
+                                        onSummarize = {
+                                            viewModel.generateSummary(folderName, filePreview.file.name)
+                                        },
+                                        isSummarizing = summaryInProgress == "$folderName/${filePreview.file.name}",
+                                        showTags = showTagFilter,
+                                        onShare = {
+                                            viewModel.shareArticle(folderName, filePreview.file.name)
+                                        },
+                                        isShareEnabled = shareEnabled
+                                    )
+                                }
+                            }
+                        } else {
+                            // Grid view (2 columns)
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(displayFiles, key = { it.file.name }) { filePreview ->
+                                    KbFileGridCard(
+                                        file = filePreview,
+                                        folderName = folderName,
+                                        selectionMode = selectionMode,
+                                        isSelected = filePreview.file.name in selectedFiles,
+                                        onClick = {
+                                            if (selectionMode) {
+                                                viewModel.toggleFileSelection(filePreview.file.name)
+                                            } else {
+                                                pendingFileDeletion?.let { deletion ->
+                                                    viewModel.deleteFile(folderName, deletion.item)
+                                                }
+                                                pendingFileDeletion = null
+                                                onFileClick(filePreview.file.name)
+                                            }
+                                        },
+                                        onDelete = {
+                                            pendingFileDeletion?.let { prev ->
+                                                viewModel.deleteFile(folderName, prev.item)
+                                            }
+                                            pendingFileDeletion = PendingDeletion(
+                                                item = filePreview.file.name,
+                                                message = strings.fileDeleted
+                                            )
+                                        },
+                                        isFavorite = viewModel.isFileFavorite(folderName, filePreview.file.name),
+                                        onToggleFavorite = {
+                                            viewModel.toggleFileFavorite(folderName, filePreview.file.name)
+                                        },
+                                        onManageTags = {
+                                            onManageTags(folderName, filePreview.file.name)
+                                        },
+                                        onSummarize = {
+                                            viewModel.generateSummary(folderName, filePreview.file.name)
+                                        },
+                                        isSummarizing = summaryInProgress == "$folderName/${filePreview.file.name}",
+                                        onShare = {
+                                            viewModel.shareArticle(folderName, filePreview.file.name)
+                                        },
+                                        isShareEnabled = shareEnabled
+                                    )
+                                }
                             }
                         }
                     }
@@ -881,6 +951,203 @@ private fun FolderFileItem(
                 text = { Text(strings.delete) },
                 onClick = {
                     showMenu = false
+                    onDelete()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Grid view card for KB files - compact 2-column layout
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun KbFileGridCard(
+    file: FilePreview,
+    folderName: String,
+    selectionMode: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onManageTags: () -> Unit = {},
+    onSummarize: () -> Unit = {},
+    isSummarizing: Boolean = false,
+    onShare: () -> Unit = {},
+    isShareEnabled: Boolean = false
+) {
+    val strings = rememberStrings()
+    var showContextMenu by remember { mutableStateOf(false) }
+
+    Box {
+        EInkCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp) // Fixed height for uniform grid
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { if (!selectionMode) showContextMenu = true }
+                )
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(10.dp)
+                ) {
+                    // File name (without extension)
+                    Text(
+                        text = file.file.nameWithoutExtension,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Content preview - small font for overview
+                    Text(
+                        text = file.preview.take(200).replace("\n", " "),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = androidx.compose.ui.unit.TextUnit(9f, androidx.compose.ui.unit.TextUnitType.Sp),
+                            lineHeight = androidx.compose.ui.unit.TextUnit(11f, androidx.compose.ui.unit.TextUnitType.Sp)
+                        ),
+                        color = EInkGrayMedium,
+                        maxLines = 6,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Timestamp at bottom
+                    Text(
+                        text = formatRelativeTime(file.file.lastModified()),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = androidx.compose.ui.unit.TextUnit(8f, androidx.compose.ui.unit.TextUnitType.Sp)
+                        ),
+                        color = EInkGrayMedium
+                    )
+
+                    // Tags display (compact version for grid)
+                    if (file.tags.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            file.tags.take(2).forEach { tag ->  // Limit to 2 tags for grid view
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = EInkWhite,
+                                    border = BorderStroke(1.dp, EInkGrayMedium.copy(alpha = 0.4f))
+                                ) {
+                                    Text(
+                                        text = tag,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = androidx.compose.ui.unit.TextUnit(7f, androidx.compose.ui.unit.TextUnitType.Sp)
+                                        ),
+                                        color = EInkGrayMedium,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            if (file.tags.size > 2) {
+                                Text(
+                                    text = "+${file.tags.size - 2}",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = androidx.compose.ui.unit.TextUnit(7f, androidx.compose.ui.unit.TextUnitType.Sp)
+                                    ),
+                                    color = EInkGrayMedium
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Selection indicator in grid view
+                if (selectionMode) {
+                    Icon(
+                        imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Outlined.Circle,
+                        contentDescription = null,
+                        tint = if (isSelected) EInkBlack else EInkGrayMedium,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // Context menu (same as list view)
+        DropdownMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) },
+                onClick = {
+                    showContextMenu = false
+                    onToggleFavorite()
+                },
+                leadingIcon = {
+                    Icon(
+                        if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(strings.manageTags) },
+                onClick = {
+                    showContextMenu = false
+                    onManageTags()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(strings.summarize) },
+                onClick = {
+                    showContextMenu = false
+                    onSummarize()
+                },
+                leadingIcon = {
+                    if (isSummarizing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = EInkBlack,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Default.Summarize, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
+                }
+            )
+            if (isShareEnabled) {
+                DropdownMenuItem(
+                    text = { Text(strings.shareArticle) },
+                    onClick = {
+                        showContextMenu = false
+                        onShare()
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(strings.delete) },
+                onClick = {
+                    showContextMenu = false
                     onDelete()
                 },
                 leadingIcon = {
