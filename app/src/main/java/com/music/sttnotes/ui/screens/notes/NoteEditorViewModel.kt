@@ -3,7 +3,6 @@ package com.music.sttnotes.ui.screens.notes
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mohamedrejeb.richeditor.model.RichTextState
 import com.music.sttnotes.data.notes.Note
 import com.music.sttnotes.data.notes.NotesRepository
 import com.music.sttnotes.data.stt.AudioRecorder
@@ -53,9 +52,15 @@ class NoteEditorViewModel @Inject constructor(
     private val _isArchived = MutableStateFlow(false)
     val isArchived: StateFlow<Boolean> = _isArchived
 
-    val richTextState = RichTextState().apply {
-        config.listIndent = 16  // Reduce from default 38 for tighter list indentation
-    }
+    // Expose all available tags from repository
+    val allTags: StateFlow<Set<String>> = notesRepository.allTags
+
+    // Plain markdown content state
+    private val _markdownContent = MutableStateFlow("")
+    val markdownContent: StateFlow<String> = _markdownContent
+
+    // Store cursor position for text insertion
+    private var cursorPosition: Int = 0
 
     private var recordingJob: Job? = null
     private var durationJob: Job? = null
@@ -72,12 +77,35 @@ class NoteEditorViewModel @Inject constructor(
     // Track if this is a new note (for empty note check on save)
     private var isNewNote = true
 
+    // Track the currently loaded note ID to avoid reloading the same note
+    private var loadedNoteId: String? = null
+
     fun loadNote(noteId: String?) {
-        if (noteId != null) {
+        // Only reload if the noteId has changed
+        if (loadedNoteId == noteId) {
+            return
+        }
+
+        loadedNoteId = noteId
+
+        // Reset state when loading a note (fixes issue when navigating back and creating new note)
+        if (noteId == null) {
+            // New note - reset to defaults
+            _note.value = Note()
+            _markdownContent.value = ""
+            isNewNote = true
+            _isPreviewMode.value = false  // Edit mode for new notes
+            _tagInput.value = ""
+            _isArchived.value = false
+        } else {
+            // Existing note - load from repository
             notesRepository.getNote(noteId)?.let { existingNote ->
                 _note.value = existingNote
-                richTextState.setMarkdown(existingNote.content)
+                _markdownContent.value = existingNote.content
                 isNewNote = false
+                _isPreviewMode.value = true  // Preview mode for existing notes
+                _tagInput.value = ""
+                _isArchived.value = false
             }
         }
     }
@@ -87,14 +115,16 @@ class NoteEditorViewModel @Inject constructor(
     }
 
     fun updateContent(markdown: String) {
-        _note.value = _note.value.copy(content = markdown)
+        _markdownContent.value = markdown
+    }
+
+    fun updateCursorPosition(position: Int) {
+        cursorPosition = position
     }
 
     fun togglePreviewMode() {
-        if (!_isPreviewMode.value) {
-            // Sync content before preview
-            _note.value = _note.value.copy(content = richTextState.toMarkdown())
-        }
+        // Always sync content from markdown state
+        _note.value = _note.value.copy(content = _markdownContent.value)
         _isPreviewMode.value = !_isPreviewMode.value
     }
 
@@ -168,11 +198,25 @@ class NoteEditorViewModel @Inject constructor(
             sttManager.transcribe(audioData, language.code).fold(
                 onSuccess = { text ->
                     if (text.isNotBlank()) {
-                        // Insert transcribed text at current cursor position
+                        // Insert transcribed text at cursor position
                         val trimmedText = text.trim()
-                        richTextState.addTextAfterSelection(trimmedText)
-                        // Update note content
-                        _note.value = _note.value.copy(content = richTextState.toMarkdown())
+                        val currentContent = _markdownContent.value
+                        val insertPosition = cursorPosition.coerceIn(0, currentContent.length)
+
+                        // Insert text at cursor position with space/newline before if needed
+                        val before = currentContent.substring(0, insertPosition)
+                        val after = currentContent.substring(insertPosition)
+                        val separator = when {
+                            before.isEmpty() -> "" // Start of document
+                            before.endsWith("\n") -> "" // Already at line start
+                            else -> " " // Add space before
+                        }
+
+                        val newContent = before + separator + trimmedText + after
+                        Log.d(TAG, "Transcription success: '$trimmedText', inserting at position $insertPosition (${currentContent.length} -> ${newContent.length} chars)")
+                        _markdownContent.value = newContent
+                    } else {
+                        Log.d(TAG, "Transcription returned blank text")
                     }
                     _recordingState.value = RecordingState.Idle
                 },
@@ -197,7 +241,8 @@ class NoteEditorViewModel @Inject constructor(
 
     fun saveNote() {
         viewModelScope.launch {
-            val content = richTextState.toMarkdown()
+            // Always use markdown content state
+            val content = _markdownContent.value
             // Don't save empty notes (new notes with no content)
             if (content.isBlank() && isNewNote) {
                 return@launch
@@ -210,7 +255,8 @@ class NoteEditorViewModel @Inject constructor(
     fun archiveNote() {
         viewModelScope.launch {
             // Save first to persist any changes
-            val content = richTextState.toMarkdown()
+            // Always use markdown content state
+            val content = _markdownContent.value
             val noteToArchive = if (content.isNotBlank() || !isNewNote) {
                 val currentNote = _note.value.copy(content = content)
                 notesRepository.saveNote(currentNote)

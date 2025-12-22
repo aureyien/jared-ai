@@ -988,7 +988,7 @@ private fun KbFileGridCard(
         EInkCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(140.dp) // Fixed height for uniform grid
+                .height(200.dp) // Fixed height for uniform grid
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = { if (!selectionMode) showContextMenu = true }
@@ -1012,62 +1012,27 @@ private fun KbFileGridCard(
 
                     // Content preview - small font for overview
                     Text(
-                        text = file.preview.take(200).replace("\n", " "),
+                        text = file.preview.take(800).replace("\n", " "),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontSize = androidx.compose.ui.unit.TextUnit(9f, androidx.compose.ui.unit.TextUnitType.Sp),
                             lineHeight = androidx.compose.ui.unit.TextUnit(11f, androidx.compose.ui.unit.TextUnitType.Sp)
                         ),
                         color = EInkGrayMedium,
-                        maxLines = 6,
+                        maxLines = 14,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Timestamp at bottom
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Timestamp at bottom - very compact in grid view
                     Text(
                         text = formatRelativeTime(file.file.lastModified()),
                         style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = androidx.compose.ui.unit.TextUnit(8f, androidx.compose.ui.unit.TextUnitType.Sp)
+                            fontSize = androidx.compose.ui.unit.TextUnit(7f, androidx.compose.ui.unit.TextUnitType.Sp)
                         ),
                         color = EInkGrayMedium
                     )
-
-                    // Tags display (compact version for grid)
-                    if (file.tags.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            file.tags.take(2).forEach { tag ->  // Limit to 2 tags for grid view
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = EInkWhite,
-                                    border = BorderStroke(1.dp, EInkGrayMedium.copy(alpha = 0.4f))
-                                ) {
-                                    Text(
-                                        text = tag,
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontSize = androidx.compose.ui.unit.TextUnit(7f, androidx.compose.ui.unit.TextUnitType.Sp)
-                                        ),
-                                        color = EInkGrayMedium,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                            if (file.tags.size > 2) {
-                                Text(
-                                    text = "+${file.tags.size - 2}",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = androidx.compose.ui.unit.TextUnit(7f, androidx.compose.ui.unit.TextUnitType.Sp)
-                                    ),
-                                    color = EInkGrayMedium
-                                )
-                            }
-                        }
-                    }
                 }
 
                 // Selection indicator in grid view

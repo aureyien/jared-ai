@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
@@ -34,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -46,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -600,11 +604,24 @@ private fun FileCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         tags.forEach { tag ->
-                            EInkChip(
-                                label = tag,
-                                selected = false,
-                                onClick = {}
-                            )
+                            // Smaller tags for search results
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = EInkWhite,
+                                border = BorderStroke(1.dp, EInkGrayMedium.copy(alpha = 0.4f)),
+                                modifier = Modifier.height(24.dp)
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = androidx.compose.ui.unit.TextUnit(10f, androidx.compose.ui.unit.TextUnitType.Sp)
+                                    ),
+                                    color = EInkGrayMedium,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }

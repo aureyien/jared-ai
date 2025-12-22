@@ -172,6 +172,7 @@ interface StringResources {
     val editNote: String
     val title: String
     val addTag: String
+    val existingTags: String
     val tags: String
     val startWritingOrRecord: String
     val tapToRecord: String
@@ -404,6 +405,7 @@ object EnglishStrings : StringResources {
     override val editNote = "Edit Note"
     override val title = "Title"
     override val addTag = "Add tag..."
+    override val existingTags = "Existing tags:"
     override val tags = "Tags"
     override val startWritingOrRecord = "Start writing or record voice..."
     override val tapToRecord = "Tap to record"
@@ -636,6 +638,7 @@ object FrenchStrings : StringResources {
     override val editNote = "Modifier la note"
     override val title = "Titre"
     override val addTag = "Ajouter un tag..."
+    override val existingTags = "Tags existants :"
     override val tags = "Tags"
     override val startWritingOrRecord = "Commencez à écrire ou enregistrez..."
     override val tapToRecord = "Appuyez pour enregistrer"

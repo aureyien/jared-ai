@@ -695,13 +695,13 @@ private fun NoteGridCard(
 
                 // Content preview - small font for overview
                 Text(
-                    text = note.content.take(200).replace("\n", " "),
+                    text = note.content.take(400).replace("\n", " "),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontSize = androidx.compose.ui.unit.TextUnit(9f, androidx.compose.ui.unit.TextUnitType.Sp),
                         lineHeight = androidx.compose.ui.unit.TextUnit(11f, androidx.compose.ui.unit.TextUnitType.Sp)
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 6,
+                    maxLines = 8,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
