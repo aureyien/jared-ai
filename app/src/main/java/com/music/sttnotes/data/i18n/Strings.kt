@@ -96,6 +96,11 @@ interface StringResources {
     val saveError: String
     val llmNotConfigured: String
     val apiKeyMissing: String
+    val archiveChat: String
+    val unarchiveChat: String
+    val archivedChats: String
+    val chatArchived: String
+    val chatUnarchived: String
 
     // Chat - Save dialog
     val saveResponse: String
@@ -319,6 +324,11 @@ object EnglishStrings : StringResources {
     override val saveError = "Save error"
     override val llmNotConfigured = "LLM not configured. Go to Settings."
     override val apiKeyMissing = "API key missing. Configure it in Settings."
+    override val archiveChat = "Archive"
+    override val unarchiveChat = "Unarchive"
+    override val archivedChats = "Archived Chats"
+    override val chatArchived = "Chat archived"
+    override val chatUnarchived = "Chat unarchived"
 
     // Chat - Save dialog
     override val saveResponse = "Save response"
@@ -546,6 +556,11 @@ object FrenchStrings : StringResources {
     override val saveError = "Erreur de sauvegarde"
     override val llmNotConfigured = "LLM non configuré. Allez dans Paramètres."
     override val apiKeyMissing = "Clé API manquante. Configurez-la dans Paramètres."
+    override val archiveChat = "Archiver"
+    override val unarchiveChat = "Désarchiver"
+    override val archivedChats = "Chats archivés"
+    override val chatArchived = "Chat archivé"
+    override val chatUnarchived = "Chat désarchivé"
 
     // Chat - Save dialog
     override val saveResponse = "Sauvegarder la réponse"

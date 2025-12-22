@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LocalOffer
@@ -339,31 +340,82 @@ fun KnowledgeBaseScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(folders, key = { "folder_${it.name}" }) { folder ->
-                                FolderCard(
-                                    name = folder.name,
-                                    fileCount = folder.files.size,
-                                    onClick = {
-                                        // Commit any pending deletion before navigating
-                                        pendingFolderDeletion?.let { deletion ->
-                                            viewModel.deleteFolder(deletion.item)
+                            // When searching with active query or tag filters, show flat list with folder headers
+                            val hasActiveFilters = searchQuery.isNotEmpty() || selectedTagFilters.isNotEmpty()
+
+                            if (hasActiveFilters) {
+                                folders.forEach { folder ->
+                                    // Folder header
+                                    item(key = "header_${folder.name}") {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Folder,
+                                                contentDescription = null,
+                                                tint = EInkBlack,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                text = folder.name,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = EInkBlack
+                                            )
                                         }
-                                        pendingFolderDeletion = null
-                                        onFolderClick(folder.name)
-                                    },
-                                    onRename = { showRenameFolderDialog = folder.name },
-                                    onDelete = {
-                                        // Commit previous pending deletion first
-                                        pendingFolderDeletion?.let { previousDeletion ->
-                                            viewModel.deleteFolder(previousDeletion.item)
-                                        }
-                                        // Set new pending deletion
-                                        pendingFolderDeletion = PendingDeletion(
-                                            item = folder.name,
-                                            message = strings.folderDeleted
+                                    }
+
+                                    // Files in this folder
+                                    items(
+                                        items = folder.files,
+                                        key = { file -> "file_${folder.name}_${file.file.name}" }
+                                    ) { filePreview ->
+                                        FileCard(
+                                            fileName = filePreview.file.nameWithoutExtension,
+                                            preview = filePreview.preview,
+                                            tags = filePreview.tags,
+                                            onClick = {
+                                                // Commit any pending deletion before navigating
+                                                pendingFolderDeletion?.let { deletion ->
+                                                    viewModel.deleteFolder(deletion.item)
+                                                }
+                                                pendingFolderDeletion = null
+                                                onFolderClick(folder.name)
+                                            }
                                         )
                                     }
-                                )
+                                }
+                            } else {
+                                // No active filters - show folder cards as before
+                                items(folders, key = { "folder_${it.name}" }) { folder ->
+                                    FolderCard(
+                                        name = folder.name,
+                                        fileCount = folder.files.size,
+                                        onClick = {
+                                            // Commit any pending deletion before navigating
+                                            pendingFolderDeletion?.let { deletion ->
+                                                viewModel.deleteFolder(deletion.item)
+                                            }
+                                            pendingFolderDeletion = null
+                                            onFolderClick(folder.name)
+                                        },
+                                        onRename = { showRenameFolderDialog = folder.name },
+                                        onDelete = {
+                                            // Commit previous pending deletion first
+                                            pendingFolderDeletion?.let { previousDeletion ->
+                                                viewModel.deleteFolder(previousDeletion.item)
+                                            }
+                                            // Set new pending deletion
+                                            pendingFolderDeletion = PendingDeletion(
+                                                item = folder.name,
+                                                message = strings.folderDeleted
+                                            )
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -501,6 +553,63 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = EInkGrayMedium
         )
+    }
+}
+
+@Composable
+private fun FileCard(
+    fileName: String,
+    preview: String,
+    tags: List<String>,
+    onClick: () -> Unit
+) {
+    EInkCard(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Description,
+                contentDescription = null,
+                tint = EInkBlack,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = fileName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = EInkBlack
+                )
+                if (preview.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = preview,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = EInkGrayMedium,
+                        maxLines = 2
+                    )
+                }
+                if (tags.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        tags.forEach { tag ->
+                            EInkChip(
+                                label = tag,
+                                selected = false,
+                                onClick = {}
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

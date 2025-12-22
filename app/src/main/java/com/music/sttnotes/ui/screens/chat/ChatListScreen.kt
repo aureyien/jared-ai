@@ -25,9 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
@@ -102,6 +104,7 @@ fun ChatListScreen(
     val showTagFilter by viewModel.showTagFilter.collectAsState()
     val summaryInProgress by viewModel.summaryInProgress.collectAsState()
     val generatedSummary by viewModel.generatedSummary.collectAsState()
+    val existingFolders by viewModel.existingFolders.collectAsState()
     val strings = rememberStrings()
 
     // Refresh list when screen becomes visible (returning from conversation)
@@ -118,16 +121,21 @@ fun ChatListScreen(
         }
     }
 
+    // View state - showing archived or active conversations
+    var showingArchived by remember { mutableStateOf(false) }
+    val archivedConversations by viewModel.archivedConversations.collectAsState()
+
     // Undo deletion state
     var pendingDeletion by remember { mutableStateOf<PendingDeletion<ChatConversation>?>(null) }
 
     // Search state
     var searchQuery by remember { mutableStateOf("") }
-    val filteredConversations = remember(conversations, searchQuery, pendingDeletion, selectedTagFilters) {
+    val filteredConversations = remember(conversations, archivedConversations, showingArchived, searchQuery, pendingDeletion, selectedTagFilters) {
+        val sourceList = if (showingArchived) archivedConversations else conversations
         val baseList = if (searchQuery.isBlank()) {
-            conversations
+            sourceList
         } else {
-            conversations.filter { conv ->
+            sourceList.filter { conv ->
                 conv.title.contains(searchQuery, ignoreCase = true) ||
                 conv.messages.any { it.content.contains(searchQuery, ignoreCase = true) } ||
                 conv.tags.any { it.contains(searchQuery, ignoreCase = true) }
@@ -158,7 +166,12 @@ fun ChatListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(strings.chat, style = MaterialTheme.typography.headlineSmall) },
+                title = {
+                    Text(
+                        if (showingArchived) strings.archivedChats else strings.chat,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                },
                 navigationIcon = {
                     EInkIconButton(
                         onClick = {
@@ -186,6 +199,12 @@ fun ChatListScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                     }
+                    EInkIconButton(
+                        onClick = { showingArchived = !showingArchived },
+                        icon = Icons.Default.Archive,
+                        contentDescription = if (showingArchived) strings.chat else strings.archivedChats
+                    )
+                    Spacer(Modifier.width(8.dp))
                     EInkIconButton(
                         onClick = onNewConversation,
                         icon = Icons.Default.Add,
@@ -317,11 +336,14 @@ fun ChatListScreen(
                                     message = strings.conversationDeleted
                                 )
                             },
+                            onArchive = { viewModel.archiveConversation(conversation.id) },
+                            onUnarchive = { viewModel.unarchiveConversation(conversation.id) },
                             onManageTags = { onManageTags(conversation.id) },
                             onSummarize = { viewModel.generateSummary(conversation.id) },
                             showTags = showTagFilter,
                             onToggleFavorite = { viewModel.toggleConversationFavorite(conversation.id) },
-                            isSummarizing = summaryInProgress == conversation.id
+                            isSummarizing = summaryInProgress == conversation.id,
+                            isArchived = showingArchived
                         )
                     }
                 }
@@ -356,6 +378,7 @@ fun ChatListScreen(
         SummaryFullScreenView(
             title = conversation?.title ?: strings.conversationSummary,
             summary = summary,
+            existingFolders = existingFolders,
             onClose = { viewModel.clearSummary() },
             onSaveToKb = { folderName, filename ->
                 viewModel.saveSummaryToKb(convId, summary, folderName, filename)
@@ -372,11 +395,14 @@ private fun ConversationCard(
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onArchive: () -> Unit,
+    onUnarchive: () -> Unit,
     onManageTags: () -> Unit,
     onSummarize: () -> Unit,
     showTags: Boolean,
     onToggleFavorite: () -> Unit,
-    isSummarizing: Boolean = false
+    isSummarizing: Boolean = false,
+    isArchived: Boolean = false
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -538,6 +564,25 @@ private fun ConversationCard(
                 leadingIcon = { Icon(Icons.Default.Summarize, contentDescription = null) },
                 enabled = !isSummarizing && conversation.messages.isNotEmpty()
             )
+            if (isArchived) {
+                DropdownMenuItem(
+                    text = { Text(strings.unarchiveChat) },
+                    onClick = {
+                        showContextMenu = false
+                        onUnarchive()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Unarchive, contentDescription = null) }
+                )
+            } else {
+                DropdownMenuItem(
+                    text = { Text(strings.archiveChat) },
+                    onClick = {
+                        showContextMenu = false
+                        onArchive()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) }
+                )
+            }
             DropdownMenuItem(
                 text = { Text(strings.delete) },
                 onClick = {
@@ -648,6 +693,7 @@ private fun formatRelativeTime(timestamp: Long): String {
 private fun SummaryFullScreenView(
     title: String,
     summary: String,
+    existingFolders: List<String>,
     onClose: () -> Unit,
     onSaveToKb: (folderName: String, filename: String) -> Unit
 ) {
@@ -706,6 +752,7 @@ private fun SummaryFullScreenView(
     if (showSaveDialog) {
         SaveToKbDialog(
             suggestedTitle = title,
+            existingFolders = existingFolders,
             onDismiss = { showSaveDialog = false },
             onConfirm = { folderName, filename ->
                 showSaveDialog = false
@@ -779,37 +826,92 @@ private fun SummaryLoadingView(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SaveToKbDialog(
     suggestedTitle: String,
+    existingFolders: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (folderName: String, filename: String) -> Unit
 ) {
     val strings = rememberStrings()
-    var folderName by remember { mutableStateOf("Summaries") }
     var filename by remember { mutableStateOf(suggestedTitle) }
+    var selectedFolder by remember { mutableStateOf(existingFolders.firstOrNull() ?: "") }
+    var showNewFolderInput by remember { mutableStateOf(existingFolders.isEmpty()) }
+    var newFolderName by remember { mutableStateOf("Summaries") }
+
+    val finalFolder = if (showNewFolderInput) newFolderName else selectedFolder
 
     EInkFormModal(
         onDismiss = onDismiss,
-        onConfirm = { onConfirm(folderName, filename) },
+        onConfirm = { onConfirm(finalFolder, filename) },
         title = strings.saveToKb,
         confirmText = strings.save,
         dismissText = strings.cancel,
-        confirmEnabled = folderName.isNotBlank() && filename.isNotBlank()
+        confirmEnabled = filename.isNotBlank() && finalFolder.isNotBlank()
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            EInkTextField(
-                value = folderName,
-                onValueChange = { folderName = it },
-                placeholder = strings.folderName,
-                modifier = Modifier.fillMaxWidth()
+        Column {
+            // Filename input
+            Text(
+                text = "${strings.filename}:",
+                style = MaterialTheme.typography.labelLarge,
+                color = EInkBlack
             )
+            Spacer(Modifier.height(4.dp))
             EInkTextField(
                 value = filename,
                 onValueChange = { filename = it },
-                placeholder = strings.fileName,
+                placeholder = strings.filename,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                text = "${strings.folder}:",
+                style = MaterialTheme.typography.labelLarge,
+                color = EInkBlack
+            )
+            Spacer(Modifier.height(8.dp))
+
+            // Folder selection with chips
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // New folder chip
+                EInkChip(
+                    label = strings.newFolder,
+                    selected = showNewFolderInput,
+                    onClick = {
+                        showNewFolderInput = true
+                        selectedFolder = ""
+                    }
+                )
+
+                // Existing folders
+                existingFolders.forEach { folder ->
+                    EInkChip(
+                        label = folder,
+                        selected = selectedFolder == folder && !showNewFolderInput,
+                        onClick = {
+                            selectedFolder = folder
+                            showNewFolderInput = false
+                        }
+                    )
+                }
+            }
+
+            // New folder input
+            if (showNewFolderInput) {
+                Spacer(Modifier.height(8.dp))
+                EInkTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it },
+                    placeholder = strings.newFolderName,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

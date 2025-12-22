@@ -15,6 +15,7 @@ data class ChatConversation(
     val tags: List<String> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
+    val isArchived: Boolean = false,
     val isFavorite: Boolean = false
 ) {
     /**

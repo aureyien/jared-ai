@@ -34,13 +34,18 @@ class ChatHistoryRepository @Inject constructor(
     private val _allTags = MutableStateFlow<Set<String>>(emptySet())
     val allTags: StateFlow<Set<String>> = _allTags
 
+    private val _archivedConversations = MutableStateFlow<List<ChatConversation>>(emptyList())
+    val archivedConversations: StateFlow<List<ChatConversation>> = _archivedConversations
+
     suspend fun initialize() = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
                 if (historyFile.exists()) {
                     val content = historyFile.readText()
                     val data = json.decodeFromString<ChatHistoryData>(content)
-                    _conversations.value = data.conversations.sortedByDescending { it.updatedAt }
+                    val allConversations = data.conversations.sortedByDescending { it.updatedAt }
+                    _conversations.value = allConversations.filter { !it.isArchived }
+                    _archivedConversations.value = allConversations.filter { it.isArchived }
 
                     // Migration: if allTags is empty but conversations have tags, populate from conversations
                     if (data.allTags.isEmpty() && data.conversations.any { it.tags.isNotEmpty() }) {
@@ -53,11 +58,12 @@ class ChatHistoryRepository @Inject constructor(
                         _allTags.value = data.allTags
                     }
 
-                    Log.d(TAG, "Loaded ${data.conversations.size} conversations and ${_allTags.value.size} tags")
+                    Log.d(TAG, "Loaded ${_conversations.value.size} conversations, ${_archivedConversations.value.size} archived, ${_allTags.value.size} tags")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load conversations", e)
                 _conversations.value = emptyList()
+                _archivedConversations.value = emptyList()
                 _allTags.value = emptySet()
             }
         }
@@ -133,9 +139,14 @@ class ChatHistoryRepository @Inject constructor(
 
     suspend fun deleteConversation(id: String) = withContext(Dispatchers.IO) {
         mutex.withLock {
-            val current = _conversations.value.filter { it.id != id }
-            _conversations.value = current
-            persistConversations(current)
+            // Remove from both active and archived lists
+            val currentActive = _conversations.value.filter { it.id != id }
+            val currentArchived = _archivedConversations.value.filter { it.id != id }
+
+            _conversations.value = currentActive
+            _archivedConversations.value = currentArchived
+
+            persistConversations(currentActive + currentArchived)
             Log.d(TAG, "Deleted conversation: $id")
         }
     }
@@ -224,6 +235,7 @@ class ChatHistoryRepository @Inject constructor(
 
     fun getConversation(id: String): ChatConversation? {
         return _conversations.value.find { it.id == id }
+            ?: _archivedConversations.value.find { it.id == id }
     }
 
     suspend fun toggleConversationFavorite(conversationId: String) = withContext(Dispatchers.IO) {
@@ -238,6 +250,72 @@ class ChatHistoryRepository @Inject constructor(
                 Log.d(TAG, "Toggled favorite for conversation $conversationId to ${updated.isFavorite}")
             }
         }
+    }
+
+    suspend fun archiveConversation(conversationId: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val conversationToArchive = _conversations.value.find { it.id == conversationId }
+            if (conversationToArchive == null) {
+                Log.w(TAG, "Cannot archive conversation $conversationId - not found in active conversations")
+                return@withLock
+            }
+
+            val archivedConversation = conversationToArchive.copy(
+                isArchived = true,
+                isFavorite = false,  // Automatically unfavorite when archiving
+                updatedAt = System.currentTimeMillis()
+            )
+
+            // Remove from active conversations
+            val currentActive = _conversations.value.filter { it.id != conversationId }
+            // Add to archived conversations
+            val currentArchived = _archivedConversations.value + archivedConversation
+
+            _conversations.value = currentActive.sortedByDescending { it.updatedAt }
+            _archivedConversations.value = currentArchived.sortedByDescending { it.updatedAt }
+
+            persistConversations(currentActive + currentArchived)
+            Log.d(TAG, "Archived conversation $conversationId (was favorite: ${conversationToArchive.isFavorite})")
+        }
+    }
+
+    suspend fun unarchiveConversation(conversationId: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val conversationToRestore = _archivedConversations.value.find { it.id == conversationId }
+                ?: return@withLock
+
+            val restoredConversation = conversationToRestore.copy(
+                isArchived = false,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            // Add back to active conversations
+            val currentActive = _conversations.value + restoredConversation
+            // Remove from archived conversations
+            val currentArchived = _archivedConversations.value.filter { it.id != conversationId }
+
+            _conversations.value = currentActive.sortedByDescending { it.updatedAt }
+            _archivedConversations.value = currentArchived
+
+            persistConversations(currentActive + currentArchived)
+            Log.d(TAG, "Unarchived conversation $conversationId")
+        }
+    }
+
+    suspend fun permanentlyDeleteArchivedConversation(conversationId: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val currentArchived = _archivedConversations.value.filter { it.id != conversationId }
+            val currentActive = _conversations.value
+
+            _archivedConversations.value = currentArchived
+
+            persistConversations(currentActive + currentArchived)
+            Log.d(TAG, "Permanently deleted archived conversation: $conversationId")
+        }
+    }
+
+    fun getArchivedConversations(): List<ChatConversation> {
+        return _archivedConversations.value
     }
 
     fun getFavoriteConversations(): List<ChatConversation> {

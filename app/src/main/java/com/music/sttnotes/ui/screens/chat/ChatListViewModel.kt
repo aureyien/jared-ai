@@ -30,6 +30,11 @@ class ChatListViewModel @Inject constructor(
 ) : ViewModel() {
 
     val conversations: StateFlow<List<ChatConversation>> = chatHistoryRepository.conversations
+    val archivedConversations: StateFlow<List<ChatConversation>> = chatHistoryRepository.archivedConversations
+
+    // Existing KB folders
+    private val _existingFolders = MutableStateFlow<List<String>>(emptyList())
+    val existingFolders: StateFlow<List<String>> = _existingFolders
 
     // All tags (persisted even when not assigned to any conversation)
     val allTags: StateFlow<Set<String>> = chatHistoryRepository.allTags
@@ -50,12 +55,14 @@ class ChatListViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             chatHistoryRepository.initialize()
+            _existingFolders.value = llmOutputRepository.listFolders()
         }
     }
 
     fun refresh() {
         viewModelScope.launch {
             chatHistoryRepository.initialize()
+            _existingFolders.value = llmOutputRepository.listFolders()
         }
     }
 
@@ -118,6 +125,24 @@ class ChatListViewModel @Inject constructor(
     fun toggleConversationFavorite(conversationId: String) {
         viewModelScope.launch {
             chatHistoryRepository.toggleConversationFavorite(conversationId)
+        }
+    }
+
+    fun archiveConversation(id: String) {
+        viewModelScope.launch {
+            chatHistoryRepository.archiveConversation(id)
+        }
+    }
+
+    fun unarchiveConversation(id: String) {
+        viewModelScope.launch {
+            chatHistoryRepository.unarchiveConversation(id)
+        }
+    }
+
+    fun permanentlyDeleteArchivedConversation(id: String) {
+        viewModelScope.launch {
+            chatHistoryRepository.permanentlyDeleteArchivedConversation(id)
         }
     }
 
