@@ -1,10 +1,13 @@
 package com.music.sttnotes.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -804,4 +807,183 @@ private fun UndoButtonContent(
             )
         }
     }
+}
+
+/**
+ * E-Ink optimized modal overlay - solid white background, black border, no shadows
+ *
+ * Usage:
+ * var showModal by remember { mutableStateOf(false) }
+ * if (showModal) {
+ *     EInkModal(
+ *         onDismiss = { showModal = false },
+ *         title = "Confirmation",
+ *         buttons = {
+ *             EInkButton(onClick = { showModal = false }) { Text("OK") }
+ *         }
+ *     ) {
+ *         Text("Modal content")
+ *     }
+ * }
+ */
+@Composable
+fun EInkModal(
+    onDismiss: () -> Unit,
+    title: String? = null,
+    buttons: @Composable RowScope.() -> Unit = {},
+    dismissOnBackgroundClick: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    // Handle back button
+    BackHandler(onBack = onDismiss)
+
+    // Full-screen overlay with solid white background
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(EInkWhite)
+            .clickable(
+                onClick = if (dismissOnBackgroundClick) onDismiss else {{}},
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Modal content card with border
+        Surface(
+            modifier = Modifier
+                .padding(horizontal = 24.dp, vertical = 32.dp)
+                .fillMaxWidth()
+                .clickable(
+                    onClick = {}, // Prevent clicks from passing through
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                )
+                .border(
+                    width = 2.dp,
+                    color = EInkBlack,
+                    shape = RoundedCornerShape(8.dp)
+                ),
+            color = EInkWhite,
+            shape = RoundedCornerShape(8.dp),
+            tonalElevation = 0.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                // Title
+                title?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = EInkBlack
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    EInkDivider()
+                    Spacer(Modifier.height(16.dp))
+                }
+
+                // Content
+                Column(
+                    modifier = Modifier.weight(1f, fill = false),
+                    content = content
+                )
+
+                // Buttons (if provided)
+                if (buttons != {}) {
+                    Spacer(Modifier.height(20.dp))
+                    EInkDivider()
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                        content = buttons
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * E-Ink optimized confirmation modal - common pattern for yes/no actions
+ */
+@Composable
+fun EInkConfirmationModal(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    title: String,
+    message: String,
+    confirmText: String = "Confirm",
+    dismissText: String = "Cancel",
+    destructive: Boolean = false
+) {
+    EInkModal(
+        onDismiss = onDismiss,
+        title = title,
+        buttons = {
+            EInkButton(
+                onClick = onDismiss,
+                filled = false
+            ) {
+                Text(dismissText)
+            }
+            Spacer(Modifier.width(12.dp))
+            EInkButton(
+                onClick = {
+                    onConfirm()
+                    onDismiss()
+                },
+                filled = true
+            ) {
+                Text(confirmText)
+            }
+        }
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = EInkBlack
+        )
+    }
+}
+
+/**
+ * E-Ink optimized form modal - for text input dialogs
+ */
+@Composable
+fun EInkFormModal(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    title: String,
+    confirmText: String = "Save",
+    dismissText: String = "Cancel",
+    confirmEnabled: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    EInkModal(
+        onDismiss = onDismiss,
+        title = title,
+        buttons = {
+            EInkButton(
+                onClick = onDismiss,
+                filled = false
+            ) {
+                Text(dismissText)
+            }
+            Spacer(Modifier.width(12.dp))
+            EInkButton(
+                onClick = {
+                    onConfirm()
+                    onDismiss()
+                },
+                filled = true,
+                enabled = confirmEnabled
+            ) {
+                Text(confirmText)
+            }
+        },
+        content = content
+    )
 }

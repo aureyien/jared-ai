@@ -22,12 +22,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
@@ -39,7 +42,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import com.music.sttnotes.data.i18n.rememberStrings
 import androidx.compose.ui.Alignment
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -51,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,7 +63,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -73,6 +79,7 @@ import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.einkMarkdownColors
 import com.music.sttnotes.ui.components.einkMarkdownComponents
 import com.music.sttnotes.ui.components.einkMarkdownTypography
+import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
@@ -106,6 +113,7 @@ fun KnowledgeBaseDetailScreen(
     var currentFilename by remember { mutableStateOf(filename) }
     var renameError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
 
     // Rich text editor state
     val richTextState = rememberRichTextState()
@@ -199,6 +207,17 @@ fun KnowledgeBaseDetailScreen(
                                 },
                                 leadingIcon = { Icon(Icons.Default.LocalOffer, null) }
                             )
+                            // Copy option
+                            DropdownMenuItem(
+                                text = { Text(strings.copyContent) },
+                                onClick = {
+                                    showActionMenu = false
+                                    fileContent?.let { content ->
+                                        clipboardManager.setText(AnnotatedString(content))
+                                    }
+                                },
+                                leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
+                            )
                             // Edit/Preview toggle
                             DropdownMenuItem(
                                 text = { Text(if (isEditMode) strings.preview else strings.edit) },
@@ -279,35 +298,42 @@ fun KnowledgeBaseDetailScreen(
                         // Editor or Preview based on mode
                         // imePadding on edit mode so content scrolls up when keyboard shows
                         Box(modifier = Modifier.fillMaxSize().then(if (isEditMode) Modifier.imePadding() else Modifier)) {
-                            if (isEditMode) {
-                                // Edit mode: RichTextEditor
-                                // Add bottom padding when keyboard is visible to prevent content from being hidden by toolbar
-                                val bottomPadding = if (isKeyboardVisible) 56.dp else 16.dp
-                                RichTextEditor(
-                                    state = richTextState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = bottomPadding),
-                                    colors = RichTextEditorDefaults.richTextEditorColors(
-                                        containerColor = EInkWhite,
-                                        textColor = EInkBlack,
-                                        cursorColor = EInkBlack
-                                    ),
-                                    placeholder = { Text("Commencez à écrire...", color = EInkGrayMedium) }
+                            CompositionLocalProvider(
+                                LocalTextSelectionColors provides TextSelectionColors(
+                                    handleColor = Color(0xFF64B5F6),
+                                    backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
                                 )
-                            } else {
-                                // Preview mode: Markdown renderer with text selection
-                                SelectionContainer {
-                                    Markdown(
-                                        content = fileContent ?: "",
-                                        colors = einkMarkdownColors(),
-                                        typography = einkMarkdownTypography(),
-                                        components = einkMarkdownComponents(),
+                            ) {
+                                if (isEditMode) {
+                                    // Edit mode: RichTextEditor
+                                    // Add bottom padding when keyboard is visible to prevent content from being hidden by toolbar
+                                    val bottomPadding = if (isKeyboardVisible) 56.dp else 16.dp
+                                    RichTextEditor(
+                                        state = richTextState,
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                                            .verticalScroll(rememberScrollState())
+                                            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = bottomPadding),
+                                        colors = RichTextEditorDefaults.richTextEditorColors(
+                                            containerColor = EInkWhite,
+                                            textColor = EInkBlack,
+                                            cursorColor = EInkBlack
+                                        ),
+                                        placeholder = { Text("Commencez à écrire...", color = EInkGrayMedium) }
                                     )
+                                } else {
+                                    // Preview mode: Markdown renderer with text selection
+                                    SelectionContainer {
+                                        Markdown(
+                                            content = fileContent ?: "",
+                                            colors = einkMarkdownColors(),
+                                            typography = einkMarkdownTypography(),
+                                            components = einkMarkdownComponents(),
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(horizontal = 20.dp, vertical = 16.dp)
+                                                .verticalScroll(rememberScrollState())
+                                        )
+                                    }
                                 }
                             }
 
@@ -385,47 +411,30 @@ private fun RenameDialog(
 ) {
     var newName by remember { mutableStateOf(currentName) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Renommer le fichier") },
-        text = {
-            androidx.compose.foundation.layout.Column {
-                EInkTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    placeholder = "Nouveau nom",
-                    modifier = Modifier.fillMaxWidth(),
-                    showClearButton = true
-                )
-                if (error != null) {
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            EInkButton(
-                onClick = { onConfirm(newName) },
-                filled = true,
-                enabled = newName.isNotBlank() && newName != currentName
-            ) {
-                Text("Renommer")
-            }
-        },
-        dismissButton = {
-            EInkButton(
-                onClick = onDismiss,
-                filled = false
-            ) {
-                Text("Annuler")
-            }
-        },
-        containerColor = EInkWhite
-    )
+    EInkFormModal(
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(newName) },
+        title = "Renommer le fichier",
+        confirmText = "Renommer",
+        dismissText = "Annuler",
+        confirmEnabled = newName.isNotBlank() && newName != currentName
+    ) {
+        EInkTextField(
+            value = newName,
+            onValueChange = { newName = it },
+            placeholder = "Nouveau nom",
+            modifier = Modifier.fillMaxWidth(),
+            showClearButton = true
+        )
+        if (error != null) {
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
 }
 
 /**

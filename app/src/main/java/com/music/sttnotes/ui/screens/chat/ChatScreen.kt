@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -87,6 +86,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkChip
+import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
@@ -464,43 +464,21 @@ private fun RenameConversationDialog(
     val strings = rememberStrings()
     var newTitle by remember { mutableStateOf(currentTitle) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(strings.renameConversation) },
-        text = {
-            com.music.sttnotes.ui.components.EInkTextField(
-                value = newTitle,
-                onValueChange = { newTitle = it },
-                placeholder = strings.newTitle,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(newTitle) },
-                enabled = newTitle.isNotBlank() && newTitle != currentTitle,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = EInkBlack,
-                    contentColor = EInkWhite
-                )
-            ) {
-                Text(strings.rename)
-            }
-        },
-        dismissButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = EInkWhite,
-                    contentColor = EInkBlack
-                ),
-                border = BorderStroke(1.dp, EInkBlack)
-            ) {
-                Text(strings.cancel)
-            }
-        },
-        containerColor = EInkWhite
-    )
+    EInkFormModal(
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(newTitle) },
+        title = strings.renameConversation,
+        confirmText = strings.rename,
+        dismissText = strings.cancel,
+        confirmEnabled = newTitle.isNotBlank() && newTitle != currentTitle
+    ) {
+        EInkTextField(
+            value = newTitle,
+            onValueChange = { newTitle = it },
+            placeholder = strings.newTitle,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable
@@ -689,94 +667,80 @@ private fun SaveResponseDialog(
     var showNewFolderInput by remember { mutableStateOf(existingFolders.isEmpty()) }
     var newFolderName by remember { mutableStateOf("") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(strings.saveResponse) },
-        text = {
-            Column {
-                // Filename input
-                Text(
-                    text = "${strings.filename}:",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = EInkBlack
-                )
-                Spacer(Modifier.height(4.dp))
-                EInkTextField(
-                    value = filename,
-                    onValueChange = { filename = it },
-                    placeholder = strings.filename,
-                    modifier = Modifier.fillMaxWidth()
+    val finalFolder = if (showNewFolderInput) newFolderName else selectedFolder
+
+    EInkFormModal(
+        onDismiss = onDismiss,
+        onConfirm = { onSave(filename, finalFolder) },
+        title = strings.saveResponse,
+        confirmText = strings.save,
+        dismissText = strings.cancel,
+        confirmEnabled = filename.isNotBlank() && finalFolder.isNotBlank()
+    ) {
+        Column {
+            // Filename input
+            Text(
+                text = "${strings.filename}:",
+                style = MaterialTheme.typography.labelLarge,
+                color = EInkBlack
+            )
+            Spacer(Modifier.height(4.dp))
+            EInkTextField(
+                value = filename,
+                onValueChange = { filename = it },
+                placeholder = strings.filename,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                text = "${strings.folder}:",
+                style = MaterialTheme.typography.labelLarge,
+                color = EInkBlack
+            )
+            Spacer(Modifier.height(8.dp))
+
+            // Folder selection with chips
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // New folder chip
+                EInkChip(
+                    label = strings.newFolder,
+                    selected = showNewFolderInput,
+                    onClick = {
+                        showNewFolderInput = true
+                        selectedFolder = ""
+                    }
                 )
 
-                Spacer(Modifier.height(16.dp))
-
-                Text(
-                    text = "${strings.folder}:",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = EInkBlack
-                )
-                Spacer(Modifier.height(8.dp))
-
-                // Folder selection with chips
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // New folder chip
+                // Existing folders
+                existingFolders.forEach { folder ->
                     EInkChip(
-                        label = strings.newFolder,
-                        selected = showNewFolderInput,
+                        label = folder,
+                        selected = selectedFolder == folder && !showNewFolderInput,
                         onClick = {
-                            showNewFolderInput = true
-                            selectedFolder = ""
+                            selectedFolder = folder
+                            showNewFolderInput = false
                         }
                     )
-
-                    // Existing folders
-                    existingFolders.forEach { folder ->
-                        EInkChip(
-                            label = folder,
-                            selected = selectedFolder == folder && !showNewFolderInput,
-                            onClick = {
-                                selectedFolder = folder
-                                showNewFolderInput = false
-                            }
-                        )
-                    }
-                }
-
-                // New folder input
-                if (showNewFolderInput) {
-                    Spacer(Modifier.height(8.dp))
-                    EInkTextField(
-                        value = newFolderName,
-                        onValueChange = { newFolderName = it },
-                        placeholder = strings.newFolderName,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
-        },
-        confirmButton = {
-            val finalFolder = if (showNewFolderInput) newFolderName else selectedFolder
-            EInkButton(
-                onClick = { onSave(filename, finalFolder) },
-                filled = true,
-                enabled = filename.isNotBlank() && finalFolder.isNotBlank()
-            ) {
-                Text(strings.save)
+
+            // New folder input
+            if (showNewFolderInput) {
+                Spacer(Modifier.height(8.dp))
+                EInkTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it },
+                    placeholder = strings.newFolderName,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
-        },
-        dismissButton = {
-            EInkButton(
-                onClick = onDismiss,
-                filled = false
-            ) {
-                Text(strings.cancel)
-            }
-        },
-        containerColor = EInkWhite
-    )
+        }
+    }
 }
 
 @Composable

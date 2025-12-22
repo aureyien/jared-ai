@@ -260,7 +260,10 @@ fun NavGraph(
                 onFileClick = { filename ->
                     navController.navigate(Screen.KnowledgeBaseDetail.createRoute(folderName, filename))
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onManageTags = { folder, filename ->
+                    navController.navigate(Screen.TagManagementKB.createRoute(folder, filename))
+                }
             )
         }
 

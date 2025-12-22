@@ -8,6 +8,8 @@ import com.music.sttnotes.data.api.LlmService
 import com.music.sttnotes.data.chat.ChatConversation
 import com.music.sttnotes.data.chat.ChatHistoryRepository
 import com.music.sttnotes.data.llm.LlmOutputRepository
+import com.music.sttnotes.data.stt.SttLanguage
+import com.music.sttnotes.data.stt.SttPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,7 +25,8 @@ class ChatListViewModel @Inject constructor(
     private val chatHistoryRepository: ChatHistoryRepository,
     private val llmService: LlmService,
     private val apiConfig: ApiConfig,
-    private val llmOutputRepository: LlmOutputRepository
+    private val llmOutputRepository: LlmOutputRepository,
+    private val sttPreferences: SttPreferences
 ) : ViewModel() {
 
     val conversations: StateFlow<List<ChatConversation>> = chatHistoryRepository.conversations
@@ -151,7 +154,26 @@ class ChatListViewModel @Inject constructor(
                 return@launch
             }
 
-            val systemPrompt = """You are a summarization assistant. Create a comprehensive summary of the following conversation using markdown formatting.
+            val sttLanguage = sttPreferences.selectedLanguage.first()
+
+            val systemPrompt = when (sttLanguage) {
+                SttLanguage.FRENCH -> """Tu es un assistant de résumé. Crée un résumé complet de la conversation suivante en utilisant le formatage markdown.
+
+Structure ton résumé comme suit :
+## Vue d'ensemble
+Un bref aperçu en 1-2 phrases du sujet de la conversation.
+
+## Points clés
+- Points principaux couvrant les sujets principaux discutés
+- Inclure les détails importants, décisions ou conclusions
+- Capturer les actions à entreprendre ou les prochaines étapes mentionnées
+
+## Détails
+Développer les aspects les plus importants de la conversation avec le contexte pertinent.
+
+Utilise un formatage markdown approprié (titres, puces, gras pour l'emphase). Sois complet mais concis. Concentre-toi sur l'extraction d'informations exploitables et d'informations clés."""
+
+                SttLanguage.ENGLISH -> """You are a summarization assistant. Create a comprehensive summary of the following conversation using markdown formatting.
 
 Structure your summary as follows:
 ## Overview
@@ -166,6 +188,7 @@ A brief 1-2 sentence overview of the conversation topic.
 Expand on the most important aspects of the conversation with relevant context.
 
 Use proper markdown formatting (headers, bullet points, bold for emphasis). Be thorough but concise. Focus on extracting actionable insights and key information."""
+            }
 
             llmService.processWithLlm(
                 text = conversationText,

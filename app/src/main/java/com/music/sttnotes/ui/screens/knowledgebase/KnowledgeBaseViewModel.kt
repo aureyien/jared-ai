@@ -4,14 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.music.sttnotes.data.api.ApiConfig
 import com.music.sttnotes.data.api.LlmProvider
+import com.music.sttnotes.data.api.LlmService
 import com.music.sttnotes.data.llm.FrontmatterParser
 import com.music.sttnotes.data.llm.KbFileMeta
 import com.music.sttnotes.data.llm.LlmOutputRepository
+import com.music.sttnotes.data.stt.SttLanguage
+import com.music.sttnotes.data.stt.SttPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -33,7 +39,9 @@ data class FolderWithFiles(
 @HiltViewModel
 class KnowledgeBaseViewModel @Inject constructor(
     private val llmOutputRepository: LlmOutputRepository,
-    private val apiConfig: ApiConfig
+    private val apiConfig: ApiConfig,
+    private val llmService: LlmService,
+    private val sttPreferences: SttPreferences
 ) : ViewModel() {
 
     private val _folders = MutableStateFlow<List<FolderWithFiles>>(emptyList())
@@ -50,9 +58,6 @@ class KnowledgeBaseViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
-
-    private val _filteredFolders = MutableStateFlow<List<FolderWithFiles>>(emptyList())
-    val filteredFolders: StateFlow<List<FolderWithFiles>> = _filteredFolders
 
     // Edit mode state
     private val _isEditMode = MutableStateFlow(false)
@@ -74,6 +79,10 @@ class KnowledgeBaseViewModel @Inject constructor(
     // Tag filter for KB list
     private val _selectedTagFilters = MutableStateFlow<Set<String>>(emptySet())
     val selectedTagFilters: StateFlow<Set<String>> = _selectedTagFilters
+
+    // Tag visibility state (persisted across navigation)
+    private val _showTagFilter = MutableStateFlow(false)
+    val showTagFilter: StateFlow<Boolean> = _showTagFilter
 
     // Selection mode for merge feature
     private val _selectionMode = MutableStateFlow(false)
@@ -115,12 +124,15 @@ class KnowledgeBaseViewModel @Inject constructor(
         } else {
             _selectedTagFilters.value + tag
         }
-        filterFolders()
     }
 
     fun clearTagFilters() {
         _selectedTagFilters.value = emptySet()
-        filterFolders()
+    }
+
+    // Toggle tag visibility
+    fun toggleShowTagFilter() {
+        _showTagFilter.value = !_showTagFilter.value
     }
 
     private fun loadAllTags() {
@@ -131,37 +143,7 @@ class KnowledgeBaseViewModel @Inject constructor(
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
-        filterFolders()
-    }
-
-    private fun filterFolders() {
-        val query = _searchQuery.value.lowercase().trim()
-        val tagFilter = _selectedTagFilters.value
-
-        if (query.isEmpty() && tagFilter.isEmpty()) {
-            _filteredFolders.value = _folders.value
-        } else {
-            _filteredFolders.value = _folders.value.mapNotNull { folder ->
-                val matchingFiles = folder.files.filter { file ->
-                    val matchesQuery = query.isEmpty() ||
-                        file.file.nameWithoutExtension.lowercase().contains(query) ||
-                        file.preview.lowercase().contains(query)
-                    val matchesTags = tagFilter.isEmpty() ||
-                        file.tags.any { it in tagFilter }
-                    matchesQuery && matchesTags
-                }
-                if (matchingFiles.isNotEmpty() || (folder.name.lowercase().contains(query) && tagFilter.isEmpty())) {
-                    folder.copy(
-                        files = if (folder.name.lowercase().contains(query) && tagFilter.isEmpty()) folder.files.filter { file ->
-                            tagFilter.isEmpty() || file.tags.any { it in tagFilter }
-                        } else matchingFiles,
-                        isExpanded = true // Auto-expand folders with matches
-                    )
-                } else {
-                    null
-                }
-            }
-        }
+        // filterFolders() call removed - reactive flow handles it
     }
 
     fun loadFolders() {
@@ -177,7 +159,7 @@ class KnowledgeBaseViewModel @Inject constructor(
                     isExpanded = previousExpansionState[name] ?: false
                 )
             }
-            filterFolders() // Apply current search filter
+            // filterFolders() call removed - reactive flow handles it
             // Refresh tags from all files
             _allTags.value = llmOutputRepository.getAllTags()
             _isLoading.value = false
@@ -223,7 +205,7 @@ class KnowledgeBaseViewModel @Inject constructor(
             if (folder.name == folderName) folder.copy(isExpanded = !folder.isExpanded)
             else folder
         }
-        filterFolders() // Update filtered list to reflect expansion state
+        // filterFolders() call removed - reactive flow handles it
     }
 
     fun loadFileContent(folder: String, filename: String) {
@@ -421,6 +403,115 @@ class KnowledgeBaseViewModel @Inject constructor(
                 exitSelectionMode()
                 loadFolders()
             }
+        }
+    }
+
+    // Summary generation state
+    private val _summaryInProgress = MutableStateFlow<String?>(null)
+    val summaryInProgress: StateFlow<String?> = _summaryInProgress
+
+    private val _generatedSummary = MutableStateFlow<Pair<String, String>?>(null)
+    val generatedSummary: StateFlow<Pair<String, String>?> = _generatedSummary
+
+    fun generateSummary(folder: String, filename: String) {
+        viewModelScope.launch {
+            val content = llmOutputRepository.readFile(folder, filename).getOrNull()
+            if (content.isNullOrBlank()) return@launch
+
+            val fileId = "$folder/$filename"
+
+            // Show summary view immediately with empty content (will show loader)
+            _generatedSummary.value = fileId to ""
+            _summaryInProgress.value = fileId
+
+            val provider = apiConfig.llmProvider.first()
+            val apiKey = when (provider) {
+                LlmProvider.GROQ -> apiConfig.groqApiKey.first()
+                LlmProvider.OPENAI -> apiConfig.openaiApiKey.first()
+                LlmProvider.XAI -> apiConfig.xaiApiKey.first()
+                LlmProvider.ANTHROPIC -> apiConfig.anthropicApiKey.first()
+                LlmProvider.NONE -> null
+            }
+
+            if (apiKey.isNullOrEmpty()) {
+                _summaryInProgress.value = null
+                _generatedSummary.value = null
+                return@launch
+            }
+
+            val sttLanguage = sttPreferences.selectedLanguage.first()
+
+            val systemPrompt = when (sttLanguage) {
+                SttLanguage.FRENCH -> """Tu es un assistant de résumé. Crée un résumé complet du document suivant en utilisant le formatage markdown.
+
+Structure ton résumé comme suit :
+## Vue d'ensemble
+Un bref aperçu en 1-2 phrases du sujet du document.
+
+## Points clés
+- Points principaux couvrant les sujets principaux
+- Inclure les détails importants, décisions ou conclusions
+- Capturer les actions à entreprendre ou les prochaines étapes mentionnées
+
+## Détails
+Développer les aspects les plus importants du document avec le contexte pertinent.
+
+Utilise un formatage markdown approprié (titres, puces, gras pour l'emphase). Sois complet mais concis. Concentre-toi sur l'extraction d'informations exploitables et d'informations clés."""
+
+                SttLanguage.ENGLISH -> """You are a summarization assistant. Create a comprehensive summary of the following document using markdown formatting.
+
+Structure your summary as follows:
+## Overview
+A brief 1-2 sentence overview of the document's topic.
+
+## Key Points
+- Bullet points covering the main topics
+- Include important details, decisions, or conclusions
+- Capture any action items or next steps mentioned
+
+## Details
+Expand on the most important aspects of the document with relevant context.
+
+Use proper markdown formatting (headers, bullet points, bold for emphasis). Be thorough but concise. Focus on extracting actionable insights and key information."""
+            }
+
+            llmService.processWithLlm(
+                text = content,
+                systemPrompt = systemPrompt,
+                provider = provider,
+                apiKey = apiKey
+            ).fold(
+                onSuccess = { summary ->
+                    _generatedSummary.value = fileId to summary
+                },
+                onFailure = {
+                    // Close summary view on failure
+                    _generatedSummary.value = null
+                }
+            )
+            _summaryInProgress.value = null
+        }
+    }
+
+    fun clearSummary() {
+        _generatedSummary.value = null
+    }
+
+    fun clearSummaryProgress() {
+        _summaryInProgress.value = null
+    }
+
+    fun saveSummaryToKb(fileId: String, summary: String, folderName: String, filename: String) {
+        viewModelScope.launch {
+            val content = buildString {
+                appendLine("# Summary of $fileId")
+                appendLine()
+                appendLine(summary)
+                appendLine()
+                appendLine("---")
+                appendLine("*Generated from KB document*")
+            }
+            llmOutputRepository.writeFile(folderName, filename, content)
         }
     }
 }

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -43,7 +44,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -72,16 +72,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mikepenz.markdown.m3.Markdown
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkCard
-import com.music.sttnotes.ui.components.einkMarkdownColors
-import com.music.sttnotes.ui.components.einkMarkdownComponents
-import com.music.sttnotes.ui.components.einkMarkdownTypography
 import com.music.sttnotes.ui.components.EInkChip
+import com.music.sttnotes.ui.components.EInkConfirmationModal
 import com.music.sttnotes.ui.components.EInkDivider
+import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
 import com.music.sttnotes.ui.components.UndoButton
+import com.music.sttnotes.ui.components.einkMarkdownColors
+import com.music.sttnotes.ui.components.einkMarkdownComponents
+import com.music.sttnotes.ui.components.einkMarkdownTypography
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
@@ -401,84 +403,49 @@ fun KnowledgeBaseFolderScreen(
         }
 
         // Delete tag confirmation dialog
-        tagToDelete?.let { tag -> AlertDialog(
-                onDismissRequest = { tagToDelete = null },
-                title = { Text(strings.deleteTag) },
-                text = {
-                    Text("${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}")
-                },
-                confirmButton = {
-                    EInkButton(
-                        onClick = {
-                            viewModel.deleteTag(tag)
-                            tagToDelete = null
-                        },
-                        filled = true
-                    ) {
-                        Text(strings.delete)
-                    }
-                },
-                dismissButton = {
-                    EInkButton(
-                        onClick = { tagToDelete = null },
-                        filled = false
-                    ) {
-                        Text(strings.cancel)
-                    }
-                },
-                containerColor = EInkWhite
+        tagToDelete?.let { tag ->
+            EInkConfirmationModal(
+                onDismiss = { tagToDelete = null },
+                onConfirm = { viewModel.deleteTag(tag) },
+                title = strings.deleteTag,
+                message = "${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}",
+                confirmText = strings.delete,
+                dismissText = strings.cancel
             )
         }
 
         // Merge files dialog
         if (showMergeDialog) {
-            AlertDialog(
-                onDismissRequest = { showMergeDialog = false },
-                title = { Text(strings.mergeFiles) },
-                text = {
-                    Column {
-                        Text("${strings.mergeFilesConfirmation} ${selectedFiles.size} ${strings.files}")
-                        Spacer(Modifier.height(16.dp))
-                        EInkTextField(
-                            value = mergeFilename,
-                            onValueChange = { mergeFilename = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = strings.newFilename
-                        )
-                    }
+            EInkFormModal(
+                onDismiss = { showMergeDialog = false },
+                onConfirm = {
+                    viewModel.mergeSelectedFiles(folderName, mergeFilename)
+                    showMergeDialog = false
                 },
-                confirmButton = {
-                    EInkButton(
-                        onClick = {
-                            if (mergeFilename.isNotBlank()) {
-                                viewModel.mergeSelectedFiles(folderName, mergeFilename)
-                                showMergeDialog = false
-                            }
-                        },
-                        filled = true
-                    ) {
-                        Text(strings.merge)
-                    }
-                },
-                dismissButton = {
-                    EInkButton(
-                        onClick = { showMergeDialog = false },
-                        filled = false
-                    ) {
-                        Text(strings.cancel)
-                    }
-                },
-                containerColor = EInkWhite
-            )
+                title = strings.mergeFiles,
+                confirmText = strings.merge,
+                confirmEnabled = mergeFilename.isNotBlank()
+            ) {
+                Text("${strings.mergeFilesConfirmation} ${selectedFiles.size} ${strings.files}")
+                Spacer(Modifier.height(16.dp))
+                EInkTextField(
+                    value = mergeFilename,
+                    onValueChange = { mergeFilename = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = strings.newFilename
+                )
+            }
         }
     }
 
     // Full-screen summary view
     generatedSummary?.let { (fileId, summary) ->
         val filename = fileId.substringAfterLast("/")
+        val isLoading = summaryInProgress == fileId
         SummaryFullScreenView(
             title = filename.removeSuffix(".md"),
             summary = summary,
+            isLoading = isLoading,
             onClose = { viewModel.clearSummary() },
             onSaveToKb = { folderName, filename ->
                 viewModel.saveSummaryToKb(fileId, summary, folderName, filename)
@@ -494,6 +461,7 @@ fun KnowledgeBaseFolderScreen(
 private fun SummaryFullScreenView(
     title: String,
     summary: String,
+    isLoading: Boolean,
     onClose: () -> Unit,
     onSaveToKb: (folderName: String, filename: String) -> Unit,
     existingFolders: List<String> = emptyList()
@@ -520,11 +488,14 @@ private fun SummaryFullScreenView(
                     )
                 },
                 actions = {
-                    EInkIconButton(
-                        onClick = { showSaveDialog = true },
-                        icon = Icons.Default.Save,
-                        contentDescription = strings.saveToKb
-                    )
+                    // Only show save button when summary is ready
+                    if (!isLoading) {
+                        EInkIconButton(
+                            onClick = { showSaveDialog = true },
+                            icon = Icons.Default.Save,
+                            contentDescription = strings.saveToKb
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = EInkWhite,
@@ -534,18 +505,32 @@ private fun SummaryFullScreenView(
         },
         containerColor = EInkWhite
     ) { padding ->
-        SelectionContainer {
-            Markdown(
-                content = summary,
-                colors = einkMarkdownColors(),
-                typography = einkMarkdownTypography(),
-                components = einkMarkdownComponents(),
+        if (isLoading) {
+            // Show loading indicator while summary is being generated
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .verticalScroll(rememberScrollState())
-            )
+                    .padding(padding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                EInkLoadingIndicator(text = strings.loading)
+            }
+        } else {
+            // Show summary content when ready
+            SelectionContainer {
+                Markdown(
+                    content = summary,
+                    colors = einkMarkdownColors(),
+                    typography = einkMarkdownTypography(),
+                    components = einkMarkdownComponents(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .verticalScroll(rememberScrollState())
+                )
+            }
         }
     }
 
@@ -577,101 +562,81 @@ private fun SaveToKbDialog(
     var showFolderDropdown by remember { mutableStateOf(false) }
     var isNewFolder by remember { mutableStateOf(existingFolders.isEmpty()) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(strings.saveToKb) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Folder selection with dropdown
-                Box {
-                    EInkTextField(
-                        value = folderName,
-                        onValueChange = {
-                            folderName = it
-                            isNewFolder = true
-                        },
-                        placeholder = strings.folderName,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = { showFolderDropdown = !showFolderDropdown }
-                            ),
-                        readOnly = false,
-                        trailingIcon = if (existingFolders.isNotEmpty()) {
-                            {
-                                EInkIconButton(
-                                    onClick = { showFolderDropdown = !showFolderDropdown },
-                                    icon = if (showFolderDropdown) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                                    contentDescription = strings.selectFile
-                                )
-                            }
-                        } else null
-                    )
-
-                    DropdownMenu(
-                        expanded = showFolderDropdown,
-                        onDismissRequest = { showFolderDropdown = false }
-                    ) {
-                        // Existing folders
-                        existingFolders.forEach { folder ->
-                            DropdownMenuItem(
-                                text = { Text(folder) },
-                                onClick = {
-                                    folderName = folder
-                                    isNewFolder = false
-                                    showFolderDropdown = false
-                                }
+    EInkFormModal(
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(folderName, filename) },
+        title = strings.saveToKb,
+        confirmText = strings.save,
+        confirmEnabled = folderName.isNotBlank() && filename.isNotBlank()
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Folder selection with dropdown
+            Box {
+                EInkTextField(
+                    value = folderName,
+                    onValueChange = {
+                        folderName = it
+                        isNewFolder = true
+                    },
+                    placeholder = strings.folderName,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = { showFolderDropdown = !showFolderDropdown }
+                        ),
+                    readOnly = false,
+                    trailingIcon = if (existingFolders.isNotEmpty()) {
+                        {
+                            EInkIconButton(
+                                onClick = { showFolderDropdown = !showFolderDropdown },
+                                icon = if (showFolderDropdown) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                contentDescription = strings.selectFile
                             )
                         }
-                        if (existingFolders.isNotEmpty()) {
-                            EInkDivider()
-                        }
-                        // New folder option
+                    } else null
+                )
+
+                DropdownMenu(
+                    expanded = showFolderDropdown,
+                    onDismissRequest = { showFolderDropdown = false }
+                ) {
+                    // Existing folders
+                    existingFolders.forEach { folder ->
                         DropdownMenuItem(
-                            text = { Text("+ ${strings.newFolder}") },
+                            text = { Text(folder) },
                             onClick = {
-                                folderName = ""
-                                isNewFolder = true
+                                folderName = folder
+                                isNewFolder = false
                                 showFolderDropdown = false
                             }
                         )
                     }
-                }
-
-                // Filename input
-                EInkTextField(
-                    value = filename,
-                    onValueChange = { filename = it },
-                    placeholder = strings.fileName,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            EInkButton(
-                onClick = {
-                    if (folderName.isNotBlank() && filename.isNotBlank()) {
-                        onConfirm(folderName, filename)
+                    if (existingFolders.isNotEmpty()) {
+                        EInkDivider()
                     }
-                },
-                enabled = folderName.isNotBlank() && filename.isNotBlank(),
-                filled = true
-            ) {
-                Text(strings.save)
+                    // New folder option
+                    DropdownMenuItem(
+                        text = { Text("+ ${strings.newFolder}") },
+                        onClick = {
+                            folderName = ""
+                            isNewFolder = true
+                            showFolderDropdown = false
+                        }
+                    )
+                }
             }
-        },
-        dismissButton = {
-            EInkButton(
-                onClick = onDismiss,
-                filled = false
-            ) {
-                Text(strings.cancel)
-            }
-        },
-        containerColor = EInkWhite
-    )
+
+            // Filename input
+            EInkTextField(
+                value = filename,
+                onValueChange = { filename = it },
+                placeholder = strings.fileName,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -749,12 +714,12 @@ private fun FolderFileItem(
                     )
                     Spacer(Modifier.width(8.dp))
                 }
-                // Hide delete button in selection mode
+                // Hide menu button in selection mode
                 if (!selectionMode) {
                     EInkIconButton(
                         onClick = { showMenu = true },
-                        icon = Icons.Default.Delete,
-                        contentDescription = strings.delete
+                        icon = Icons.Default.MoreVert,
+                        contentDescription = strings.settings
                     )
                 }
             }

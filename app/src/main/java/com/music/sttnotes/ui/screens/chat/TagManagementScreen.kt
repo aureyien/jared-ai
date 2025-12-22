@@ -13,7 +13,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,10 +31,11 @@ import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayLight
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
+import com.music.sttnotes.ui.components.EInkButton
+import com.music.sttnotes.ui.components.EInkConfirmationModal
+import com.music.sttnotes.ui.components.EInkDivider
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkTextField
-import com.music.sttnotes.ui.components.EInkDivider
-import com.music.sttnotes.ui.components.EInkButton
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -237,32 +245,16 @@ fun TagManagementScreen(
 
         // Delete tag confirmation dialog
         tagToDelete?.let { tag ->
-            AlertDialog(
-                onDismissRequest = { tagToDelete = null },
-                title = { Text(strings.deleteTag) },
-                text = {
-                    Text("${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}")
+            EInkConfirmationModal(
+                onDismiss = { tagToDelete = null },
+                onConfirm = {
+                    viewModel.deleteTag(tag)
+                    tagToDelete = null
                 },
-                confirmButton = {
-                    EInkButton(
-                        onClick = {
-                            viewModel.deleteTag(tag)
-                            tagToDelete = null
-                        },
-                        filled = true
-                    ) {
-                        Text(strings.delete)
-                    }
-                },
-                dismissButton = {
-                    EInkButton(
-                        onClick = { tagToDelete = null },
-                        filled = false
-                    ) {
-                        Text(strings.cancel)
-                    }
-                },
-                containerColor = EInkWhite
+                title = strings.deleteTag,
+                message = "${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}",
+                confirmText = strings.delete,
+                dismissText = strings.cancel
             )
         }
     }

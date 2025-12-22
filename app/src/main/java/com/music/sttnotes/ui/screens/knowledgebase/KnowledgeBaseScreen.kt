@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +38,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,10 +52,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkCard
 import com.music.sttnotes.ui.components.EInkChip
+import com.music.sttnotes.ui.components.EInkConfirmationModal
 import com.music.sttnotes.ui.components.EInkDivider
+import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkKBBottomActionBar
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
+import com.music.sttnotes.ui.components.EInkModal
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
 import com.music.sttnotes.ui.components.UndoButton
@@ -82,15 +85,13 @@ fun KnowledgeBaseScreen(
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
     val strings = rememberStrings()
-    val allFolders by viewModel.filteredFolders.collectAsState()
+    val allFolders by viewModel.folders.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
     val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
+    val showTagFilter by viewModel.showTagFilter.collectAsState()
     val isLlmConfigured by viewModel.isLlmConfigured.collectAsState()
-
-    // Tag filter visibility
-    var showTagFilter by remember { mutableStateOf(false) }
 
     // Undo deletion state for folders
     var pendingFolderDeletion by remember { mutableStateOf<PendingDeletion<String>?>(null) }
@@ -101,9 +102,56 @@ fun KnowledgeBaseScreen(
     // Tag deletion state
     var tagToDelete by remember { mutableStateOf<String?>(null) }
 
+    // Two-stage filtering: search → tags
+    val filteredFolders by remember { derivedStateOf {
+        val queryLower = searchQuery.lowercase().trim()
+
+        // Stage 1: Search filtering
+        val searchFiltered = if (queryLower.isEmpty()) {
+            allFolders
+        } else {
+            allFolders.mapNotNull { folder ->
+                val matchingFiles = folder.files.filter { file ->
+                    file.file.nameWithoutExtension.lowercase().contains(queryLower) ||
+                    file.preview.lowercase().contains(queryLower)
+                }
+
+                val folderNameMatches = folder.name.lowercase().contains(queryLower)
+
+                if (matchingFiles.isNotEmpty() || folderNameMatches) {
+                    folder.copy(
+                        files = if (folderNameMatches) folder.files else matchingFiles,
+                        isExpanded = true
+                    )
+                } else {
+                    null
+                }
+            }
+        }
+
+        // Stage 2: Tag filtering
+        if (selectedTagFilters.isEmpty()) {
+            searchFiltered
+        } else {
+            searchFiltered.mapNotNull { folder ->
+                val tagMatchingFiles = folder.files.filter { file ->
+                    file.tags.any { it in selectedTagFilters }
+                }
+                if (tagMatchingFiles.isNotEmpty()) {
+                    folder.copy(
+                        files = tagMatchingFiles,
+                        isExpanded = true
+                    )
+                } else {
+                    null
+                }
+            }
+        }
+    } }
+
     // Filter out pending deletion folders from display
-    val folders = remember(allFolders, pendingFolderDeletion) {
-        allFolders.filter { folder -> pendingFolderDeletion?.item != folder.name }
+    val folders = remember(filteredFolders, pendingFolderDeletion) {
+        filteredFolders.filter { folder -> pendingFolderDeletion?.item != folder.name }
     }
 
     // Handle system back button - commit pending deletion before leaving
@@ -235,10 +283,10 @@ fun KnowledgeBaseScreen(
                         if (allTags.isNotEmpty()) {
                             Spacer(Modifier.width(8.dp))
                             EInkIconButton(
-                                onClick = { showTagFilter = !showTagFilter },
+                                onClick = { viewModel.toggleShowTagFilter() },
+                                onLongClick = onManageTags,
                                 icon = Icons.Default.LocalOffer,
-                                contentDescription = strings.filterByTags,
-                                onLongClick = onManageTags
+                                contentDescription = strings.filterByTags
                             )
                         }
                     }
@@ -330,46 +378,30 @@ fun KnowledgeBaseScreen(
         var isRenaming by remember { mutableStateOf(false) }
         val coroutineScope = rememberCoroutineScope()
 
-        AlertDialog(
-            onDismissRequest = { if (!isRenaming) showRenameFolderDialog = null },
-            title = { Text(strings.renameFolder) },
-            text = {
-                EInkTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    placeholder = strings.newFolderName,
-                    modifier = Modifier.fillMaxWidth(),
-                    showClearButton = true
-                )
-            },
-            confirmButton = {
-                EInkButton(
-                    onClick = {
-                        if (newName.isNotBlank() && newName != folderName) {
-                            isRenaming = true
-                            coroutineScope.launch {
-                                viewModel.renameFolder(folderName, newName)
-                                showRenameFolderDialog = null
-                            }
-                        }
-                    },
-                    filled = true,
-                    enabled = newName.isNotBlank() && newName != folderName && !isRenaming
-                ) {
-                    Text(strings.rename)
+        EInkFormModal(
+            onDismiss = { if (!isRenaming) showRenameFolderDialog = null },
+            onConfirm = {
+                if (newName.isNotBlank() && newName != folderName) {
+                    isRenaming = true
+                    coroutineScope.launch {
+                        viewModel.renameFolder(folderName, newName)
+                        showRenameFolderDialog = null
+                    }
                 }
             },
-            dismissButton = {
-                EInkButton(
-                    onClick = { showRenameFolderDialog = null },
-                    filled = false,
-                    enabled = !isRenaming
-                ) {
-                    Text(strings.cancel)
-                }
-            },
-            containerColor = EInkWhite
-        )
+            title = strings.renameFolder,
+            confirmText = strings.rename,
+            dismissText = strings.cancel,
+            confirmEnabled = newName.isNotBlank() && newName != folderName && !isRenaming
+        ) {
+            EInkTextField(
+                value = newName,
+                onValueChange = { newName = it },
+                placeholder = strings.newFolderName,
+                modifier = Modifier.fillMaxWidth(),
+                showClearButton = true
+            )
+        }
     }
 
     // Delete tag confirmation dialog
@@ -378,92 +410,67 @@ fun KnowledgeBaseScreen(
 
     // Tag action menu dialog
     tagToDelete?.let { tag ->
-        AlertDialog(
-            onDismissRequest = { tagToDelete = null },
-            title = { Text("Tag: \"$tag\"") },
-            text = {
-                Column {
-                    Text("Choose an action:")
-                }
-            },
-            confirmButton = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Remove from all files option
-                    EInkButton(
-                        onClick = {
-                            showTagActionConfirmation = TagAction.REMOVE_FROM_ALL
-                        },
-                        filled = false
-                    ) {
-                        Text(strings.removeTagFromAll)
-                    }
-                    // Delete tag option
-                    EInkButton(
-                        onClick = {
-                            showTagActionConfirmation = TagAction.DELETE
-                        },
-                        filled = true
-                    ) {
-                        Text(strings.deleteTag)
-                    }
-                }
-            },
-            dismissButton = {
+        EInkModal(
+            onDismiss = { tagToDelete = null },
+            title = "Tag: \"$tag\"",
+            buttons = {
                 EInkButton(
                     onClick = { tagToDelete = null },
                     filled = false
                 ) {
                     Text(strings.cancel)
                 }
-            },
-            containerColor = EInkWhite
-        )
+            }
+        ) {
+            Text("Choose an action:")
+            Spacer(Modifier.height(16.dp))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Remove from all files option
+                EInkButton(
+                    onClick = {
+                        showTagActionConfirmation = TagAction.REMOVE_FROM_ALL
+                    },
+                    filled = false,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(strings.removeTagFromAll)
+                }
+                // Delete tag option
+                EInkButton(
+                    onClick = {
+                        showTagActionConfirmation = TagAction.DELETE
+                    },
+                    filled = true,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(strings.deleteTag)
+                }
+            }
+        }
     }
 
     // Confirmation dialog for tag actions
     showTagActionConfirmation?.let { action ->
         val tag = tagToDelete ?: return@let
-        AlertDialog(
-            onDismissRequest = { showTagActionConfirmation = null },
-            title = {
-                Text(
-                    when (action) {
-                        TagAction.REMOVE_FROM_ALL -> strings.removeTagFromAll
-                        TagAction.DELETE -> strings.deleteTag
-                    }
-                )
+        EInkConfirmationModal(
+            onDismiss = { showTagActionConfirmation = null },
+            onConfirm = {
+                viewModel.deleteTag(tag)
+                tagToDelete = null
+                showTagActionConfirmation = null
             },
-            text = {
-                Text(
-                    when (action) {
-                        TagAction.REMOVE_FROM_ALL -> "${strings.removeTagFromAllConfirmation} \"$tag\"?"
-                        TagAction.DELETE -> "${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}"
-                    }
-                )
+            title = when (action) {
+                TagAction.REMOVE_FROM_ALL -> strings.removeTagFromAll
+                TagAction.DELETE -> strings.deleteTag
             },
-            confirmButton = {
-                EInkButton(
-                    onClick = {
-                        viewModel.deleteTag(tag)
-                        tagToDelete = null
-                        showTagActionConfirmation = null
-                    },
-                    filled = true
-                ) {
-                    Text(strings.confirm)
-                }
+            message = when (action) {
+                TagAction.REMOVE_FROM_ALL -> "${strings.removeTagFromAllConfirmation} \"$tag\"?"
+                TagAction.DELETE -> "${strings.deleteTagConfirmation} \"$tag\"?\n\n${strings.deleteTagWarning}"
             },
-            dismissButton = {
-                EInkButton(
-                    onClick = { showTagActionConfirmation = null },
-                    filled = false
-                ) {
-                    Text(strings.cancel)
-                }
-            },
-            containerColor = EInkWhite
+            confirmText = strings.confirm,
+            dismissText = strings.cancel
         )
     }
 }

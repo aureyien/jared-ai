@@ -40,11 +40,13 @@ import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -97,9 +99,13 @@ fun NotesListScreen(
     val allNotes by viewModel.filteredNotes.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedTag by viewModel.selectedTag.collectAsState()
+    val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
+    val showTagFilter by viewModel.showTagFilter.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
     val showArchived by viewModel.showArchived.collectAsState()
     val archivedNotes by viewModel.archivedNotes.collectAsState()
+    val summaryInProgress by viewModel.summaryInProgress.collectAsState()
+    val generatedSummary by viewModel.generatedSummary.collectAsState()
     val strings = rememberStrings()
 
     // Undo deletion state
@@ -107,9 +113,6 @@ fun NotesListScreen(
 
     // View mode state (true = list, false = grid)
     var isListView by remember { mutableStateOf(true) }
-
-    // Tag filter visibility
-    var showTagFilter by remember { mutableStateOf(false) }
 
     // Filter out pending deletion items from display
     val notes = allNotes.filter { note -> pendingDeletion?.item?.id != note.id }
@@ -323,7 +326,7 @@ fun NotesListScreen(
                     if (allTags.isNotEmpty()) {
                         Spacer(Modifier.width(8.dp))
                         EInkIconButton(
-                            onClick = { showTagFilter = !showTagFilter },
+                            onClick = { viewModel.toggleShowTagFilter() },
                             onLongClick = onManageTagsGlobal,
                             icon = Icons.Default.LocalOffer,
                             contentDescription = strings.filterByTags
@@ -340,10 +343,8 @@ fun NotesListScreen(
                         items(allTags.toList()) { tag ->
                             EInkChip(
                                 label = tag,
-                                selected = selectedTag == tag,
-                                onClick = {
-                                    viewModel.onTagSelected(if (selectedTag == tag) null else tag)
-                                }
+                                selected = tag in selectedTagFilters,
+                                onClick = { viewModel.toggleTagFilter(tag) }
                             )
                         }
                     }
@@ -362,13 +363,13 @@ fun NotesListScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = if (searchQuery.isNotEmpty() || selectedTag != null)
+                                text = if (searchQuery.isNotEmpty() || selectedTagFilters.isNotEmpty())
                                     strings.noResults else strings.noNotes,
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = if (searchQuery.isEmpty() && selectedTag == null)
+                                text = if (searchQuery.isEmpty() && selectedTagFilters.isEmpty())
                                     strings.createFirstNote else strings.tryAnotherSearch,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -407,7 +408,9 @@ fun NotesListScreen(
                                         )
                                     },
                                     onManageTags = { onManageTags(note.id) },
-                                    onToggleFavorite = { viewModel.toggleNoteFavorite(note.id) }
+                                    onToggleFavorite = { viewModel.toggleNoteFavorite(note.id) },
+                                    onSummarize = { viewModel.generateSummary(note.id) },
+                                    isSummarizing = summaryInProgress == note.id
                                 )
                             }
                         }
@@ -444,7 +447,9 @@ fun NotesListScreen(
                                         )
                                     },
                                     onManageTags = { onManageTags(note.id) },
-                                    onToggleFavorite = { viewModel.toggleNoteFavorite(note.id) }
+                                    onToggleFavorite = { viewModel.toggleNoteFavorite(note.id) },
+                                    onSummarize = { viewModel.generateSummary(note.id) },
+                                    isSummarizing = summaryInProgress == note.id
                                 )
                             }
                         }
@@ -466,7 +471,9 @@ private fun NoteListItem(
     onArchive: () -> Unit,
     onDelete: () -> Unit,
     onManageTags: () -> Unit = {},
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    onSummarize: () -> Unit = {},
+    isSummarizing: Boolean = false
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -607,6 +614,27 @@ private fun NoteListItem(
                 }
             )
             DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(strings.summarize)
+                        if (isSummarizing) {
+                            Spacer(Modifier.width(8.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = EInkBlack
+                            )
+                        }
+                    }
+                },
+                onClick = {
+                    showContextMenu = false
+                    onSummarize()
+                },
+                leadingIcon = { Icon(Icons.Default.Summarize, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                enabled = !isSummarizing && note.content.isNotBlank()
+            )
+            DropdownMenuItem(
                 text = { Text(strings.archive) },
                 onClick = {
                     showContextMenu = false
@@ -632,7 +660,9 @@ private fun NoteGridCard(
     onArchive: () -> Unit,
     onDelete: () -> Unit,
     onManageTags: () -> Unit = {},
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    onSummarize: () -> Unit = {},
+    isSummarizing: Boolean = false
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
@@ -752,6 +782,27 @@ private fun NoteGridCard(
                 leadingIcon = {
                     Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
+            )
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(strings.summarize)
+                        if (isSummarizing) {
+                            Spacer(Modifier.width(8.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = EInkBlack
+                            )
+                        }
+                    }
+                },
+                onClick = {
+                    showContextMenu = false
+                    onSummarize()
+                },
+                leadingIcon = { Icon(Icons.Default.Summarize, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                enabled = !isSummarizing && note.content.isNotBlank()
             )
             DropdownMenuItem(
                 text = { Text(strings.archive) },

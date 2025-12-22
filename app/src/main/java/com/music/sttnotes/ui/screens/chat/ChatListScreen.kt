@@ -38,7 +38,6 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import com.mikepenz.markdown.m3.Markdown
 import com.music.sttnotes.ui.components.einkMarkdownColors
@@ -72,6 +71,7 @@ import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkCard
 import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.EInkDivider
+import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
@@ -600,37 +600,22 @@ private fun RenameDialog(
     val strings = rememberStrings()
     var newTitle by remember { mutableStateOf(currentTitle) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(strings.renameConversation) },
-        text = {
-            EInkTextField(
-                value = newTitle,
-                onValueChange = { newTitle = it },
-                placeholder = strings.newTitle,
-                modifier = Modifier.fillMaxWidth(),
-                showClearButton = true
-            )
-        },
-        confirmButton = {
-            EInkButton(
-                onClick = { onConfirm(newTitle) },
-                filled = true,
-                enabled = newTitle.isNotBlank()
-            ) {
-                Text(strings.rename)
-            }
-        },
-        dismissButton = {
-            EInkButton(
-                onClick = onDismiss,
-                filled = false
-            ) {
-                Text(strings.cancel)
-            }
-        },
-        containerColor = EInkWhite
-    )
+    EInkFormModal(
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(newTitle) },
+        title = strings.renameConversation,
+        confirmText = strings.rename,
+        dismissText = strings.cancel,
+        confirmEnabled = newTitle.isNotBlank()
+    ) {
+        EInkTextField(
+            value = newTitle,
+            onValueChange = { newTitle = it },
+            placeholder = strings.newTitle,
+            modifier = Modifier.fillMaxWidth(),
+            showClearButton = true
+        )
+    }
 }
 
 /**
@@ -804,40 +789,28 @@ private fun SaveToKbDialog(
     var folderName by remember { mutableStateOf("Summaries") }
     var filename by remember { mutableStateOf(suggestedTitle) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(strings.saveToKb) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                EInkTextField(
-                    value = folderName,
-                    onValueChange = { folderName = it },
-                    placeholder = strings.folderName,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                EInkTextField(
-                    value = filename,
-                    onValueChange = { filename = it },
-                    placeholder = strings.fileName,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            EInkButton(
-                onClick = { onConfirm(folderName, filename) },
-                filled = true,
-                enabled = folderName.isNotBlank() && filename.isNotBlank()
-            ) {
-                Text(strings.save)
-            }
-        },
-        dismissButton = {
-            EInkButton(onClick = onDismiss, filled = false) {
-                Text(strings.cancel)
-            }
-        },
-        containerColor = EInkWhite
-    )
+    EInkFormModal(
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(folderName, filename) },
+        title = strings.saveToKb,
+        confirmText = strings.save,
+        dismissText = strings.cancel,
+        confirmEnabled = folderName.isNotBlank() && filename.isNotBlank()
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            EInkTextField(
+                value = folderName,
+                onValueChange = { folderName = it },
+                placeholder = strings.folderName,
+                modifier = Modifier.fillMaxWidth()
+            )
+            EInkTextField(
+                value = filename,
+                onValueChange = { filename = it },
+                placeholder = strings.fileName,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }
 
