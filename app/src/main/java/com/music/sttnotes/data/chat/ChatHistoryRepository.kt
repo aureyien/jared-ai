@@ -102,16 +102,8 @@ class ChatHistoryRepository @Inject constructor(
                 val conv = current[index]
                 val newMessages = conv.messages + message
 
-                // Auto-generate title from first user message if still default
-                val newTitle = if (conv.title == "New conversation" && message.role == "user") {
-                    message.content.take(50).trim()
-                } else {
-                    conv.title
-                }
-
                 current[index] = conv.copy(
                     messages = newMessages,
-                    title = newTitle,
                     updatedAt = System.currentTimeMillis()
                 )
 

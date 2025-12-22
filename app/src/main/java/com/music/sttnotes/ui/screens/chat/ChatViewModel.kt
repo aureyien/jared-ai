@@ -3,6 +3,8 @@ package com.music.sttnotes.ui.screens.chat
 import android.content.Context
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -217,7 +219,9 @@ class ChatViewModel @Inject constructor(
         // Skip creating conversation in ephemeral mode
         if (_isEphemeral.value) return
         if (_currentConversationId.value == null) {
-            val conversation = chatHistoryRepository.createConversation(firstMessage)
+            // Generate intelligent title using LLM (with fallback)
+            val intelligentTitle = generateConversationTitle(firstMessage)
+            val conversation = chatHistoryRepository.createConversation(intelligentTitle)
             _currentConversationId.value = conversation.id
             _conversationTitle.value = conversation.title
         }
@@ -484,5 +488,74 @@ class ChatViewModel @Inject constructor(
             context,
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Check if device has internet connectivity
+     */
+    private fun hasInternetConnection(): Boolean {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return false
+
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+               capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    /**
+     * Generate intelligent conversation title using LLM
+     * Fallback to simple truncation if no internet or LLM unavailable
+     */
+    private suspend fun generateConversationTitle(firstMessage: String): String {
+        // Check internet connectivity and LLM availability
+        if (!hasInternetConnection() || _currentLlmProvider.value == LlmProvider.NONE) {
+            // Fallback to simple truncation
+            return firstMessage.take(50).trim()
+        }
+
+        val apiKey = when (_currentLlmProvider.value) {
+            LlmProvider.GROQ -> apiConfig.groqApiKey.first()
+            LlmProvider.OPENAI -> apiConfig.openaiApiKey.first()
+            LlmProvider.XAI -> apiConfig.xaiApiKey.first()
+            LlmProvider.ANTHROPIC -> apiConfig.anthropicApiKey.first()
+            LlmProvider.NONE -> null
+        }
+
+        // Fallback if no API key
+        if (apiKey.isNullOrBlank()) {
+            return firstMessage.take(50).trim()
+        }
+
+        return try {
+            // Use LLM to generate a concise, coherent title
+            val prompt = "Generate a very short, concise title (max 3-5 words) for a conversation that starts with: \"$firstMessage\". Only return the title, nothing else."
+
+            val result = llmService.processWithLlm(
+                text = prompt,
+                systemPrompt = "You are a helpful assistant that creates concise conversation titles. Return only the title, no quotes or additional text.",
+                provider = _currentLlmProvider.value,
+                apiKey = apiKey
+            )
+
+            result.fold(
+                onSuccess = { title ->
+                    // Clean up the title (remove quotes, trim, limit length)
+                    title.trim()
+                        .removePrefix("\"")
+                        .removeSuffix("\"")
+                        .take(50)
+                        .trim()
+                },
+                onFailure = {
+                    Log.w(TAG, "Failed to generate title with LLM, using fallback")
+                    firstMessage.take(50).trim()
+                }
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Error generating title: ${e.message}, using fallback")
+            firstMessage.take(50).trim()
+        }
     }
 }
