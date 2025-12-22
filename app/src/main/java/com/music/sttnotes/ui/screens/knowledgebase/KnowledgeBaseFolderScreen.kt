@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.automirrored.filled.CallMerge
 import androidx.compose.material.icons.filled.CheckCircle
@@ -78,8 +79,10 @@ import com.music.sttnotes.ui.components.EInkDivider
 import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
+import com.music.sttnotes.ui.components.EInkModal
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PendingDeletion
+import com.music.sttnotes.ui.components.ShareResultModal
 import com.music.sttnotes.ui.components.UndoButton
 import com.music.sttnotes.ui.components.einkMarkdownColors
 import com.music.sttnotes.ui.components.einkMarkdownComponents
@@ -114,6 +117,9 @@ fun KnowledgeBaseFolderScreen(
     val selectedFiles by viewModel.selectedFiles.collectAsState()
     val summaryInProgress by viewModel.summaryInProgress.collectAsState()
     val generatedSummary by viewModel.generatedSummary.collectAsState()
+    val shareInProgress by viewModel.shareInProgress.collectAsState()
+    val shareResult by viewModel.shareResult.collectAsState()
+    val shareEnabled by viewModel.shareEnabled.collectAsState(initial = false)
 
     // Undo deletion state
     var pendingFileDeletion by remember { mutableStateOf<PendingDeletion<String>?>(null) }
@@ -393,7 +399,11 @@ fun KnowledgeBaseFolderScreen(
                                         viewModel.generateSummary(folderName, filePreview.file.name)
                                     },
                                     isSummarizing = summaryInProgress == "$folderName/${filePreview.file.name}",
-                                    showTags = showTagFilter
+                                    showTags = showTagFilter,
+                                    onShare = {
+                                        viewModel.shareArticle(folderName, filePreview.file.name)
+                                    },
+                                    isShareEnabled = shareEnabled
                                 )
                             }
                         }
@@ -434,6 +444,30 @@ fun KnowledgeBaseFolderScreen(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = strings.newFilename
                 )
+            }
+        }
+    }
+
+    // Share result modal
+    shareResult?.let { (fileId, response) ->
+        ShareResultModal(
+            shareResponse = response,
+            onDismiss = { viewModel.clearShareResult() }
+        )
+    }
+
+    // Share loading indicator
+    shareInProgress?.let { fileId ->
+        val filename = fileId.substringAfterLast("/")
+        EInkModal(
+            onDismiss = {},
+            dismissOnBackgroundClick = false
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                EInkLoadingIndicator(text = "${strings.sharing} $filename...")
             }
         }
     }
@@ -653,7 +687,9 @@ private fun FolderFileItem(
     onManageTags: () -> Unit = {},
     onSummarize: () -> Unit = {},
     isSummarizing: Boolean = false,
-    showTags: Boolean = false
+    showTags: Boolean = false,
+    onShare: () -> Unit = {},
+    isShareEnabled: Boolean = false
 ) {
     val strings = rememberStrings()
     var showMenu by remember { mutableStateOf(false) }
@@ -815,6 +851,19 @@ private fun FolderFileItem(
                 leadingIcon = { Icon(Icons.Default.Summarize, contentDescription = null, modifier = Modifier.size(20.dp)) },
                 enabled = !isSummarizing
             )
+            // Share article (conditionally visible)
+            if (isShareEnabled) {
+                DropdownMenuItem(
+                    text = { Text(strings.shareArticle) },
+                    onClick = {
+                        showMenu = false
+                        onShare()
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
+                )
+            }
             DropdownMenuItem(
                 text = { Text(strings.copyContent) },
                 onClick = {
