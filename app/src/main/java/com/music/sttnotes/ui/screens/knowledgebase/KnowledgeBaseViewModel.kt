@@ -8,6 +8,8 @@ import com.music.sttnotes.data.api.LlmService
 import com.music.sttnotes.data.llm.FrontmatterParser
 import com.music.sttnotes.data.llm.KbFileMeta
 import com.music.sttnotes.data.llm.LlmOutputRepository
+import com.music.sttnotes.data.share.ShareService
+import com.music.sttnotes.data.share.ShareResponse
 import com.music.sttnotes.data.stt.SttLanguage
 import com.music.sttnotes.data.stt.SttPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,7 +43,8 @@ class KnowledgeBaseViewModel @Inject constructor(
     private val llmOutputRepository: LlmOutputRepository,
     private val apiConfig: ApiConfig,
     private val llmService: LlmService,
-    private val sttPreferences: SttPreferences
+    private val sttPreferences: SttPreferences,
+    private val shareService: ShareService
 ) : ViewModel() {
 
     private val _folders = MutableStateFlow<List<FolderWithFiles>>(emptyList())
@@ -413,6 +416,15 @@ class KnowledgeBaseViewModel @Inject constructor(
     private val _generatedSummary = MutableStateFlow<Pair<String, String>?>(null)
     val generatedSummary: StateFlow<Pair<String, String>?> = _generatedSummary
 
+    // Share state
+    private val _shareInProgress = MutableStateFlow<String?>(null)
+    val shareInProgress: StateFlow<String?> = _shareInProgress
+
+    private val _shareResult = MutableStateFlow<Pair<String, ShareResponse>?>(null)
+    val shareResult: StateFlow<Pair<String, ShareResponse>?> = _shareResult
+
+    val shareEnabled = apiConfig.shareEnabled
+
     fun generateSummary(folder: String, filename: String) {
         viewModelScope.launch {
             val content = llmOutputRepository.readFile(folder, filename).getOrNull()
@@ -499,6 +511,47 @@ Use proper markdown formatting (headers, bullet points, bold for emphasis). Be t
 
     fun clearSummaryProgress() {
         _summaryInProgress.value = null
+    }
+
+    fun shareArticle(folder: String, filename: String) {
+        viewModelScope.launch {
+            val content = llmOutputRepository.readFile(folder, filename).getOrNull()
+            if (content.isNullOrBlank()) return@launch
+
+            val fileId = "$folder/$filename"
+            _shareInProgress.value = fileId
+
+            val apiToken = apiConfig.shareApiToken.first()
+            if (apiToken.isNullOrBlank()) {
+                _shareInProgress.value = null
+                // TODO: Show error - no API token configured
+                return@launch
+            }
+
+            val expirationDays = apiConfig.shareExpirationDays.first()
+
+            shareService.createShare(
+                title = filename.removeSuffix(".md"),
+                content = content,
+                articleId = fileId,
+                expiresInDays = expirationDays,
+                apiToken = apiToken
+            ).fold(
+                onSuccess = { response ->
+                    _shareResult.value = fileId to response
+                },
+                onFailure = { error ->
+                    // TODO: Show error toast
+                    android.util.Log.e("KnowledgeBaseVM", "Share failed", error)
+                }
+            )
+
+            _shareInProgress.value = null
+        }
+    }
+
+    fun clearShareResult() {
+        _shareResult.value = null
     }
 
     fun saveSummaryToKb(fileId: String, summary: String, folderName: String, filename: String) {

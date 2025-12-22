@@ -14,7 +14,7 @@ import javax.inject.Singleton
 
 sealed class WhisperState {
     data object NotInitialized : WhisperState()
-    data class Downloading(val progress: Float) : WhisperState()
+    data class Loading(val progress: Float) : WhisperState()
     data object Ready : WhisperState()
     data class Error(val message: String) : WhisperState()
 }
@@ -31,31 +31,22 @@ class WhisperManager @Inject constructor(
     private val _transcription = MutableStateFlow("")
     val transcription: StateFlow<String> = _transcription
 
-    private val modelFile: File
-        get() = File(context.filesDir, MODEL_FILENAME)
-
     suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            _state.value = WhisperState.Downloading(0f)
+            _state.value = WhisperState.Loading(0.1f)
 
-            // Check if model exists in internal storage
-            if (!modelFile.exists()) {
-                Log.d(TAG, "Copying model from assets...")
-                copyModelFromAssets()
-            }
+            Log.d(TAG, "Loading model directly from assets: models/$MODEL_FILENAME")
+            
+            // Optimization: Load directly from assets instead of copying to internal storage
+            // This saves ~200MB-500MB of space by avoiding file duplication
+            whisperContext = WhisperContext.createContextFromAsset(context.assets, "models/$MODEL_FILENAME")
 
-            _state.value = WhisperState.Downloading(0.9f)
+            _state.value = WhisperState.Loading(0.5f)
 
-            // Load whisper context from file
-            Log.d(TAG, "Loading model from: ${modelFile.absolutePath}")
-            whisperContext = WhisperContext.createContextFromFile(modelFile.absolutePath)
-
-            // Warm-up: run a short inference to initialize internal caches and compile kernels
-            // This makes the first real transcription much faster
+            // Warm-up: run a short inference to initialize internal caches
             Log.d(TAG, "Running warm-up inference...")
             try {
                 val warmupStart = System.currentTimeMillis()
-                // Use 3 seconds of silence (minimum safe size for audio_ctx calculation)
                 val silentAudio = FloatArray(SAMPLE_RATE * 3) { 0f }
                 whisperContext?.transcribeDataWithLang(
                     data = silentAudio,
@@ -70,37 +61,13 @@ class WhisperManager @Inject constructor(
             }
 
             _state.value = WhisperState.Ready
-            Log.d(TAG, "WhisperContext initialized successfully")
+            Log.d(TAG, "WhisperContext initialized successfully from assets")
 
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Initialization failed", e)
             _state.value = WhisperState.Error(e.message ?: "Initialization failed")
             Result.failure(e)
-        }
-    }
-
-    private suspend fun copyModelFromAssets() = withContext(Dispatchers.IO) {
-        try {
-            context.assets.open("models/$MODEL_FILENAME").use { input ->
-                modelFile.outputStream().use { output ->
-                    val buffer = ByteArray(8192)
-                    var bytesRead: Int
-                    var totalBytes = 0L
-                    // Estimate file size based on model (small ~181MB, medium ~539MB)
-                    val fileSize = if (MODEL_FILENAME.contains("medium")) 539_000_000L else 190_000_000L
-
-                    while (input.read(buffer).also { bytesRead = it } != -1) {
-                        output.write(buffer, 0, bytesRead)
-                        totalBytes += bytesRead
-                        _state.value = WhisperState.Downloading((totalBytes.toFloat() / fileSize) * 0.8f)
-                    }
-                }
-            }
-            Log.d(TAG, "Model copied successfully to ${modelFile.absolutePath}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to copy model from assets", e)
-            throw e
         }
     }
 
@@ -112,19 +79,9 @@ class WhisperManager @Inject constructor(
 
         try {
             _transcription.value = ""
-
-            // Convert int16 to float32 normalized [-1.0, 1.0]
             val floatData = shortArrayToFloatArray(audioData)
 
-            val duration = audioData.size.toFloat() / SAMPLE_RATE
-            val maxAmplitude = audioData.maxOfOrNull { kotlin.math.abs(it.toInt()) } ?: 0
-            val avgAmplitude = audioData.map { kotlin.math.abs(it.toInt()) }.average()
-            Log.d(TAG, "Transcribing: ${audioData.size} samples (${duration}s), language=$language")
-            Log.d(TAG, "Audio stats - max: $maxAmplitude, avg: ${avgAmplitude.toInt()}")
-
             val startTime = System.currentTimeMillis()
-
-            // Transcribe with specified language, no translation
             val result = ctx.transcribeDataWithLang(
                 data = floatData,
                 language = language,
@@ -133,7 +90,7 @@ class WhisperManager @Inject constructor(
             )
 
             val elapsed = System.currentTimeMillis() - startTime
-            Log.d(TAG, "Transcription completed in ${elapsed}ms: \"${result.take(50)}${if (result.length > 50) "..." else ""}\"")
+            Log.d(TAG, "Transcription completed in ${elapsed}ms")
 
             _transcription.value = result.trim()
             Result.success(result.trim())

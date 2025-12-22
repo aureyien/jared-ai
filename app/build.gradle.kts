@@ -108,6 +108,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
 
+    // Coil for QR code image loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // whisper.cpp module
     implementation(project(":whisper"))
 

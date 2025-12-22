@@ -232,6 +232,17 @@ interface StringResources {
     val folderName: String
     val fileName: String
     val close: String
+
+    // Share feature
+    val shareArticle: String
+    val shareUrl: String
+    val sharing: String
+    val shareFeature: String
+    val enableSharing: String
+    val shareApiToken: String
+    val expirationDays: String
+    val expiresOn: String
+    val hiddenFeatureHint: String
 }
 
 object EnglishStrings : StringResources {
@@ -437,6 +448,17 @@ object EnglishStrings : StringResources {
     override val folderName = "Folder name"
     override val fileName = "File name"
     override val close = "Close"
+
+    // Share feature
+    override val shareArticle = "Share Article"
+    override val shareUrl = "Share URL"
+    override val sharing = "Sharing"
+    override val shareFeature = "Share Feature"
+    override val enableSharing = "Enable Sharing"
+    override val shareApiToken = "Share API Token"
+    override val expirationDays = "Expiration (days)"
+    override val expiresOn = "Expires on"
+    override val hiddenFeatureHint = "Long-press section titles to unlock hidden features"
 }
 
 object FrenchStrings : StringResources {
@@ -642,6 +664,17 @@ object FrenchStrings : StringResources {
     override val folderName = "Nom du dossier"
     override val fileName = "Nom du fichier"
     override val close = "Fermer"
+
+    // Share feature
+    override val shareArticle = "Partager l'article"
+    override val shareUrl = "URL de partage"
+    override val sharing = "Partage"
+    override val shareFeature = "Fonction de partage"
+    override val enableSharing = "Activer le partage"
+    override val shareApiToken = "Jeton API de partage"
+    override val expirationDays = "Expiration (jours)"
+    override val expiresOn = "Expire le"
+    override val hiddenFeatureHint = "Appuyez longuement sur les titres de section pour déverrouiller les fonctionnalités cachées"
 }
 
 /**

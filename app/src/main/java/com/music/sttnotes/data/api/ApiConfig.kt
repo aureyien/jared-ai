@@ -41,10 +41,14 @@ class ApiConfig @Inject constructor(
         private val LLM_SYSTEM_PROMPT = stringPreferencesKey("llm_system_prompt")
         private val CHAT_FONT_SIZE = floatPreferencesKey("chat_font_size")
         private val APP_LANGUAGE = stringPreferencesKey("app_language")
+        private val SHARE_ENABLED = stringPreferencesKey("share_enabled")
+        private val SHARE_API_TOKEN = stringPreferencesKey("share_api_token")
+        private val SHARE_EXPIRATION_DAYS = stringPreferencesKey("share_expiration_days")
 
         const val DEFAULT_CHAT_FONT_SIZE = 14f
         const val MIN_CHAT_FONT_SIZE = 10f
         const val MAX_CHAT_FONT_SIZE = 20f
+        const val DEFAULT_SHARE_EXPIRATION_DAYS = 7
 
         const val GROQ_BASE_URL = "https://api.groq.com/openai/v1/"
         const val OPENAI_BASE_URL = "https://api.openai.com/v1/"
@@ -92,6 +96,15 @@ class ApiConfig @Inject constructor(
             AppLanguage.ENGLISH
         }
     }
+    val shareEnabled: Flow<Boolean> = context.apiDataStore.data.map {
+        it[SHARE_ENABLED]?.toBoolean() ?: false
+    }
+    val shareApiToken: Flow<String?> = context.apiDataStore.data.map {
+        it[SHARE_API_TOKEN]
+    }
+    val shareExpirationDays: Flow<Int> = context.apiDataStore.data.map {
+        it[SHARE_EXPIRATION_DAYS]?.toIntOrNull() ?: DEFAULT_SHARE_EXPIRATION_DAYS
+    }
 
     suspend fun setGroqApiKey(key: String) {
         context.apiDataStore.edit { it[GROQ_API_KEY] = key }
@@ -135,5 +148,17 @@ class ApiConfig @Inject constructor(
 
     suspend fun setAppLanguage(language: AppLanguage) {
         context.apiDataStore.edit { it[APP_LANGUAGE] = language.name }
+    }
+
+    suspend fun setShareEnabled(enabled: Boolean) {
+        context.apiDataStore.edit { it[SHARE_ENABLED] = enabled.toString() }
+    }
+
+    suspend fun setShareApiToken(token: String) {
+        context.apiDataStore.edit { it[SHARE_API_TOKEN] = token }
+    }
+
+    suspend fun setShareExpirationDays(days: Int) {
+        context.apiDataStore.edit { it[SHARE_EXPIRATION_DAYS] = days.toString() }
     }
 }
