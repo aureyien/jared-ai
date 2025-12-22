@@ -491,6 +491,94 @@ fun SettingsScreen(
                 }
             }
 
+            // Whisper Models Section
+            val downloadState by viewModel.downloadState.collectAsState()
+
+            SettingsSection(title = strings.whisperModels) {
+                com.music.sttnotes.data.stt.WhisperModel.entries.forEach { model ->
+                    val isDownloaded = remember(model) { viewModel.isModelDownloaded(model) }
+
+                    EInkCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = model.displayName,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (isDownloaded) {
+                                        Text(
+                                            text = strings.modelDownloaded,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else {
+                                        Text(
+                                            text = strings.modelNotDownloaded,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (isDownloaded) {
+                                        EInkButton(
+                                            onClick = { viewModel.selectModel(model) },
+                                            filled = false,
+                                            modifier = Modifier.height(36.dp)
+                                        ) {
+                                            Text(strings.selectModel, fontSize = 12.sp)
+                                        }
+                                        EInkButton(
+                                            onClick = { viewModel.deleteModel(model) },
+                                            filled = false,
+                                            modifier = Modifier.height(36.dp)
+                                        ) {
+                                            Text(strings.delete, fontSize = 12.sp)
+                                        }
+                                    } else {
+                                        when (downloadState) {
+                                            is com.music.sttnotes.data.stt.DownloadState.Downloading -> {
+                                                val state = downloadState as com.music.sttnotes.data.stt.DownloadState.Downloading
+                                                Column(horizontalAlignment = Alignment.End) {
+                                                    Text(
+                                                        text = "${strings.downloading} ${(state.progress * 100).toInt()}%",
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                    Text(
+                                                        text = "${state.downloadedMB}/${state.totalMB} MB",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                            else -> {
+                                                EInkButton(
+                                                    onClick = { viewModel.downloadModel(model) },
+                                                    modifier = Modifier.height(36.dp)
+                                                ) {
+                                                    Text(strings.download, fontSize = 12.sp)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Info Section
             SettingsSection(title = strings.about) {
                 Text(

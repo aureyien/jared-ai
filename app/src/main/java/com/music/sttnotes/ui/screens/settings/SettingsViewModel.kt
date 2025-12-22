@@ -42,7 +42,8 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val apiConfig: ApiConfig,
     private val sttPreferences: SttPreferences,
-    private val usageService: UsageService
+    private val usageService: UsageService,
+    private val modelDownloadService: com.music.sttnotes.data.stt.ModelDownloadService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -88,6 +89,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _isLoadingUsage = MutableStateFlow(false)
     val isLoadingUsage: StateFlow<Boolean> = _isLoadingUsage.asStateFlow()
+
+    // Expose model download state
+    val downloadState = modelDownloadService.downloadState
 
     init {
         viewModelScope.launch {
@@ -289,6 +293,29 @@ class SettingsViewModel @Inject constructor(
                     refreshUsageStats()
                 }
             }
+        }
+    }
+
+    // Whisper model download methods
+    fun downloadModel(model: com.music.sttnotes.data.stt.WhisperModel) {
+        viewModelScope.launch {
+            modelDownloadService.downloadModel(model)
+        }
+    }
+
+    fun deleteModel(model: com.music.sttnotes.data.stt.WhisperModel) {
+        viewModelScope.launch {
+            modelDownloadService.deleteModel(model)
+        }
+    }
+
+    fun isModelDownloaded(model: com.music.sttnotes.data.stt.WhisperModel): Boolean {
+        return modelDownloadService.isModelDownloaded(model)
+    }
+
+    fun selectModel(model: com.music.sttnotes.data.stt.WhisperModel) {
+        viewModelScope.launch {
+            apiConfig.setSelectedWhisperModel(model.name)
         }
     }
 }
