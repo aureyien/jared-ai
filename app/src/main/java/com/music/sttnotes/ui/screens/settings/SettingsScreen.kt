@@ -1,6 +1,8 @@
 package com.music.sttnotes.ui.screens.settings
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -416,6 +419,78 @@ fun SettingsScreen(
                 )
             }
 
+            // Share Feature Section (with hidden activation)
+            var shareFeatureActivated by remember { mutableStateOf(uiState.shareEnabled) }
+
+            SettingsSectionWithGesture(
+                title = strings.shareFeature,
+                onLongPress = { shareFeatureActivated = true }
+            ) {
+                if (shareFeatureActivated) {
+                    // Enable/Disable toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(strings.enableSharing)
+                        Switch(
+                            checked = uiState.shareEnabled,
+                            onCheckedChange = viewModel::setShareEnabled
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // API Token
+                    ApiKeyField(
+                        label = strings.shareApiToken,
+                        value = uiState.shareApiToken,
+                        onValueChange = viewModel::setShareApiToken,
+                        hint = "readtoken.app API token",
+                        isActive = uiState.shareEnabled,
+                        activeLabel = strings.active,
+                        configuredLabel = strings.configured,
+                        showLabel = strings.show,
+                        hideLabel = strings.hide
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Expiration days slider
+                    Text(
+                        text = strings.expirationDays,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Slider(
+                            value = uiState.shareExpirationDays.toFloat(),
+                            onValueChange = { viewModel.setShareExpirationDays(it.toInt()) },
+                            valueRange = 1f..30f,
+                            steps = 28,  // 30 values (1-30) = 28 intermediate steps
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "${uiState.shareExpirationDays}d",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.widthIn(min = 60.dp)
+                        )
+                    }
+                } else {
+                    // Show hint when not activated
+                    Text(
+                        text = strings.hiddenFeatureHint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             // Info Section
             SettingsSection(title = strings.about) {
                 Text(
@@ -438,6 +513,28 @@ private fun SettingsSection(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        content()
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SettingsSectionWithGesture(
+    title: String,
+    onLongPress: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.combinedClickable(
+                onClick = {},
+                onLongClick = onLongPress
+            )
         )
         Spacer(modifier = Modifier.height(8.dp))
         content()

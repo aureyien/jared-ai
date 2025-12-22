@@ -32,7 +32,10 @@ data class SettingsUiState(
     val llmSystemPrompt: String = ApiConfig.DEFAULT_SYSTEM_PROMPT,
     val sttLanguage: SttLanguage = SttLanguage.FRENCH,
     val chatFontSize: Float = ApiConfig.DEFAULT_CHAT_FONT_SIZE,
-    val appLanguage: AppLanguage = AppLanguage.ENGLISH
+    val appLanguage: AppLanguage = AppLanguage.ENGLISH,
+    val shareEnabled: Boolean = false,
+    val shareApiToken: String = "",
+    val shareExpirationDays: Int = ApiConfig.DEFAULT_SHARE_EXPIRATION_DAYS
 )
 
 @HiltViewModel
@@ -109,9 +112,12 @@ class SettingsViewModel @Inject constructor(
                 },
                 combine(
                     apiConfig.chatFontSize,
-                    apiConfig.appLanguage
-                ) { fontSize, appLang ->
-                    arrayOf(fontSize, appLang)
+                    apiConfig.appLanguage,
+                    apiConfig.shareEnabled,
+                    apiConfig.shareApiToken,
+                    apiConfig.shareExpirationDays
+                ) { fontSize, appLang, shareEnabled, shareToken, shareDays ->
+                    arrayOf(fontSize, appLang, shareEnabled, shareToken, shareDays)
                 }
             ) { first, second, third ->
                 SettingsUiState(
@@ -126,7 +132,10 @@ class SettingsViewModel @Inject constructor(
                     llmSystemPrompt = second[3] as String,
                     sttLanguage = second[4] as SttLanguage,
                     chatFontSize = third[0] as Float,
-                    appLanguage = third[1] as AppLanguage
+                    appLanguage = third[1] as AppLanguage,
+                    shareEnabled = third[2] as Boolean,
+                    shareApiToken = (third[3] as? String) ?: "",
+                    shareExpirationDays = third[4] as Int
                 )
             }.collect { state ->
                 _uiState.value = state
@@ -186,6 +195,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setAppLanguage(language: AppLanguage) {
         viewModelScope.launch { apiConfig.setAppLanguage(language) }
+    }
+
+    fun setShareEnabled(enabled: Boolean) {
+        viewModelScope.launch { apiConfig.setShareEnabled(enabled) }
+    }
+
+    fun setShareApiToken(token: String) {
+        viewModelScope.launch { apiConfig.setShareApiToken(token) }
+    }
+
+    fun setShareExpirationDays(days: Int) {
+        viewModelScope.launch { apiConfig.setShareExpirationDays(days) }
     }
 
     /**
