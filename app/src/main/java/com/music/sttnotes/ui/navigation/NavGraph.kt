@@ -169,8 +169,7 @@ fun NavGraph(
                     chatListViewModel.deleteConversation(id)
                 },
                 onSummarize = { id ->
-                    // Summarize is handled in ChatListViewModel - navigate to list?
-                    // For now, do nothing as summarize might need UI in list screen
+                    chatListViewModel.generateSummary(id)
                 }
             )
         }

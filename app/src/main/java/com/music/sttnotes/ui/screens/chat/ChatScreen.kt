@@ -284,6 +284,14 @@ fun ChatScreen(
                         }
                     }
                 }
+                // Favorite button (only for existing conversations)
+                if (actualConversationId != null) {
+                    EInkIconButton(
+                        onClick = { viewModel.toggleFavorite() },
+                        icon = if (isFavoriteConversation) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (isFavoriteConversation) strings.removeFromFavorites else strings.addToFavorites
+                    )
+                }
                 // 3-dot menu (only for existing conversations)
                 if (actualConversationId != null) {
                     Box {
@@ -296,20 +304,6 @@ fun ChatScreen(
                             expanded = showActionMenu,
                             onDismissRequest = { showActionMenu = false }
                         ) {
-                            // Favorite
-                            DropdownMenuItem(
-                                text = { Text(if (isFavoriteConversation) strings.removeFromFavorites else strings.addToFavorites) },
-                                onClick = {
-                                    viewModel.toggleFavorite()
-                                    showActionMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        if (isFavoriteConversation) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                        contentDescription = null
-                                    )
-                                }
-                            )
                             // Rename
                             DropdownMenuItem(
                                 text = { Text(strings.rename) },
@@ -334,6 +328,7 @@ fun ChatScreen(
                                 onClick = {
                                     actualConversationId?.let { onSummarize(it) }
                                     showActionMenu = false
+                                    onNavigateBack()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Summarize, contentDescription = null) },
                                 enabled = messages.isNotEmpty()
