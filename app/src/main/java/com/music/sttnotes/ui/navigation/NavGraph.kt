@@ -2,12 +2,14 @@ package com.music.sttnotes.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.music.sttnotes.ui.screens.chat.ChatListScreen
+import com.music.sttnotes.ui.screens.chat.ChatListViewModel
 import com.music.sttnotes.ui.screens.chat.ChatScreen
 import com.music.sttnotes.ui.screens.chat.TagManagementScreen
 import com.music.sttnotes.ui.screens.favorites.FavoritesScreen
@@ -149,12 +151,26 @@ fun NavGraph(
         ) { backStackEntry ->
             val conversationId = backStackEntry.arguments?.getString("conversationId")
             val startRecording = backStackEntry.arguments?.getBoolean("startRecording") ?: false
+            val chatListViewModel: ChatListViewModel = hiltViewModel()
             ChatScreen(
                 conversationId = if (conversationId == "new") null else conversationId,
                 startRecording = startRecording,
                 onNavigateBack = { navController.popBackStack() },
                 onManageTags = { actualId ->
                     navController.navigate("tag_management/$actualId")
+                },
+                onArchive = { id ->
+                    chatListViewModel.archiveConversation(id)
+                },
+                onUnarchive = { id ->
+                    chatListViewModel.unarchiveConversation(id)
+                },
+                onDelete = { id ->
+                    chatListViewModel.deleteConversation(id)
+                },
+                onSummarize = { id ->
+                    // Summarize is handled in ChatListViewModel - navigate to list?
+                    // For now, do nothing as summarize might need UI in list screen
                 }
             )
         }

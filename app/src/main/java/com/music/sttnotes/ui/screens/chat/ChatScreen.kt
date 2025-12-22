@@ -40,9 +40,14 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Summarize
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Stop
@@ -108,6 +113,10 @@ fun ChatScreen(
     startRecording: Boolean = false,
     onNavigateBack: () -> Unit,
     onManageTags: (String) -> Unit = {},
+    onArchive: (String) -> Unit = {},
+    onUnarchive: (String) -> Unit = {},
+    onDelete: (String) -> Unit = {},
+    onSummarize: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val messages by viewModel.messages.collectAsState()
@@ -129,6 +138,7 @@ fun ChatScreen(
     var showPermissionDenied by remember { mutableStateOf(false) }
     var autoRecordTriggered by remember { mutableStateOf(false) }
     var showLlmSelector by remember { mutableStateOf(false) }
+    var showActionMenu by remember { mutableStateOf(false) }
 
     // Scroll FAB: show when there's content to scroll to
     val canScrollUp by remember {
@@ -274,22 +284,83 @@ fun ChatScreen(
                         }
                     }
                 }
-                // Favorite button (only for existing conversations)
+                // 3-dot menu (only for existing conversations)
                 if (actualConversationId != null) {
-                    EInkIconButton(
-                        onClick = { viewModel.toggleFavorite() },
-                        icon = if (isFavoriteConversation) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = if (isFavoriteConversation) strings.removeFromFavorites else strings.addToFavorites
-                    )
+                    Box {
+                        EInkIconButton(
+                            onClick = { showActionMenu = true },
+                            icon = Icons.Default.MoreVert,
+                            contentDescription = strings.settings
+                        )
+                        DropdownMenu(
+                            expanded = showActionMenu,
+                            onDismissRequest = { showActionMenu = false }
+                        ) {
+                            // Favorite
+                            DropdownMenuItem(
+                                text = { Text(if (isFavoriteConversation) strings.removeFromFavorites else strings.addToFavorites) },
+                                onClick = {
+                                    viewModel.toggleFavorite()
+                                    showActionMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (isFavoriteConversation) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            // Rename
+                            DropdownMenuItem(
+                                text = { Text(strings.rename) },
+                                onClick = {
+                                    showRenameDialog = true
+                                    showActionMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                            )
+                            // Manage tags
+                            DropdownMenuItem(
+                                text = { Text(strings.manageTags) },
+                                onClick = {
+                                    actualConversationId?.let { onManageTags(it) }
+                                    showActionMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.LocalOffer, contentDescription = null) }
+                            )
+                            // Summarize
+                            DropdownMenuItem(
+                                text = { Text(strings.summarize) },
+                                onClick = {
+                                    actualConversationId?.let { onSummarize(it) }
+                                    showActionMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.Summarize, contentDescription = null) },
+                                enabled = messages.isNotEmpty()
+                            )
+                            // Archive/Unarchive - for now always show Archive
+                            DropdownMenuItem(
+                                text = { Text(strings.archiveChat) },
+                                onClick = {
+                                    actualConversationId?.let { onArchive(it) }
+                                    showActionMenu = false
+                                    onNavigateBack()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) }
+                            )
+                            // Delete
+                            DropdownMenuItem(
+                                text = { Text(strings.delete) },
+                                onClick = {
+                                    actualConversationId?.let { onDelete(it) }
+                                    showActionMenu = false
+                                    onNavigateBack()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
+                            )
+                        }
+                    }
                 }
-                // Tag manager icon
-                EInkIconButton(
-                    onClick = {
-                        actualConversationId?.let { onManageTags(it) }
-                    },
-                    icon = Icons.Default.LocalOffer,
-                    contentDescription = strings.manageTags
-                )
             }
 
             // Messages list with scroll FABs
