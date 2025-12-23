@@ -162,6 +162,7 @@ fun ChatListScreen(
 
     // Undo deletion state
     var pendingDeletion by remember { mutableStateOf<PendingDeletion<ChatConversation>?>(null) }
+    var pendingBulkDeletion by remember { mutableStateOf<List<ChatConversation>?>(null) }
 
     // Search state
     var searchQuery by remember { mutableStateOf("") }
@@ -222,7 +223,21 @@ fun ChatListScreen(
                     )
                 },
                 actions = {
-                    // Undo button in TopAppBar
+                    // Undo button for bulk deletion
+                    pendingBulkDeletion?.let { conversations ->
+                        UndoButton(
+                            onUndo = { pendingBulkDeletion = null },
+                            onTimeout = {
+                                conversations.forEach { conv ->
+                                    viewModel.deleteConversation(conv.id)
+                                }
+                                pendingBulkDeletion = null
+                            },
+                            itemKey = conversations.size.toString() // Use size as key
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    // Undo button for single deletion
                     pendingDeletion?.let { deletion ->
                         UndoButton(
                             onUndo = { pendingDeletion = null },
@@ -231,6 +246,17 @@ fun ChatListScreen(
                                 pendingDeletion = null
                             },
                             itemKey = deletion.item.id // Restart countdown when different item deleted
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    // Delete all button - only show in archived view
+                    if (showingArchived && archivedConversations.isNotEmpty() && pendingBulkDeletion == null) {
+                        EInkIconButton(
+                            onClick = {
+                                pendingBulkDeletion = archivedConversations.toList()
+                            },
+                            icon = Icons.Default.Delete,
+                            contentDescription = "Delete all archived"
                         )
                         Spacer(Modifier.width(8.dp))
                     }

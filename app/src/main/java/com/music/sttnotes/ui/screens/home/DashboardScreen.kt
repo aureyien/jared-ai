@@ -2,16 +2,20 @@ package com.music.sttnotes.ui.screens.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -61,6 +65,10 @@ import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
 import com.music.sttnotes.ui.screens.knowledgebase.UiPreferencesEntryPoint
+import com.mikepenz.markdown.m3.Markdown
+import com.music.sttnotes.ui.components.einkMarkdownColors
+import com.music.sttnotes.ui.components.einkMarkdownTypography
+import com.music.sttnotes.ui.components.einkMarkdownComponents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -272,67 +280,86 @@ fun DashboardScreen(
                         }
                     }
 
-            // Notes Section - always clickable (to access archives even when no active notes)
-            DashboardSection(
-                title = strings.notes,
-                count = state.notesCount,
-                icon = Icons.Default.Description,
-                onClick = onNotesClick,  // Always enabled - can access archives
-                onNew = null,
-                isEmpty = state.notesCount == 0,
-                emptyText = strings.noNotes,
-                newButtonText = null,
-                alwaysClickable = true  // Enable click to access archives
+            // Chat and Notes in the same row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                state.lastNote?.let { note ->
-                    Text(
-                        text = note.title.ifEmpty { strings.untitled },
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (note.content.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = note.content.take(80).replace("\n", " "),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = EInkGrayMedium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                // Conversations Section - only show if LLM is configured
+                if (state.isLlmConfigured) {
+                    Box(modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()) {
+                        DashboardSection(
+                            title = strings.chat,
+                            count = state.conversationsCount,
+                            icon = Icons.Default.SmartToy,
+                            onClick = onConversationsClick,
+                            onNew = null,
+                            isEmpty = state.conversationsCount == 0,
+                            emptyText = strings.noConversations,
+                            newButtonText = null
+                        ) {
+                            state.lastConversation?.let { conv ->
+                                Text(
+                                    text = conv.title.ifEmpty { strings.untitled },
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                val preview = conv.getLastResponsePreview()
+                                if (preview.isNotEmpty()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = preview,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = EInkGrayMedium,
+                                        fontSize = 11.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            // Conversations Section - only show if LLM is configured
-            if (state.isLlmConfigured) {
-                DashboardSection(
-                    title = strings.chat,
-                    count = state.conversationsCount,
-                    icon = Icons.Default.SmartToy,
-                    onClick = onConversationsClick,
-                    onNew = null,
-                    isEmpty = state.conversationsCount == 0,
-                    emptyText = strings.noConversations,
-                    newButtonText = null
-                ) {
-                    state.lastConversation?.let { conv ->
-                        Text(
-                            text = conv.title.ifEmpty { strings.untitled },
-                            style = MaterialTheme.typography.titleSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        val preview = conv.getLastResponsePreview()
-                        if (preview.isNotEmpty()) {
-                            Spacer(Modifier.height(4.dp))
+                // Notes Section - always clickable (to access archives even when no active notes)
+                Box(modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()) {
+                    DashboardSection(
+                        title = strings.notes,
+                        count = state.notesCount,
+                        icon = Icons.Default.Description,
+                        onClick = onNotesClick,  // Always enabled - can access archives
+                        onNew = null,
+                        isEmpty = state.notesCount == 0,
+                        emptyText = strings.noNotes,
+                        newButtonText = null,
+                        alwaysClickable = true  // Enable click to access archives
+                    ) {
+                        state.lastNote?.let { note ->
                             Text(
-                                text = preview,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = EInkGrayMedium,
-                                maxLines = 2,
+                                text = note.title.ifEmpty { strings.untitled },
+                                style = MaterialTheme.typography.titleSmall,
+                                fontSize = 13.sp,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            if (note.content.isNotEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = note.content.take(80).replace("\n", " "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = EInkGrayMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
@@ -430,11 +457,15 @@ private fun DashboardSection(
     content: @Composable () -> Unit
 ) {
     EInkCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
         onClick = if (!isEmpty || alwaysClickable) onClick else null
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxHeight()
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -505,7 +536,7 @@ private fun KnowledgeBaseSection(
     EInkCard(
         modifier = modifier
             .fillMaxWidth()
-            .height(if (isEmpty) 120.dp else 300.dp),
+            .then(if (isEmpty) Modifier.height(120.dp) else Modifier),
         onClick = if (isEmpty) onSectionClick else null,
         backgroundColor = EInkBlack
     ) {
@@ -553,50 +584,51 @@ private fun KnowledgeBaseSection(
                     )
                 }
             } else {
-                // List of last 3 items
+                // List of recent KB items
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items.forEach { item ->
                         EInkCard(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(78.dp),
                             onClick = { onItemClick(item.folder, item.filename) },
                             backgroundColor = EInkWhite
                         ) {
                             Column(
-                                modifier = Modifier.padding(12.dp)
+                                modifier = Modifier.padding(10.dp)
                             ) {
                                 // Folder - Title on same line
                                 Text(
                                     text = "${item.folder} - ${item.filename.removeSuffix(".md")}",
                                     style = MaterialTheme.typography.titleSmall,
+                                    fontSize = 13.sp,
                                     color = EInkBlack,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                // Preview
+                                // Date
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault())
+                                        .format(java.util.Date(item.lastModified)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = EInkGrayMedium,
+                                    fontSize = 10.sp
+                                )
+                                // Preview - Rendered markdown
                                 if (item.preview.isNotEmpty()) {
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = item.preview,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = EInkGrayMedium,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
+                                    Spacer(Modifier.height(3.dp))
+                                    Markdown(
+                                        content = item.preview,
+                                        colors = einkMarkdownColors(),
+                                        typography = einkMarkdownTypography(fontSizeMultiplier = 0.5f),
+                                        components = einkMarkdownComponents(),
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                             }
-                        }
-                    }
-
-                    // "View All" button at the bottom
-                    if (count > 3) {
-                        EInkButton(
-                            onClick = onSectionClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            filled = false
-                        ) {
-                            Text("View All ($count)", color = EInkWhite)
                         }
                     }
                 }

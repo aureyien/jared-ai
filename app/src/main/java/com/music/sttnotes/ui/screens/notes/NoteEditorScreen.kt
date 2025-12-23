@@ -78,6 +78,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -113,6 +114,7 @@ import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -149,14 +151,7 @@ fun NoteEditorScreen(
     var showPermissionDenied by remember { mutableStateOf(false) }
     var showTagInput by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
-
-    // Navigate back when note is archived
-    LaunchedEffect(isArchived) {
-        if (isArchived) {
-            android.util.Log.d("NoteEditorScreen", "isArchived is true, calling onNavigateBack()")
-            onNavigateBack()
-        }
-    }
+    val coroutineScope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -204,14 +199,7 @@ fun NoteEditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = note.title.ifEmpty { if (noteId == null) strings.newNoteTitle else strings.editNote },
-                        style = MaterialTheme.typography.titleLarge,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
-                },
+                title = { },
                 navigationIcon = {
                     IconButton(onClick = {
                         viewModel.saveNote()
@@ -245,18 +233,7 @@ fun NoteEditorScreen(
                             )
                         }
                     }
-                    // Archive button (only for existing notes)
-                    if (noteId != null) {
-                        IconButton(onClick = {
-                            viewModel.archiveNote()
-                        }) {
-                            Icon(
-                                Icons.Default.Archive,
-                                contentDescription = strings.archive,
-                                tint = EInkBlack
-                            )
-                        }
-                    }
+                    // Archive button removed - use context menu from notes list instead
                     // Preview toggle with save icon when in edit mode
                     IconButton(onClick = { viewModel.togglePreviewMode() }) {
                         Icon(
@@ -296,18 +273,19 @@ fun NoteEditorScreen(
         },
         containerColor = EInkWhite
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    focusManager.clearFocus()
-                }
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        focusManager.clearFocus()
+                    }
+            ) {
             // Title - text in preview mode, input in edit mode
             if (isPreviewMode) {
                 // Preview mode: show title as text
@@ -494,25 +472,6 @@ fun NoteEditorScreen(
                         }
                     }
                 }
-
-                // Markdown toolbar above keyboard (only in edit mode when keyboard is visible)
-                if (!isPreviewMode && isKeyboardVisible) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .imePadding()
-                    ) {
-                        PlainTextMarkdownToolbar(
-                            textFieldValue = localContent,
-                            onTextChange = { newValue ->
-                                localContent = newValue
-                                viewModel.updateContent(newValue.text)
-                                viewModel.updateCursorPosition(newValue.selection.start)
-                            }
-                        )
-                    }
-                }
             }
 
             // Recording status indicator - show when processing or error
@@ -572,6 +531,23 @@ fun NoteEditorScreen(
                         }
                     }
                 }
+            }
+            }
+
+            // Markdown toolbar - edge to edge, above keyboard
+            if (!isPreviewMode && isKeyboardVisible) {
+                PlainTextMarkdownToolbar(
+                    textFieldValue = localContent,
+                    onTextChange = { newValue ->
+                        localContent = newValue
+                        viewModel.updateContent(newValue.text)
+                        viewModel.updateCursorPosition(newValue.selection.start)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .imePadding()
+                )
             }
         }
     }

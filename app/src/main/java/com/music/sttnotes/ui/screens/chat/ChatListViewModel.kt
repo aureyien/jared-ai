@@ -72,6 +72,14 @@ class ChatListViewModel @Inject constructor(
         }
     }
 
+    fun deleteAllArchivedConversations() {
+        viewModelScope.launch {
+            archivedConversations.value.forEach { conversation ->
+                chatHistoryRepository.deleteConversation(conversation.id)
+            }
+        }
+    }
+
     fun renameConversation(id: String, newTitle: String) {
         viewModelScope.launch {
             chatHistoryRepository.updateConversationTitle(id, newTitle)

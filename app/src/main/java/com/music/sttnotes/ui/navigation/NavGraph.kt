@@ -1,6 +1,7 @@
 package com.music.sttnotes.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -151,7 +152,20 @@ fun NavGraph(
         ) { backStackEntry ->
             val conversationId = backStackEntry.arguments?.getString("conversationId")
             val startRecording = backStackEntry.arguments?.getBoolean("startRecording") ?: false
-            val chatListViewModel: ChatListViewModel = hiltViewModel()
+            // Get the ChatListViewModel from the parent NavGraph so it's shared with ChatListScreen
+            // Use try-catch to handle cases where ChatList is not in the back stack (e.g., when navigating from Favorites)
+            val parentEntry = remember(backStackEntry) {
+                try {
+                    navController.getBackStackEntry(Screen.ChatList.route)
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
+            }
+            val chatListViewModel: ChatListViewModel = if (parentEntry != null) {
+                hiltViewModel(parentEntry)
+            } else {
+                hiltViewModel()
+            }
             ChatScreen(
                 conversationId = if (conversationId == "new") null else conversationId,
                 startRecording = startRecording,

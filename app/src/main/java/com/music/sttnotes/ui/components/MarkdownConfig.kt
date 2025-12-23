@@ -3,8 +3,11 @@ package com.music.sttnotes.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -216,6 +219,24 @@ private val spacedParagraphComponent: MarkdownComponent = {
             .padding(bottom = 16.dp)
     ) {
         MarkdownParagraph(it.content, it.node)
+    }
+}
+
+/**
+ * Custom horizontal rule component with proper spacing
+ * Adds top and bottom padding to ensure visibility
+ */
+private val spacedHorizontalRuleComponent: MarkdownComponent = {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp)
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            thickness = 1.dp,
+            color = EInkGrayMedium
+        )
     }
 }
 

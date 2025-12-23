@@ -37,7 +37,8 @@ data class SettingsUiState(
     val shareApiToken: String = "",
     val shareExpirationDays: Int = ApiConfig.DEFAULT_SHARE_EXPIRATION_DAYS,
     val volumeButtonScrollEnabled: Boolean = false,
-    val volumeButtonScrollDistance: Float = 0.8f
+    val volumeButtonScrollDistance: Float = 0.8f,
+    val dashboardKbArticleCount: Int = 5
 )
 
 @HiltViewModel
@@ -128,9 +129,10 @@ class SettingsViewModel @Inject constructor(
                 },
                 combine(
                     uiPreferences.volumeButtonScrollEnabled,
-                    uiPreferences.volumeButtonScrollDistance
-                ) { volScrollEnabled, volScrollDistance ->
-                    arrayOf(volScrollEnabled, volScrollDistance)
+                    uiPreferences.volumeButtonScrollDistance,
+                    uiPreferences.dashboardKbArticleCount
+                ) { volScrollEnabled, volScrollDistance, kbArticleCount ->
+                    arrayOf(volScrollEnabled, volScrollDistance, kbArticleCount)
                 }
             ) { first, second, third, fourth ->
                 SettingsUiState(
@@ -150,7 +152,8 @@ class SettingsViewModel @Inject constructor(
                     shareApiToken = (third[3] as? String) ?: "",
                     shareExpirationDays = third[4] as Int,
                     volumeButtonScrollEnabled = fourth[0] as Boolean,
-                    volumeButtonScrollDistance = fourth[1] as Float
+                    volumeButtonScrollDistance = fourth[1] as Float,
+                    dashboardKbArticleCount = fourth[2] as Int
                 )
             }.collect { state ->
                 _uiState.value = state
@@ -230,6 +233,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setVolumeButtonScrollDistance(distance: Float) {
         viewModelScope.launch { uiPreferences.setVolumeButtonScrollDistance(distance) }
+    }
+
+    fun setDashboardKbArticleCount(count: Int) {
+        viewModelScope.launch { uiPreferences.setDashboardKbArticleCount(count) }
     }
 
     /**

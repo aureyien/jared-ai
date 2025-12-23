@@ -471,6 +471,34 @@ fun SettingsScreen(
                 }
             }
 
+            // Dashboard KB Article Count
+            SettingsSection(title = strings.dashboardKbArticleCount) {
+                Text(
+                    text = strings.dashboardKbArticleCountDescription,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Slider(
+                        value = uiState.dashboardKbArticleCount.toFloat(),
+                        onValueChange = { viewModel.setDashboardKbArticleCount(it.toInt()) },
+                        valueRange = 1f..10f,
+                        steps = 8, // 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "${uiState.dashboardKbArticleCount}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.widthIn(min = 40.dp)
+                    )
+                }
+            }
+
             // Share Feature Section (with hidden activation)
             var shareFeatureActivated by remember { mutableStateOf(uiState.shareEnabled) }
 

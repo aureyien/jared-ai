@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.FormatUnderlined
+import androidx.compose.material.icons.filled.HorizontalRule
 import androidx.compose.material.icons.filled.StrikethroughS
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.Icon
@@ -151,6 +152,17 @@ fun MarkdownToolbar(
                     isActive = false,
                     onClick = {
                         richTextState.addTextAfterSelection("- [ ] ")
+                    }
+                )
+            }
+            // Horizontal separator
+            item {
+                ToolbarButton(
+                    icon = Icons.Default.HorizontalRule,
+                    contentDescription = "Separator",
+                    isActive = false,
+                    onClick = {
+                        richTextState.addTextAfterSelection("\n\n---\n\n")
                     }
                 )
             }

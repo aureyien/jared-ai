@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,6 +24,7 @@ class UiPreferences @Inject constructor(
     private val kbPreviewFontSizeKey = floatPreferencesKey("kb_preview_font_size")
     private val volumeButtonScrollEnabledKey = booleanPreferencesKey("volume_button_scroll_enabled")
     private val volumeButtonScrollDistanceKey = floatPreferencesKey("volume_button_scroll_distance")
+    private val dashboardKbArticleCountKey = intPreferencesKey("dashboard_kb_article_count")
 
     val kbIsListView: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[kbIsListViewKey] ?: true // Default to list view
@@ -38,6 +40,10 @@ class UiPreferences @Inject constructor(
 
     val volumeButtonScrollDistance: Flow<Float> = context.dataStore.data.map { preferences ->
         preferences[volumeButtonScrollDistanceKey] ?: 0.8f // Default 80% of viewport
+    }
+
+    val dashboardKbArticleCount: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[dashboardKbArticleCountKey] ?: 5 // Default 5 articles
     }
 
     suspend fun setKbIsListView(isListView: Boolean) {
@@ -61,6 +67,12 @@ class UiPreferences @Inject constructor(
     suspend fun setVolumeButtonScrollDistance(distance: Float) {
         context.dataStore.edit { preferences ->
             preferences[volumeButtonScrollDistanceKey] = distance.coerceIn(0.3f, 1.0f)
+        }
+    }
+
+    suspend fun setDashboardKbArticleCount(count: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[dashboardKbArticleCountKey] = count.coerceIn(1, 10)
         }
     }
 }

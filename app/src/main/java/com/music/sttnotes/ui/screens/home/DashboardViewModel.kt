@@ -1,5 +1,6 @@
 package com.music.sttnotes.ui.screens.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.music.sttnotes.data.api.ApiConfig
@@ -66,8 +67,13 @@ class DashboardViewModel @Inject constructor(
     private val notesRepository: NotesRepository,
     private val chatHistoryRepository: ChatHistoryRepository,
     private val llmOutputRepository: LlmOutputRepository,
-    private val apiConfig: ApiConfig
+    private val apiConfig: ApiConfig,
+    private val uiPreferences: com.music.sttnotes.data.ui.UiPreferences
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "DashboardViewModel"
+    }
 
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state
@@ -237,21 +243,23 @@ class DashboardViewModel @Inject constructor(
                 // Collect all files with previews
                 files.forEach { file ->
                     val content = llmOutputRepository.readFile(folder, file.name).getOrNull() ?: ""
-                    // Extract only the LLM answer (skip frontmatter and original transcription)
-                    // Regular file structure: ---\nmetadata\n---\n\n## Original transcription\n...\n---\n\nLLM ANSWER
-                    // Merged file structure: ---\nmetadata\n---\n\n## From: file1\n\n## Original transcription\n...\n---\n\nAnswer1\n\n---\n\n## From: file2...
+                    Log.d(TAG, "Reading KB file: $folder/${file.name}, content length: ${content.length}")
 
-                    val answerContent = if (content.contains("---")) {
-                        val parts = content.split("---")
-                        if (parts.size >= 3) {
-                            // Skip parts[0] (empty) and parts[1] (frontmatter)
-                            // Join the rest and extract content after "## Original transcription" section
-                            val bodyParts = parts.drop(2)
-                            val fullBody = bodyParts.joinToString("---")
+                    // Skip frontmatter and "## Original transcription" section
+                    // Structure: ---\nfrontmatter\n---\n\n## Original transcription\n...\n\n---\n\nACTUAL CONTENT
 
-                            // Find last occurrence of "## Original transcription" block and take content after its separator
-                            val transcriptionPattern = """## Original transcription.*?---""".toRegex(RegexOption.DOT_MATCHES_ALL)
-                            transcriptionPattern.replace(fullBody, "").trim()
+                    // Step 1: Remove YAML frontmatter (--- at start of line, followed by ---, both on their own lines)
+                    val contentWithoutFrontmatter = if (content.startsWith("---\n") || content.startsWith("---\r\n")) {
+                        val lines = content.lines()
+                        var endIndex = -1
+                        for (i in 1 until lines.size) {
+                            if (lines[i].trim() == "---") {
+                                endIndex = i
+                                break
+                            }
+                        }
+                        if (endIndex != -1 && endIndex + 1 < lines.size) {
+                            lines.subList(endIndex + 1, lines.size).joinToString("\n").trim()
                         } else {
                             content
                         }
@@ -259,7 +267,37 @@ class DashboardViewModel @Inject constructor(
                         content
                     }
 
-                    val preview = answerContent.take(200).replace("\n", " ")
+                    // Step 2: Remove "## Original transcription" section if present
+                    // Look for pattern: ## Original transcription followed by content, then separator line (---), then actual content
+                    val actualContent = if (contentWithoutFrontmatter.contains("## Original transcription")) {
+                        val lines = contentWithoutFrontmatter.lines()
+                        var separatorFound = false
+                        val resultLines = mutableListOf<String>()
+
+                        for (i in lines.indices) {
+                            if (!separatorFound) {
+                                // Look for standalone --- separator after the transcription section
+                                if (lines[i].trim() == "---") {
+                                    separatorFound = true
+                                }
+                            } else {
+                                resultLines.add(lines[i])
+                            }
+                        }
+
+                        if (resultLines.isNotEmpty()) {
+                            resultLines.joinToString("\n").trim()
+                        } else {
+                            contentWithoutFrontmatter
+                        }
+                    } else {
+                        contentWithoutFrontmatter
+                    }
+
+                    // Take first 200 characters for preview, keeping newlines for markdown
+                    val preview = actualContent.take(200)
+                    Log.d(TAG, "Preview for ${file.name}: ${preview.take(50).replace("\n", " ")}...")
+
                     allKbItems.add(KbPreviewItem(
                         folder = folder,
                         filename = file.name,
@@ -269,10 +307,17 @@ class DashboardViewModel @Inject constructor(
                 }
             }
 
-            // Get the last 3 most recently modified KB items
+            // Get the last N most recently modified KB items (N from preferences)
+            val kbArticleCount = uiPreferences.dashboardKbArticleCount.first()
             val lastKbItems = allKbItems
                 .sortedByDescending { it.lastModified }
-                .take(3)
+                .take(kbArticleCount)
+
+            Log.d(TAG, "Total KB items collected: ${allKbItems.size}")
+            Log.d(TAG, "Last $kbArticleCount KB items: ${lastKbItems.size}")
+            lastKbItems.forEachIndexed { index, item ->
+                Log.d(TAG, "  [$index] ${item.folder}/${item.filename} - preview length: ${item.preview.length}, preview: ${item.preview.take(50)}...")
+            }
 
             // Load favorite items
             val favoriteNotes = notesRepository.getFavoriteNotes()

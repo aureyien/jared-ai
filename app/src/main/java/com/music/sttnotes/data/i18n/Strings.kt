@@ -266,6 +266,10 @@ interface StringResources {
     val volumeScrollEnable: String
     val volumeScrollDescription: String
     val volumeScrollDistance: String
+
+    // Dashboard Settings
+    val dashboardKbArticleCount: String
+    val dashboardKbArticleCountDescription: String
 }
 
 object EnglishStrings : StringResources {
@@ -505,6 +509,10 @@ object EnglishStrings : StringResources {
     override val volumeScrollEnable = "Enable volume button scrolling"
     override val volumeScrollDescription = "Optimized for e-ink: instant jumps, no ghosting"
     override val volumeScrollDistance = "Scroll distance (100% = full screen, 50% = half screen with 50% overlap)"
+
+    // Dashboard Settings
+    override val dashboardKbArticleCount = "KB Articles on Dashboard"
+    override val dashboardKbArticleCountDescription = "Number of recent KB articles to display (1-10)"
 }
 
 object FrenchStrings : StringResources {
@@ -744,6 +752,10 @@ object FrenchStrings : StringResources {
     override val volumeScrollEnable = "Activer le défilement par boutons de volume"
     override val volumeScrollDescription = "Optimisé pour e-ink : sauts instantanés, pas de ghosting"
     override val volumeScrollDistance = "Distance (100% = plein écran, 50% = moitié avec 50% de chevauchement)"
+
+    // Dashboard Settings
+    override val dashboardKbArticleCount = "Articles KB sur le tableau de bord"
+    override val dashboardKbArticleCountDescription = "Nombre d'articles KB récents à afficher (1-10)"
 }
 
 /**
