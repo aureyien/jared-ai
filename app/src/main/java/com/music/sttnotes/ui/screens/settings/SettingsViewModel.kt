@@ -35,7 +35,9 @@ data class SettingsUiState(
     val appLanguage: AppLanguage = AppLanguage.ENGLISH,
     val shareEnabled: Boolean = false,
     val shareApiToken: String = "",
-    val shareExpirationDays: Int = ApiConfig.DEFAULT_SHARE_EXPIRATION_DAYS
+    val shareExpirationDays: Int = ApiConfig.DEFAULT_SHARE_EXPIRATION_DAYS,
+    val volumeButtonScrollEnabled: Boolean = false,
+    val volumeButtonScrollDistance: Float = 0.8f
 )
 
 @HiltViewModel
@@ -43,7 +45,8 @@ class SettingsViewModel @Inject constructor(
     private val apiConfig: ApiConfig,
     private val sttPreferences: SttPreferences,
     private val usageService: UsageService,
-    private val modelDownloadService: com.music.sttnotes.data.stt.ModelDownloadService
+    private val modelDownloadService: com.music.sttnotes.data.stt.ModelDownloadService,
+    private val uiPreferences: com.music.sttnotes.data.ui.UiPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -122,8 +125,14 @@ class SettingsViewModel @Inject constructor(
                     apiConfig.shareExpirationDays
                 ) { fontSize, appLang, shareEnabled, shareToken, shareDays ->
                     arrayOf(fontSize, appLang, shareEnabled, shareToken, shareDays)
+                },
+                combine(
+                    uiPreferences.volumeButtonScrollEnabled,
+                    uiPreferences.volumeButtonScrollDistance
+                ) { volScrollEnabled, volScrollDistance ->
+                    arrayOf(volScrollEnabled, volScrollDistance)
                 }
-            ) { first, second, third ->
+            ) { first, second, third, fourth ->
                 SettingsUiState(
                     sttProvider = first[0] as SttProvider,
                     llmProvider = first[1] as LlmProvider,
@@ -139,7 +148,9 @@ class SettingsViewModel @Inject constructor(
                     appLanguage = third[1] as AppLanguage,
                     shareEnabled = third[2] as Boolean,
                     shareApiToken = (third[3] as? String) ?: "",
-                    shareExpirationDays = third[4] as Int
+                    shareExpirationDays = third[4] as Int,
+                    volumeButtonScrollEnabled = fourth[0] as Boolean,
+                    volumeButtonScrollDistance = fourth[1] as Float
                 )
             }.collect { state ->
                 _uiState.value = state
@@ -211,6 +222,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setShareExpirationDays(days: Int) {
         viewModelScope.launch { apiConfig.setShareExpirationDays(days) }
+    }
+
+    fun setVolumeButtonScrollEnabled(enabled: Boolean) {
+        viewModelScope.launch { uiPreferences.setVolumeButtonScrollEnabled(enabled) }
+    }
+
+    fun setVolumeButtonScrollDistance(distance: Float) {
+        viewModelScope.launch { uiPreferences.setVolumeButtonScrollDistance(distance) }
     }
 
     /**

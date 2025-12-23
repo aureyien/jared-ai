@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.music.sttnotes.data.i18n.rememberStrings
+import com.music.sttnotes.ui.screens.knowledgebase.UiPreferencesEntryPoint
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkCard
 import com.music.sttnotes.ui.components.EInkIconButton
@@ -62,6 +63,40 @@ fun FavoritesScreen(
     val strings = rememberStrings()
     val filteredFavorites = remember(state.favoriteItems, state.favoriteFilter) {
         viewModel.getFilteredFavorites()
+    }
+
+    // Volume scroll support
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val uiPreferences = androidx.compose.ui.platform.LocalContext.current.let { context ->
+        remember { dagger.hilt.android.EntryPointAccessors.fromApplication<UiPreferencesEntryPoint>(context.applicationContext).uiPreferences() }
+    }
+    val volumeScrollEnabled by uiPreferences.volumeButtonScrollEnabled.collectAsState(initial = false)
+    val volumeScrollDistance by uiPreferences.volumeButtonScrollDistance.collectAsState(initial = 0.8f)
+
+    val volumeHandler = remember(listState, coroutineScope, volumeScrollDistance) {
+        com.music.sttnotes.ui.components.createLazyListVolumeHandler(
+            state = listState,
+            scope = coroutineScope,
+            scrollDistanceProvider = { volumeScrollDistance }
+        )
+    }
+
+    // Register volume scroll handler with Activity (only if enabled in settings)
+    val activity = androidx.compose.ui.platform.LocalContext.current as? com.music.sttnotes.MainActivity
+    androidx.compose.runtime.LaunchedEffect(volumeHandler, volumeScrollEnabled) {
+        if (volumeScrollEnabled) {
+            activity?.setVolumeScrollHandler(volumeHandler)
+        } else {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
+    // Clean up handler when screen is disposed
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            activity?.setVolumeScrollHandler(null)
+        }
     }
 
     Scaffold(
@@ -149,6 +184,7 @@ fun FavoritesScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

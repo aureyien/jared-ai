@@ -105,6 +105,7 @@ import com.music.sttnotes.ui.theme.EInkGrayLight
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
+import com.music.sttnotes.ui.screens.knowledgebase.UiPreferencesEntryPoint
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,6 +137,38 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var showPermissionDenied by remember { mutableStateOf(false) }
+
+    // Volume scroll support - chat uses single-item (message-by-message) scrolling
+    val uiPreferences = androidx.compose.ui.platform.LocalContext.current.let { context ->
+        remember { dagger.hilt.android.EntryPointAccessors.fromApplication<UiPreferencesEntryPoint>(context.applicationContext).uiPreferences() }
+    }
+    val volumeScrollEnabled by uiPreferences.volumeButtonScrollEnabled.collectAsState(initial = false)
+
+    // For chat, scroll exactly 1 message at a time (ignore distance slider)
+    val volumeHandler = remember(listState, coroutineScope) {
+        com.music.sttnotes.ui.components.createSingleItemVolumeHandler(
+            state = listState,
+            scope = coroutineScope
+        )
+    }
+
+    // Register volume scroll handler with Activity (only if enabled in settings)
+    val activity = androidx.compose.ui.platform.LocalContext.current as? com.music.sttnotes.MainActivity
+    androidx.compose.runtime.LaunchedEffect(volumeHandler, volumeScrollEnabled) {
+        if (volumeScrollEnabled) {
+            activity?.setVolumeScrollHandler(volumeHandler)
+        } else {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
+    // Clean up handler when screen is disposed
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
     var autoRecordTriggered by remember { mutableStateOf(false) }
     var showLlmSelector by remember { mutableStateOf(false) }
     var showActionMenu by remember { mutableStateOf(false) }

@@ -21,6 +21,8 @@ class UiPreferences @Inject constructor(
 ) {
     private val kbIsListViewKey = booleanPreferencesKey("kb_is_list_view")
     private val kbPreviewFontSizeKey = floatPreferencesKey("kb_preview_font_size")
+    private val volumeButtonScrollEnabledKey = booleanPreferencesKey("volume_button_scroll_enabled")
+    private val volumeButtonScrollDistanceKey = floatPreferencesKey("volume_button_scroll_distance")
 
     val kbIsListView: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[kbIsListViewKey] ?: true // Default to list view
@@ -28,6 +30,14 @@ class UiPreferences @Inject constructor(
 
     val kbPreviewFontSize: Flow<Float> = context.dataStore.data.map { preferences ->
         preferences[kbPreviewFontSizeKey] ?: 9f // Default 9sp
+    }
+
+    val volumeButtonScrollEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[volumeButtonScrollEnabledKey] ?: false // Default disabled
+    }
+
+    val volumeButtonScrollDistance: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[volumeButtonScrollDistanceKey] ?: 0.8f // Default 80% of viewport
     }
 
     suspend fun setKbIsListView(isListView: Boolean) {
@@ -39,6 +49,18 @@ class UiPreferences @Inject constructor(
     suspend fun setKbPreviewFontSize(fontSize: Float) {
         context.dataStore.edit { preferences ->
             preferences[kbPreviewFontSizeKey] = fontSize
+        }
+    }
+
+    suspend fun setVolumeButtonScrollEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[volumeButtonScrollEnabledKey] = enabled
+        }
+    }
+
+    suspend fun setVolumeButtonScrollDistance(distance: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[volumeButtonScrollDistanceKey] = distance.coerceIn(0.3f, 1.0f)
         }
     }
 }

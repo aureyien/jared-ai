@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Jared AI</string>
+
+    <!-- Volume Button Scrolling -->
+    <string name="volume_scroll_title">Volume Button Scrolling (E-Ink)</string>
+    <string name="volume_scroll_enable">Enable volume button scrolling</string>
+    <string name="volume_scroll_description">Optimized for e-ink: instant jumps, no ghosting</string>
+    <string name="volume_scroll_distance">Scroll distance per button press</string>
 </resources>

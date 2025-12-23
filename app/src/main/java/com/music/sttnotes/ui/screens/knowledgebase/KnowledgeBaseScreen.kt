@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -71,6 +72,7 @@ import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
+import com.music.sttnotes.ui.screens.knowledgebase.UiPreferencesEntryPoint
 
 private enum class TagAction {
     REMOVE_FROM_ALL,
@@ -98,11 +100,48 @@ fun KnowledgeBaseScreen(
     val showTagFilter by viewModel.showTagFilter.collectAsState()
     val isLlmConfigured by viewModel.isLlmConfigured.collectAsState()
 
+    // Volume scroll support
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val coroutineScope2 = androidx.compose.runtime.rememberCoroutineScope()
+    val uiPreferences = androidx.compose.ui.platform.LocalContext.current.let { context ->
+        remember { dagger.hilt.android.EntryPointAccessors.fromApplication<UiPreferencesEntryPoint>(context.applicationContext).uiPreferences() }
+    }
+    val volumeScrollEnabled by uiPreferences.volumeButtonScrollEnabled.collectAsState(initial = false)
+    val volumeScrollDistance by uiPreferences.volumeButtonScrollDistance.collectAsState(initial = 0.8f)
+
+    val volumeHandler = remember(listState, coroutineScope2, volumeScrollDistance) {
+        com.music.sttnotes.ui.components.createLazyListVolumeHandler(
+            state = listState,
+            scope = coroutineScope2,
+            scrollDistanceProvider = { volumeScrollDistance }
+        )
+    }
+
+    // Register volume scroll handler with Activity (only if enabled in settings)
+    val activity = androidx.compose.ui.platform.LocalContext.current as? com.music.sttnotes.MainActivity
+    androidx.compose.runtime.LaunchedEffect(volumeHandler, volumeScrollEnabled) {
+        if (volumeScrollEnabled) {
+            activity?.setVolumeScrollHandler(volumeHandler)
+        } else {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
+    // Clean up handler when screen is disposed
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
     // Undo deletion state for folders
     var pendingFolderDeletion by remember { mutableStateOf<PendingDeletion<String>?>(null) }
 
     // Rename dialog state
     var showRenameFolderDialog by remember { mutableStateOf<String?>(null) }
+
+    // Create folder dialog state
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
 
     // Tag deletion state
     var tagToDelete by remember { mutableStateOf<String?>(null) }
@@ -211,7 +250,14 @@ fun KnowledgeBaseScreen(
                             },
                             itemKey = deletion.item // Restart countdown when different folder deleted
                         )
+                        Spacer(Modifier.width(8.dp))
                     }
+                    // Add folder button
+                    EInkIconButton(
+                        onClick = { showCreateFolderDialog = true },
+                        icon = Icons.Default.Add,
+                        contentDescription = strings.newFolder
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = EInkWhite,
@@ -340,6 +386,7 @@ fun KnowledgeBaseScreen(
                         }
                     } else {
                         LazyColumn(
+                            state = listState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -453,6 +500,38 @@ fun KnowledgeBaseScreen(
             EInkTextField(
                 value = newName,
                 onValueChange = { newName = it },
+                placeholder = strings.newFolderName,
+                modifier = Modifier.fillMaxWidth(),
+                showClearButton = true
+            )
+        }
+    }
+
+    // Create Folder Dialog
+    if (showCreateFolderDialog) {
+        var folderName by remember { mutableStateOf("") }
+        var isCreating by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
+
+        EInkFormModal(
+            onDismiss = { if (!isCreating) showCreateFolderDialog = false },
+            onConfirm = {
+                if (folderName.isNotBlank()) {
+                    isCreating = true
+                    coroutineScope.launch {
+                        viewModel.createFolder(folderName)
+                        showCreateFolderDialog = false
+                    }
+                }
+            },
+            title = strings.newFolder,
+            confirmText = strings.confirm,
+            dismissText = strings.cancel,
+            confirmEnabled = folderName.isNotBlank() && !isCreating
+        ) {
+            EInkTextField(
+                value = folderName,
+                onValueChange = { folderName = it },
                 placeholder = strings.newFolderName,
                 modifier = Modifier.fillMaxWidth(),
                 showClearButton = true

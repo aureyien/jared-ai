@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.MoreVert
@@ -82,6 +83,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mikepenz.markdown.m3.Markdown
 import com.music.sttnotes.ui.components.convertCheckboxesToUnicode
 import com.music.sttnotes.ui.components.EInkButton
+import com.music.sttnotes.ui.components.EInkChip
 import com.music.sttnotes.ui.components.einkMarkdownColors
 import com.music.sttnotes.ui.components.einkMarkdownComponents
 import com.music.sttnotes.ui.components.einkMarkdownTypography
@@ -117,16 +119,26 @@ fun KnowledgeBaseDetailScreen(
     val shareEnabled by viewModel.shareEnabled.collectAsState(initial = false)
     val shareResult by viewModel.shareResult.collectAsState()
     val kbPreviewFontSize by viewModel.kbPreviewFontSize.collectAsState()
+    val allFolders by viewModel.folders.collectAsState()
     val strings = rememberStrings()
     var showUndoSnackbar by remember { mutableStateOf(false) }
     var showActionMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
     var showTagsSection by remember { mutableStateOf(false) }
     var showFontSizeDialog by remember { mutableStateOf(false) }
     var currentFilename by remember { mutableStateOf(filename) }
     var renameError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
+
+    // Volume scroll support for detail view
+    val scrollState = rememberScrollState()
+    val uiPreferences = androidx.compose.ui.platform.LocalContext.current.let { context ->
+        remember { dagger.hilt.android.EntryPointAccessors.fromApplication<UiPreferencesEntryPoint>(context.applicationContext).uiPreferences() }
+    }
+    val volumeScrollEnabled by uiPreferences.volumeButtonScrollEnabled.collectAsState(initial = false)
+    val volumeScrollDistance by uiPreferences.volumeButtonScrollDistance.collectAsState(initial = 0.8f)
 
     // Plain text state for markdown editing (preserves all markdown syntax)
     var editText by remember { mutableStateOf(TextFieldValue("")) }
@@ -135,6 +147,33 @@ fun KnowledgeBaseDetailScreen(
     val density = LocalDensity.current
     val imeInsets = WindowInsets.ime
     val isKeyboardVisible = imeInsets.getBottom(density) > 0
+
+    // Volume handler setup (using density for viewport height)
+    val volumeHandler = remember(scrollState, coroutineScope, volumeScrollDistance) {
+        com.music.sttnotes.ui.components.createScrollStateVolumeHandler(
+            state = scrollState,
+            scope = coroutineScope,
+            viewportHeightProvider = { with(density) { 800.dp.toPx().toInt() } }, // approximate viewport height
+            scrollDistanceProvider = { volumeScrollDistance }
+        )
+    }
+
+    // Register volume scroll handler with Activity
+    val activity = androidx.compose.ui.platform.LocalContext.current as? com.music.sttnotes.MainActivity
+    LaunchedEffect(volumeHandler, volumeScrollEnabled) {
+        if (volumeScrollEnabled) {
+            activity?.setVolumeScrollHandler(volumeHandler)
+        } else {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
+    // Clean up handler when screen is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
 
     LaunchedEffect(folder, filename) {
         viewModel.loadFileContent(folder, filename)
@@ -177,11 +216,8 @@ fun KnowledgeBaseDetailScreen(
                             if (isEditMode) {
                                 viewModel.saveFileContent(folder, currentFilename, editText.text)
                             }
-                            // Commit pending deletion before navigating back
-                            if (showUndoSnackbar) {
-                                viewModel.deleteFile(folder, currentFilename)
-                                showUndoSnackbar = false
-                            }
+                            // Cancel pending deletion when navigating back manually
+                            showUndoSnackbar = false
                             viewModel.clearFileContent()
                             onNavigateBack()
                         },
@@ -272,6 +308,15 @@ fun KnowledgeBaseDetailScreen(
                                 },
                                 leadingIcon = { Icon(Icons.Default.FormatSize, null) }
                             )
+                            // Move to folder option
+                            DropdownMenuItem(
+                                text = { Text("Move to folder") },
+                                onClick = {
+                                    showActionMenu = false
+                                    showMoveDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.DriveFileMove, null) }
+                            )
                             // Delete option
                             DropdownMenuItem(
                                 text = { Text(strings.delete) },
@@ -326,10 +371,8 @@ fun KnowledgeBaseDetailScreen(
                                     if (isEditMode) {
                                         viewModel.saveFileContent(folder, currentFilename, editText.text)
                                     }
-                                    if (showUndoSnackbar) {
-                                        viewModel.deleteFile(folder, currentFilename)
-                                        showUndoSnackbar = false
-                                    }
+                                    // Cancel pending deletion when navigating to parent folder
+                                    showUndoSnackbar = false
                                     viewModel.clearFileContent()
                                     onOpenParentFolder()
                                 },
@@ -360,10 +403,8 @@ fun KnowledgeBaseDetailScreen(
                                     if (isEditMode) {
                                         viewModel.saveFileContent(folder, currentFilename, editText.text)
                                     }
-                                    if (showUndoSnackbar) {
-                                        viewModel.deleteFile(folder, currentFilename)
-                                        showUndoSnackbar = false
-                                    }
+                                    // Cancel pending deletion when navigating to home
+                                    showUndoSnackbar = false
                                     viewModel.clearFileContent()
                                     onNavigateToHome()
                                 },
@@ -389,7 +430,8 @@ fun KnowledgeBaseDetailScreen(
         },
         containerColor = EInkWhite
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             // Tags display (always visible if tags exist)
             if (fileTags.isNotEmpty()) {
                 TagsDisplay(
@@ -431,73 +473,64 @@ fun KnowledgeBaseDetailScreen(
                     else -> {
                         // Editor or Preview based on mode
                         Box(modifier = Modifier.fillMaxSize()) {
-                            CompositionLocalProvider(
-                                LocalTextSelectionColors provides TextSelectionColors(
-                                    handleColor = Color(0xFF64B5F6),
-                                    backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
-                                )
-                            ) {
-                                if (isEditMode) {
-                                    // Edit mode: Plain TextField for markdown editing
-                                    CompositionLocalProvider(
-                                        LocalTextSelectionColors provides TextSelectionColors(
-                                            handleColor = Color(0xFF64B5F6),
-                                            backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
-                                        )
-                                    ) {
-                                        TextField(
-                                            value = editText,
-                                            onValueChange = { editText = it },
-                                            modifier = Modifier.fillMaxSize(),
-                                            colors = TextFieldDefaults.colors(
-                                                focusedContainerColor = EInkWhite,
-                                                unfocusedContainerColor = EInkWhite,
-                                                focusedTextColor = EInkBlack,
-                                                unfocusedTextColor = EInkBlack,
-                                                cursorColor = EInkBlack,
-                                                focusedIndicatorColor = Color.Transparent,
-                                                unfocusedIndicatorColor = Color.Transparent
-                                            ),
-                                            textStyle = MaterialTheme.typography.bodyLarge,
-                                            placeholder = { Text("Start writing...", color = EInkGrayMedium) }
-                                        )
-                                    }
-                                } else {
-                                    // Preview mode: Markdown renderer with text selection and checkbox support
-                                    // Convert grid preview font size (7-12sp) to content multiplier (0.778-1.333)
-                                    val fontMultiplier = kbPreviewFontSize / 9f // 9sp is baseline (1.0x)
-                                    SelectionContainer {
-                                        Markdown(
-                                            content = convertCheckboxesToUnicode(fileContent ?: ""),
-                                            colors = einkMarkdownColors(),
-                                            typography = einkMarkdownTypography(fontMultiplier),
-                                            components = einkMarkdownComponents(),
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(horizontal = 20.dp, vertical = 16.dp)
-                                                .verticalScroll(rememberScrollState())
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Toolbar above keyboard (only in edit mode when keyboard is visible)
-                            if (isEditMode && isKeyboardVisible) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .align(Alignment.BottomCenter)
-                                        .imePadding()
+                            if (isEditMode) {
+                                // Edit mode: Plain TextField for markdown editing
+                                CompositionLocalProvider(
+                                    LocalTextSelectionColors provides TextSelectionColors(
+                                        handleColor = Color(0xFF64B5F6),
+                                        backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
+                                    )
                                 ) {
-                                    PlainTextMarkdownToolbar(
-                                        textFieldValue = editText,
-                                        onTextChange = { editText = it }
+                                    TextField(
+                                        value = editText,
+                                        onValueChange = { editText = it },
+                                        modifier = Modifier.fillMaxSize(),
+                                        colors = TextFieldDefaults.colors(
+                                            focusedContainerColor = EInkWhite,
+                                            unfocusedContainerColor = EInkWhite,
+                                            focusedTextColor = EInkBlack,
+                                            unfocusedTextColor = EInkBlack,
+                                            cursorColor = EInkBlack,
+                                            focusedIndicatorColor = Color.Transparent,
+                                            unfocusedIndicatorColor = Color.Transparent
+                                        ),
+                                        textStyle = MaterialTheme.typography.bodyLarge,
+                                        placeholder = { Text("Start writing...", color = EInkGrayMedium) }
+                                    )
+                                }
+                            } else {
+                                // Preview mode: Markdown renderer with text selection and checkbox support
+                                // Convert grid preview font size (7-12sp) to content multiplier (0.778-1.333)
+                                val fontMultiplier = kbPreviewFontSize / 9f // 9sp is baseline (1.0x)
+                                SelectionContainer {
+                                    Markdown(
+                                        content = convertCheckboxesToUnicode(fileContent ?: ""),
+                                        colors = einkMarkdownColors(),
+                                        typography = einkMarkdownTypography(fontMultiplier),
+                                        components = einkMarkdownComponents(),
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                                            .verticalScroll(scrollState)
                                     )
                                 }
                             }
                         }
                     }
                 }
+            }
+            }
+
+            // Markdown toolbar - edge to edge, above keyboard
+            if (isEditMode && isKeyboardVisible) {
+                PlainTextMarkdownToolbar(
+                    textFieldValue = editText,
+                    onTextChange = { editText = it },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .imePadding()
+                )
             }
         }
     }
@@ -550,6 +583,55 @@ fun KnowledgeBaseDetailScreen(
     }
 
     // Font size dialog
+    // Move to folder dialog
+    if (showMoveDialog) {
+        val folderNames = allFolders.map { it.name }.filter { it != folder }
+        var selectedFolder by remember { mutableStateOf(folderNames.firstOrNull() ?: "") }
+        var isMoving by remember { mutableStateOf(false) }
+
+        EInkFormModal(
+            onDismiss = { if (!isMoving) showMoveDialog = false },
+            onConfirm = {
+                if (selectedFolder.isNotBlank()) {
+                    isMoving = true
+                    coroutineScope.launch {
+                        viewModel.moveFile(folder, currentFilename, selectedFolder).onSuccess {
+                            showMoveDialog = false
+                            onNavigateBack()
+                        }.onFailure {
+                            isMoving = false
+                        }
+                    }
+                }
+            },
+            title = "Move to folder",
+            confirmText = strings.confirm,
+            dismissText = strings.cancel,
+            confirmEnabled = selectedFolder.isNotBlank() && !isMoving
+        ) {
+            Column {
+                Text(
+                    text = "Select destination folder:",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = EInkBlack
+                )
+                Spacer(Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    folderNames.forEach { folderName ->
+                        EInkChip(
+                            label = folderName,
+                            selected = selectedFolder == folderName,
+                            onClick = { selectedFolder = folderName }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     if (showFontSizeDialog) {
         FontSizeDialog(
             currentSize = kbPreviewFontSize,

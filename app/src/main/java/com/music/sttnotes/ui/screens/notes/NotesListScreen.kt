@@ -82,6 +82,7 @@ import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
 import com.music.sttnotes.data.i18n.Strings
+import com.music.sttnotes.ui.screens.knowledgebase.UiPreferencesEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -108,11 +109,54 @@ fun NotesListScreen(
     val generatedSummary by viewModel.generatedSummary.collectAsState()
     val strings = rememberStrings()
 
+    // Volume scroll support
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val uiPreferences = LocalContext.current.let { context ->
+        remember { dagger.hilt.android.EntryPointAccessors.fromApplication<UiPreferencesEntryPoint>(context.applicationContext).uiPreferences() }
+    }
+    val volumeScrollEnabled by uiPreferences.volumeButtonScrollEnabled.collectAsState(initial = false)
+    val volumeScrollDistance by uiPreferences.volumeButtonScrollDistance.collectAsState(initial = 0.8f)
+
     // Undo deletion state
     var pendingDeletion by remember { mutableStateOf<PendingDeletion<Note>?>(null) }
 
     // View mode state (true = list, false = grid)
     var isListView by remember { mutableStateOf(true) }
+
+    val volumeHandler = remember(listState, gridState, isListView, coroutineScope, volumeScrollDistance) {
+        if (isListView) {
+            com.music.sttnotes.ui.components.createLazyListVolumeHandler(
+                state = listState,
+                scope = coroutineScope,
+                scrollDistanceProvider = { volumeScrollDistance }
+            )
+        } else {
+            com.music.sttnotes.ui.components.createLazyGridVolumeHandler(
+                state = gridState,
+                scope = coroutineScope,
+                scrollDistanceProvider = { volumeScrollDistance }
+            )
+        }
+    }
+
+    // Register volume scroll handler with Activity (only if enabled in settings)
+    val activity = LocalContext.current as? com.music.sttnotes.MainActivity
+    androidx.compose.runtime.LaunchedEffect(volumeHandler, volumeScrollEnabled) {
+        if (volumeScrollEnabled) {
+            activity?.setVolumeScrollHandler(volumeHandler)
+        } else {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
+    // Clean up handler when screen is disposed
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
 
     // Filter out pending deletion items from display
     val notes = allNotes.filter { note -> pendingDeletion?.item?.id != note.id }
@@ -380,6 +424,7 @@ fun NotesListScreen(
                     if (isListView) {
                         // List view with delete button visible
                         LazyColumn(
+                            state = listState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -417,6 +462,7 @@ fun NotesListScreen(
                     } else {
                         // Grid view (2 columns)
                         LazyVerticalGrid(
+                            state = gridState,
                             columns = GridCells.Fixed(2),
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),

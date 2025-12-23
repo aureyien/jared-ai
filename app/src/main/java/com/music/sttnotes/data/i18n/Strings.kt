@@ -260,6 +260,12 @@ interface StringResources {
     val selectModel: String
     val modelSelected: String
     val download: String
+
+    // Volume Button Scrolling
+    val volumeScrollTitle: String
+    val volumeScrollEnable: String
+    val volumeScrollDescription: String
+    val volumeScrollDistance: String
 }
 
 object EnglishStrings : StringResources {
@@ -493,6 +499,12 @@ object EnglishStrings : StringResources {
     override val selectModel = "Select Model"
     override val modelSelected = "Selected"
     override val download = "Download"
+
+    // Volume Button Scrolling
+    override val volumeScrollTitle = "Volume Button Scrolling (E-Ink)"
+    override val volumeScrollEnable = "Enable volume button scrolling"
+    override val volumeScrollDescription = "Optimized for e-ink: instant jumps, no ghosting"
+    override val volumeScrollDistance = "Scroll distance (100% = full screen, 50% = half screen with 50% overlap)"
 }
 
 object FrenchStrings : StringResources {
@@ -726,6 +738,12 @@ object FrenchStrings : StringResources {
     override val selectModel = "Sélectionner le modèle"
     override val modelSelected = "Sélectionné"
     override val download = "Télécharger"
+
+    // Volume Button Scrolling
+    override val volumeScrollTitle = "Défilement par boutons de volume (E-Ink)"
+    override val volumeScrollEnable = "Activer le défilement par boutons de volume"
+    override val volumeScrollDescription = "Optimisé pour e-ink : sauts instantanés, pas de ghosting"
+    override val volumeScrollDistance = "Distance (100% = plein écran, 50% = moitié avec 50% de chevauchement)"
 }
 
 /**

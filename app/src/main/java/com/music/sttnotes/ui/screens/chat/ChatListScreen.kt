@@ -83,6 +83,7 @@ import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
 import com.music.sttnotes.data.i18n.Strings
+import com.music.sttnotes.ui.screens.knowledgebase.UiPreferencesEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -106,6 +107,40 @@ fun ChatListScreen(
     val generatedSummary by viewModel.generatedSummary.collectAsState()
     val existingFolders by viewModel.existingFolders.collectAsState()
     val strings = rememberStrings()
+
+    // Volume scroll support
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val uiPreferences = androidx.compose.ui.platform.LocalContext.current.let { context ->
+        remember { dagger.hilt.android.EntryPointAccessors.fromApplication<UiPreferencesEntryPoint>(context.applicationContext).uiPreferences() }
+    }
+    val volumeScrollEnabled by uiPreferences.volumeButtonScrollEnabled.collectAsState(initial = false)
+    val volumeScrollDistance by uiPreferences.volumeButtonScrollDistance.collectAsState(initial = 0.8f)
+
+    val volumeHandler = remember(listState, coroutineScope, volumeScrollDistance) {
+        com.music.sttnotes.ui.components.createLazyListVolumeHandler(
+            state = listState,
+            scope = coroutineScope,
+            scrollDistanceProvider = { volumeScrollDistance }
+        )
+    }
+
+    // Register volume scroll handler with Activity (only if enabled in settings)
+    val activity = androidx.compose.ui.platform.LocalContext.current as? com.music.sttnotes.MainActivity
+    androidx.compose.runtime.LaunchedEffect(volumeHandler, volumeScrollEnabled) {
+        if (volumeScrollEnabled) {
+            activity?.setVolumeScrollHandler(volumeHandler)
+        } else {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
+    // Clean up handler when screen is disposed
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
 
     // Refresh list when screen becomes visible (returning from conversation)
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -309,6 +344,7 @@ fun ChatListScreen(
                 }
 
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)

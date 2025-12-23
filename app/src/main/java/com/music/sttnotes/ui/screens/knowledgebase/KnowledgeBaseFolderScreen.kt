@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.LocalOffer
@@ -69,6 +70,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -101,6 +103,7 @@ import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 import com.music.sttnotes.data.i18n.rememberStrings
 import com.music.sttnotes.data.i18n.Strings
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -116,6 +119,16 @@ fun KnowledgeBaseFolderScreen(
     viewModel: KnowledgeBaseViewModel = hiltViewModel()
 ) {
     val strings = rememberStrings()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Volume scroll support for e-ink optimization
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val uiPreferences = androidx.compose.ui.platform.LocalContext.current.let { context ->
+        remember { dagger.hilt.android.EntryPointAccessors.fromApplication<com.music.sttnotes.ui.screens.knowledgebase.UiPreferencesEntryPoint>(context.applicationContext).uiPreferences() }
+    }
+    val volumeScrollEnabled by uiPreferences.volumeButtonScrollEnabled.collectAsState(initial = false)
+    val volumeScrollDistance by uiPreferences.volumeButtonScrollDistance.collectAsState(initial = 0.8f)
 
     // Collect state from ViewModel - EXACT same pattern as ChatListScreen
     val allFolders by viewModel.folders.collectAsState()
@@ -145,9 +158,47 @@ fun KnowledgeBaseFolderScreen(
     // Font size menu state
     var showFontSizeMenu by remember { mutableStateOf(false) }
 
+    // Volume scroll handler (switches between list and grid state)
+    val volumeHandler = remember(listState, gridState, isListView, coroutineScope, volumeScrollDistance) {
+        if (isListView) {
+            com.music.sttnotes.ui.components.createLazyListVolumeHandler(
+                state = listState,
+                scope = coroutineScope,
+                scrollDistanceProvider = { volumeScrollDistance }
+            )
+        } else {
+            com.music.sttnotes.ui.components.createLazyGridVolumeHandler(
+                state = gridState,
+                scope = coroutineScope,
+                scrollDistanceProvider = { volumeScrollDistance }
+            )
+        }
+    }
+
+    // Register volume scroll handler with Activity (only if enabled in settings)
+    val activity = androidx.compose.ui.platform.LocalContext.current as? com.music.sttnotes.MainActivity
+    androidx.compose.runtime.LaunchedEffect(volumeHandler, volumeScrollEnabled) {
+        if (volumeScrollEnabled) {
+            activity?.setVolumeScrollHandler(volumeHandler)
+        } else {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
+    // Clean up handler when screen is disposed
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            activity?.setVolumeScrollHandler(null)
+        }
+    }
+
     // Merge dialog state
     var showMergeDialog by remember { mutableStateOf(false) }
     var mergeFilename by remember { mutableStateOf("") }
+
+    // Move to folder dialog state
+    var showMoveDialog by remember { mutableStateOf(false) }
+    var fileToMove by remember { mutableStateOf<String?>(null) }
 
     // Find the current folder's files - NOT a State, just a regular value
     val files = remember(allFolders, folderName) {
@@ -429,6 +480,7 @@ fun KnowledgeBaseFolderScreen(
                         if (isListView) {
                             // List view
                             LazyColumn(
+                                state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -476,13 +528,18 @@ fun KnowledgeBaseFolderScreen(
                                         onShare = {
                                             viewModel.shareArticle(folderName, filePreview.file.name)
                                         },
-                                        isShareEnabled = shareEnabled
+                                        isShareEnabled = shareEnabled,
+                                        onMoveToFolder = {
+                                            fileToMove = filePreview.file.name
+                                            showMoveDialog = true
+                                        }
                                     )
                                 }
                             }
                         } else {
                             // Grid view (2 columns)
                             LazyVerticalGrid(
+                                state = gridState,
                                 columns = GridCells.Fixed(2),
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(16.dp),
@@ -572,6 +629,55 @@ fun KnowledgeBaseFolderScreen(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = strings.newFilename
                 )
+            }
+        }
+
+        // Move to folder dialog
+        if (showMoveDialog && fileToMove != null) {
+            val availableFolders = allFolders.map { it.name }.filter { it != folderName }
+            var selectedFolder by remember { mutableStateOf(availableFolders.firstOrNull() ?: "") }
+            var isMoving by remember { mutableStateOf(false) }
+
+            EInkFormModal(
+                onDismiss = { if (!isMoving) showMoveDialog = false },
+                onConfirm = {
+                    if (selectedFolder.isNotBlank()) {
+                        isMoving = true
+                        coroutineScope.launch {
+                            viewModel.moveFile(folderName, fileToMove!!, selectedFolder).onSuccess {
+                                showMoveDialog = false
+                                fileToMove = null
+                            }.onFailure {
+                                isMoving = false
+                            }
+                        }
+                    }
+                },
+                title = "Move to folder",
+                confirmText = strings.confirm,
+                dismissText = strings.cancel,
+                confirmEnabled = selectedFolder.isNotBlank() && !isMoving
+            ) {
+                Column {
+                    Text(
+                        text = "Select destination folder:",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = EInkBlack
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        availableFolders.forEach { folder ->
+                            EInkChip(
+                                label = folder,
+                                selected = selectedFolder == folder,
+                                onClick = { selectedFolder = folder }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -817,7 +923,8 @@ private fun FolderFileItem(
     isSummarizing: Boolean = false,
     showTags: Boolean = false,
     onShare: () -> Unit = {},
-    isShareEnabled: Boolean = false
+    isShareEnabled: Boolean = false,
+    onMoveToFolder: () -> Unit = {}
 ) {
     val strings = rememberStrings()
     var showMenu by remember { mutableStateOf(false) }
@@ -1003,6 +1110,16 @@ private fun FolderFileItem(
                 },
                 leadingIcon = {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Move to folder") },
+                onClick = {
+                    showMenu = false
+                    onMoveToFolder()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.DriveFileMove, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
             )
             DropdownMenuItem(
@@ -1203,4 +1320,14 @@ private fun formatRelativeTime(timestamp: Long): String {
             format.format(Date(timestamp))
         }
     }
+}
+
+/**
+ * Hilt EntryPoint for accessing UiPreferences from non-Hilt composables
+ * Used for volume button scroll settings
+ */
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface UiPreferencesEntryPoint {
+    fun uiPreferences(): com.music.sttnotes.data.ui.UiPreferences
 }

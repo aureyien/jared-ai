@@ -419,6 +419,58 @@ fun SettingsScreen(
                 )
             }
 
+            // Volume Button Scroll Section (E-Ink Optimization)
+            SettingsSection(title = strings.volumeScrollTitle) {
+                // Enable/Disable toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(strings.volumeScrollEnable)
+                        Text(
+                            text = strings.volumeScrollDescription,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = uiState.volumeButtonScrollEnabled,
+                        onCheckedChange = viewModel::setVolumeButtonScrollEnabled
+                    )
+                }
+
+                if (uiState.volumeButtonScrollEnabled) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Scroll distance slider
+                    Text(
+                        text = strings.volumeScrollDistance,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Slider(
+                            value = uiState.volumeButtonScrollDistance,
+                            onValueChange = { viewModel.setVolumeButtonScrollDistance(it) },
+                            valueRange = 0.3f..1.0f,
+                            steps = 6, // 30%, 40%, 50%, 60%, 70%, 80%, 90%, 100%
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "${(uiState.volumeButtonScrollDistance * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.widthIn(min = 60.dp)
+                        )
+                    }
+                }
+            }
+
             // Share Feature Section (with hidden activation)
             var shareFeatureActivated by remember { mutableStateOf(uiState.shareEnabled) }
 
