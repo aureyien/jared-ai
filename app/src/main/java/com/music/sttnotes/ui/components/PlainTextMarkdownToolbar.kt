@@ -3,6 +3,7 @@ package com.music.sttnotes.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,10 +16,12 @@ import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
-import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material.icons.filled.StrikethroughS
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.HorizontalRule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -50,8 +53,9 @@ fun PlainTextMarkdownToolbar(
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
             // Header
             item {
@@ -103,16 +107,6 @@ fun PlainTextMarkdownToolbar(
                     }
                 )
             }
-            // Code
-            item {
-                ToolbarButton(
-                    icon = Icons.Default.Code,
-                    contentDescription = "Code",
-                    onClick = {
-                        wrapSelection(textFieldValue, onTextChange, "`", "`")
-                    }
-                )
-            }
             // Bullet List
             item {
                 ToolbarButton(
@@ -123,13 +117,23 @@ fun PlainTextMarkdownToolbar(
                     }
                 )
             }
-            // Numbered List
+            // Move cursor up one line
             item {
                 ToolbarButton(
-                    icon = Icons.Default.FormatListNumbered,
-                    contentDescription = "Numbered list",
+                    icon = Icons.Default.KeyboardArrowUp,
+                    contentDescription = "Move cursor up",
                     onClick = {
-                        insertMarkdown(textFieldValue, onTextChange, "1. ", "")
+                        moveCursorVertically(textFieldValue, onTextChange, up = true)
+                    }
+                )
+            }
+            // Move cursor down one line
+            item {
+                ToolbarButton(
+                    icon = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Move cursor down",
+                    onClick = {
+                        moveCursorVertically(textFieldValue, onTextChange, up = false)
                     }
                 )
             }
@@ -150,6 +154,26 @@ fun PlainTextMarkdownToolbar(
                     contentDescription = "Checked checkbox",
                     onClick = {
                         toggleCheckboxOnCurrentLine(textFieldValue, onTextChange, toChecked = true)
+                    }
+                )
+            }
+            // Code - at the end
+            item {
+                ToolbarButton(
+                    icon = Icons.Default.Code,
+                    contentDescription = "Code",
+                    onClick = {
+                        wrapSelection(textFieldValue, onTextChange, "`", "`")
+                    }
+                )
+            }
+            // Horizontal separator
+            item {
+                ToolbarButton(
+                    icon = Icons.Default.HorizontalRule,
+                    contentDescription = "Separator",
+                    onClick = {
+                        insertMarkdown(textFieldValue, onTextChange, "\n---\n", "")
                     }
                 )
             }
@@ -210,6 +234,62 @@ private fun wrapSelection(
             )
         )
     }
+}
+
+/**
+ * Move cursor up or down one line while preserving horizontal position
+ */
+private fun moveCursorVertically(
+    current: TextFieldValue,
+    onTextChange: (TextFieldValue) -> Unit,
+    up: Boolean
+) {
+    val cursorPosition = current.selection.start
+    val text = current.text
+
+    // Find current line boundaries
+    val currentLineStart = text.lastIndexOf('\n', cursorPosition - 1).let { if (it == -1) 0 else it + 1 }
+    val currentLineEnd = text.indexOf('\n', cursorPosition).let { if (it == -1) text.length else it }
+
+    // Calculate column position (offset from line start)
+    val columnPosition = cursorPosition - currentLineStart
+
+    val newCursorPosition = if (up) {
+        // Move up one line
+        if (currentLineStart == 0) {
+            // Already on first line, stay at current position
+            cursorPosition
+        } else {
+            // Find previous line start
+            val prevLineEnd = currentLineStart - 1
+            val prevLineStart = text.lastIndexOf('\n', prevLineEnd - 1).let { if (it == -1) 0 else it + 1 }
+            val prevLineLength = prevLineEnd - prevLineStart
+
+            // Try to maintain column position, or go to end of previous line if it's shorter
+            prevLineStart + minOf(columnPosition, prevLineLength)
+        }
+    } else {
+        // Move down one line
+        if (currentLineEnd == text.length) {
+            // Already on last line, stay at current position
+            cursorPosition
+        } else {
+            // Find next line start
+            val nextLineStart = currentLineEnd + 1
+            val nextLineEnd = text.indexOf('\n', nextLineStart).let { if (it == -1) text.length else it }
+            val nextLineLength = nextLineEnd - nextLineStart
+
+            // Try to maintain column position, or go to end of next line if it's shorter
+            nextLineStart + minOf(columnPosition, nextLineLength)
+        }
+    }
+
+    onTextChange(
+        TextFieldValue(
+            text = text,
+            selection = TextRange(newCursorPosition)
+        )
+    )
 }
 
 /**

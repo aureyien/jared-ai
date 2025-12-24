@@ -573,6 +573,9 @@ fun KnowledgeBaseFolderScreen(
                                                 message = strings.fileDeleted
                                             )
                                         },
+                                        onCopyContent = {
+                                            viewModel.getFileContent(folderName, filePreview.file.name)
+                                        },
                                         isFavorite = viewModel.isFileFavorite(folderName, filePreview.file.name),
                                         onToggleFavorite = {
                                             viewModel.toggleFileFavorite(folderName, filePreview.file.name)
@@ -587,7 +590,11 @@ fun KnowledgeBaseFolderScreen(
                                         onShare = {
                                             viewModel.shareArticle(folderName, filePreview.file.name)
                                         },
-                                        isShareEnabled = shareEnabled
+                                        isShareEnabled = shareEnabled,
+                                        onMoveToFolder = {
+                                            fileToMove = filePreview.file.name
+                                            showMoveDialog = true
+                                        }
                                     )
                                 }
                             }
@@ -1149,16 +1156,19 @@ private fun KbFileGridCard(
     previewFontSize: Float = 9f,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onCopyContent: () -> String?,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onManageTags: () -> Unit = {},
     onSummarize: () -> Unit = {},
     isSummarizing: Boolean = false,
     onShare: () -> Unit = {},
-    isShareEnabled: Boolean = false
+    isShareEnabled: Boolean = false,
+    onMoveToFolder: () -> Unit = {}
 ) {
     val strings = rememberStrings()
     var showContextMenu by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
 
     Box {
         EInkCard(
@@ -1224,6 +1234,19 @@ private fun KbFileGridCard(
                             .size(20.dp)
                     )
                 }
+
+                // Favorite star indicator when not in selection mode
+                if (!selectionMode && isFavorite) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = strings.removeFromFavorites,
+                        tint = EInkBlack,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(16.dp)
+                    )
+                }
             }
         }
 
@@ -1286,6 +1309,29 @@ private fun KbFileGridCard(
                     }
                 )
             }
+            DropdownMenuItem(
+                text = { Text(strings.copyContent) },
+                onClick = {
+                    showContextMenu = false
+                    val content = onCopyContent()
+                    if (content != null) {
+                        clipboardManager.setText(AnnotatedString(content))
+                    }
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Move to folder") },
+                onClick = {
+                    showContextMenu = false
+                    onMoveToFolder()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.DriveFileMove, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
             DropdownMenuItem(
                 text = { Text(strings.delete) },
                 onClick = {

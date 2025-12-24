@@ -3,11 +3,15 @@ package com.music.sttnotes.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.CheckBox
@@ -34,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.music.sttnotes.ui.theme.EInkBlack
+import com.music.sttnotes.ui.theme.EInkGrayMedium
 import com.music.sttnotes.ui.theme.EInkWhite
 
 /**
@@ -126,6 +131,10 @@ fun MarkdownToolbar(
                     onClick = { richTextState.toggleCodeSpan() }
                 )
             }
+            // Separator
+            item {
+                ToolbarSeparator()
+            }
             // Bullet List
             item {
                 ToolbarButton(
@@ -143,6 +152,10 @@ fun MarkdownToolbar(
                     isActive = richTextState.isOrderedList,
                     onClick = { richTextState.toggleOrderedList() }
                 )
+            }
+            // Separator
+            item {
+                ToolbarSeparator()
             }
             // Checkbox / Todo item
             item {
@@ -162,7 +175,7 @@ fun MarkdownToolbar(
                     contentDescription = "Separator",
                     isActive = false,
                     onClick = {
-                        richTextState.addTextAfterSelection("\n\n---\n\n")
+                        richTextState.addTextAfterSelection("\n---\n")
                     }
                 )
             }
@@ -190,6 +203,21 @@ private fun ToolbarButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = if (isActive) EInkWhite else EInkBlack
+        )
+    }
+}
+
+@Composable
+private fun ToolbarSeparator() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .fillMaxHeight()
+            .padding(vertical = 8.dp)
+    ) {
+        VerticalDivider(
+            color = EInkGrayMedium,
+            thickness = 1.dp
         )
     }
 }
