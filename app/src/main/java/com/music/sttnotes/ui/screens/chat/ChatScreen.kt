@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.filled.Unarchive
@@ -98,6 +99,7 @@ import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.UndoSnackbar
 import com.music.sttnotes.ui.components.chatMarkdownTypography
 import com.music.sttnotes.ui.components.einkMarkdownColors
+import com.music.sttnotes.ui.components.ShareResultModal
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import com.music.sttnotes.ui.theme.EInkBlack
@@ -118,6 +120,7 @@ fun ChatScreen(
     onUnarchive: (String) -> Unit = {},
     onDelete: (String) -> Unit = {},
     onSummarize: (String) -> Unit = {},
+    onShareChat: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val messages by viewModel.messages.collectAsState()
@@ -132,6 +135,7 @@ fun ChatScreen(
     val availableLlmProviders by viewModel.availableLlmProviders.collectAsState()
     val chatFontSize by viewModel.chatFontSize.collectAsState()
     val isEphemeral by viewModel.isEphemeral.collectAsState()
+    val shareResult by viewModel.shareResult.collectAsState()
 
     val strings = rememberStrings()
     val listState = rememberLazyListState()
@@ -366,6 +370,16 @@ fun ChatScreen(
                                 leadingIcon = { Icon(Icons.Default.Summarize, contentDescription = null) },
                                 enabled = messages.isNotEmpty()
                             )
+                            // Share
+                            DropdownMenuItem(
+                                text = { Text(strings.share) },
+                                onClick = {
+                                    actualConversationId?.let { onShareChat(it) }
+                                    showActionMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                                enabled = messages.isNotEmpty()
+                            )
                             // Archive/Unarchive - for now always show Archive
                             DropdownMenuItem(
                                 text = { Text(strings.archiveChat) },
@@ -551,6 +565,14 @@ fun ChatScreen(
                 viewModel.renameConversation(newTitle)
                 showRenameDialog = false
             }
+        )
+    }
+
+    // Share result modal
+    shareResult?.let { (_, response) ->
+        ShareResultModal(
+            shareResponse = response,
+            onDismiss = { viewModel.clearShareResult() }
         )
     }
 }

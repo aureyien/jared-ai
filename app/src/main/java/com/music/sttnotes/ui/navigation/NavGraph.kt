@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import com.music.sttnotes.ui.screens.chat.ChatListScreen
 import com.music.sttnotes.ui.screens.chat.ChatListViewModel
 import com.music.sttnotes.ui.screens.chat.ChatScreen
+import com.music.sttnotes.ui.screens.chat.ChatViewModel
 import com.music.sttnotes.ui.screens.chat.TagManagementScreen
 import com.music.sttnotes.ui.screens.favorites.FavoritesScreen
 import com.music.sttnotes.ui.screens.home.DashboardScreen
@@ -20,6 +21,7 @@ import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseFolderScreen
 import com.music.sttnotes.ui.screens.knowledgebase.KnowledgeBaseScreen
 import com.music.sttnotes.ui.screens.knowledgebase.TagManagementScreenForKB
 import com.music.sttnotes.ui.screens.notes.NoteEditorScreen
+import com.music.sttnotes.ui.screens.notes.NoteEditorViewModel
 import com.music.sttnotes.ui.screens.notes.NotesListScreen
 import com.music.sttnotes.ui.screens.notes.TagManagementScreenForNotes
 import com.music.sttnotes.ui.screens.settings.SettingsScreen
@@ -166,6 +168,7 @@ fun NavGraph(
             } else {
                 hiltViewModel()
             }
+            val chatViewModel: ChatViewModel = hiltViewModel()
             ChatScreen(
                 conversationId = if (conversationId == "new") null else conversationId,
                 startRecording = startRecording,
@@ -184,7 +187,11 @@ fun NavGraph(
                 },
                 onSummarize = { id ->
                     chatListViewModel.generateSummary(id)
-                }
+                },
+                onShareChat = { id ->
+                    chatViewModel.shareConversation(id)
+                },
+                viewModel = chatViewModel
             )
         }
 
@@ -233,10 +240,15 @@ fun NavGraph(
         ) { backStackEntry ->
             val noteId = backStackEntry.arguments?.getString("noteId")
             val autoRecord = backStackEntry.arguments?.getBoolean("autoRecord") ?: false
+            val viewModel: NoteEditorViewModel = hiltViewModel()
             NoteEditorScreen(
                 noteId = if (noteId == "new") null else noteId,
                 autoRecord = autoRecord,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onShareNote = { id ->
+                    viewModel.shareNote(id)
+                },
+                viewModel = viewModel
             )
         }
 

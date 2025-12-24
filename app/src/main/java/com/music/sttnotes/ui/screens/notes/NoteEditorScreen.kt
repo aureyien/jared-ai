@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.StrikethroughS
 import androidx.compose.material.icons.filled.Title
@@ -108,6 +109,7 @@ import com.music.sttnotes.ui.components.einkMarkdownComponents
 import com.music.sttnotes.ui.components.einkMarkdownTypography
 import com.music.sttnotes.ui.components.EInkTextField
 import com.music.sttnotes.ui.components.PlainTextMarkdownToolbar
+import com.music.sttnotes.ui.components.ShareResultModal
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayLight
 import com.music.sttnotes.ui.theme.EInkGrayMedium
@@ -122,6 +124,7 @@ fun NoteEditorScreen(
     noteId: String?,
     autoRecord: Boolean = false,
     onNavigateBack: () -> Unit,
+    onShareNote: (String) -> Unit = {},
     viewModel: NoteEditorViewModel = hiltViewModel()
 ) {
     val strings = rememberStrings()
@@ -132,6 +135,7 @@ fun NoteEditorScreen(
     val isArchived by viewModel.isArchived.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
     val markdownContent by viewModel.markdownContent.collectAsState()
+    val shareResult by viewModel.shareResult.collectAsState()
 
     // Local state for TextField that syncs with viewModel (using TextFieldValue for cursor position)
     var localContent by remember { mutableStateOf(TextFieldValue("")) }
@@ -229,6 +233,16 @@ fun NoteEditorScreen(
                             Icon(
                                 if (note.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                                 contentDescription = if (note.isFavorite) strings.removeFromFavorites else strings.addToFavorites,
+                                tint = EInkBlack
+                            )
+                        }
+                    }
+                    // Share button (only for existing notes)
+                    if (noteId != null) {
+                        IconButton(onClick = { noteId?.let { onShareNote(it) } }) {
+                            Icon(
+                                Icons.Default.Share,
+                                contentDescription = strings.share,
                                 tint = EInkBlack
                             )
                         }
@@ -550,6 +564,14 @@ fun NoteEditorScreen(
                 )
             }
         }
+    }
+
+    // Share result modal
+    shareResult?.let { (_, response) ->
+        ShareResultModal(
+            shareResponse = response,
+            onDismiss = { viewModel.clearShareResult() }
+        )
     }
 }
 

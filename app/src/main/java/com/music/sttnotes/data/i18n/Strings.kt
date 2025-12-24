@@ -240,6 +240,7 @@ interface StringResources {
     val close: String
 
     // Share feature
+    val share: String
     val shareArticle: String
     val shareUrl: String
     val sharing: String
@@ -483,6 +484,7 @@ object EnglishStrings : StringResources {
     override val close = "Close"
 
     // Share feature
+    override val share = "Share"
     override val shareArticle = "Share Article"
     override val shareUrl = "Share URL"
     override val sharing = "Sharing"
@@ -726,6 +728,7 @@ object FrenchStrings : StringResources {
     override val close = "Fermer"
 
     // Share feature
+    override val share = "Partager"
     override val shareArticle = "Partager l'article"
     override val shareUrl = "URL de partage"
     override val sharing = "Partage"

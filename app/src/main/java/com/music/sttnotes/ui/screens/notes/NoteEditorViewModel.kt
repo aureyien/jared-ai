@@ -3,8 +3,11 @@ package com.music.sttnotes.ui.screens.notes
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.music.sttnotes.data.api.ApiConfig
 import com.music.sttnotes.data.notes.Note
 import com.music.sttnotes.data.notes.NotesRepository
+import com.music.sttnotes.data.share.ShareResponse
+import com.music.sttnotes.data.share.ShareService
 import com.music.sttnotes.data.stt.AudioRecorder
 import com.music.sttnotes.data.stt.SttLanguage
 import com.music.sttnotes.data.stt.SttManager
@@ -31,7 +34,9 @@ class NoteEditorViewModel @Inject constructor(
     private val notesRepository: NotesRepository,
     private val sttManager: SttManager,
     private val audioRecorder: AudioRecorder,
-    private val sttPreferences: SttPreferences
+    private val sttPreferences: SttPreferences,
+    private val shareService: ShareService,
+    private val apiConfig: ApiConfig
 ) : ViewModel() {
 
     private val _note = MutableStateFlow(Note())
@@ -252,26 +257,24 @@ class NoteEditorViewModel @Inject constructor(
         }
     }
 
-    fun archiveNote() {
-        viewModelScope.launch {
-            Log.d(TAG, "archiveNote() called for note id: ${_note.value.id}")
-            // Save first to persist any changes
-            // Always use markdown content state
-            val content = _markdownContent.value
-            val noteToArchive = if (content.isNotBlank() || !isNewNote) {
-                val currentNote = _note.value.copy(content = content)
-                notesRepository.saveNote(currentNote)
-                Log.d(TAG, "Note saved before archiving")
-                currentNote
-            } else {
-                _note.value
-            }
-            // Then archive (wait for save to complete)
-            notesRepository.archiveNote(noteToArchive.id)
-            Log.d(TAG, "Note archived, setting _isArchived to true")
-            // Signal that archiving is complete
-            _isArchived.value = true
+    suspend fun archiveNote() {
+        Log.d(TAG, "archiveNote() called for note id: ${_note.value.id}")
+        // Save first to persist any changes
+        // Always use markdown content state
+        val content = _markdownContent.value
+        val noteToArchive = if (content.isNotBlank() || !isNewNote) {
+            val currentNote = _note.value.copy(content = content)
+            notesRepository.saveNote(currentNote)
+            Log.d(TAG, "Note saved before archiving")
+            currentNote
+        } else {
+            _note.value
         }
+        // Then archive (wait for save to complete)
+        notesRepository.archiveNote(noteToArchive.id)
+        Log.d(TAG, "Note archived, setting _isArchived to true")
+        // Signal that archiving is complete
+        _isArchived.value = true
     }
 
     fun toggleFavorite() {
@@ -280,6 +283,59 @@ class NoteEditorViewModel @Inject constructor(
             // Update local state
             _note.value = _note.value.copy(isFavorite = !_note.value.isFavorite)
         }
+    }
+
+    // Share functionality
+    private val _shareInProgress = MutableStateFlow<String?>(null)
+    val shareInProgress: StateFlow<String?> = _shareInProgress
+
+    private val _shareResult = MutableStateFlow<Pair<String, ShareResponse>?>(null)
+    val shareResult: StateFlow<Pair<String, ShareResponse>?> = _shareResult
+
+    fun shareNote(noteId: String) {
+        viewModelScope.launch {
+            _shareInProgress.value = noteId
+
+            val apiToken = apiConfig.shareApiToken.first()
+            if (apiToken.isNullOrBlank()) {
+                _shareInProgress.value = null
+                // TODO: Show error - no API token configured
+                return@launch
+            }
+
+            // Get note
+            val note = notesRepository.getNote(noteId)
+            if (note == null) {
+                _shareInProgress.value = null
+                return@launch
+            }
+
+            val expirationDays = apiConfig.shareExpirationDays.first()
+            val burnAfterRead = apiConfig.shareBurnAfterRead.first()
+
+            shareService.createShare(
+                title = note.title.ifBlank { "Note" },
+                content = note.content,
+                articleId = noteId,
+                expiresInDays = expirationDays,
+                burnAfterRead = burnAfterRead,
+                apiToken = apiToken
+            ).fold(
+                onSuccess = { response ->
+                    _shareResult.value = noteId to response
+                },
+                onFailure = { error ->
+                    // TODO: Show error toast
+                    Log.e(TAG, "Share failed", error)
+                }
+            )
+
+            _shareInProgress.value = null
+        }
+    }
+
+    fun clearShareResult() {
+        _shareResult.value = null
     }
 
     companion object {

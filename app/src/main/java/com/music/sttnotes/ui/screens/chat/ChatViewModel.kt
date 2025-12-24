@@ -18,6 +18,8 @@ import com.music.sttnotes.data.chat.ChatConversation
 import com.music.sttnotes.data.chat.ChatHistoryRepository
 import com.music.sttnotes.data.chat.ChatMessageEntity
 import com.music.sttnotes.data.llm.LlmOutputRepository
+import com.music.sttnotes.data.share.ShareResponse
+import com.music.sttnotes.data.share.ShareService
 import com.music.sttnotes.data.stt.AudioRecorder
 import com.music.sttnotes.data.stt.SttManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -61,6 +63,7 @@ class ChatViewModel @Inject constructor(
     private val apiConfig: ApiConfig,
     private val chatHistoryRepository: ChatHistoryRepository,
     private val llmOutputRepository: LlmOutputRepository,
+    private val shareService: ShareService,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -642,5 +645,68 @@ class ChatViewModel @Inject constructor(
             Log.w(TAG, "Error generating title: ${e.message}, using fallback")
             firstMessage.take(50).trim()
         }
+    }
+
+    // Share functionality
+    private val _shareInProgress = MutableStateFlow<String?>(null)
+    val shareInProgress: StateFlow<String?> = _shareInProgress
+
+    private val _shareResult = MutableStateFlow<Pair<String, ShareResponse>?>(null)
+    val shareResult: StateFlow<Pair<String, ShareResponse>?> = _shareResult
+
+    fun shareConversation(conversationId: String) {
+        viewModelScope.launch {
+            _shareInProgress.value = conversationId
+
+            val apiToken = apiConfig.shareApiToken.first()
+            if (apiToken.isNullOrBlank()) {
+                _shareInProgress.value = null
+                // TODO: Show error - no API token configured
+                return@launch
+            }
+
+            // Get conversation messages
+            val conversation = chatHistoryRepository.getConversation(conversationId)
+            if (conversation == null) {
+                _shareInProgress.value = null
+                return@launch
+            }
+
+            // Format chat messages as markdown
+            val content = buildString {
+                conversation.messages.forEach { msg ->
+                    appendLine("**${if (msg.role == "user") "User" else "Assistant"}:**")
+                    appendLine()
+                    appendLine(msg.content)
+                    appendLine()
+                }
+            }
+
+            val expirationDays = apiConfig.shareExpirationDays.first()
+            val burnAfterRead = apiConfig.shareBurnAfterRead.first()
+
+            shareService.createShare(
+                title = conversation.title,
+                content = content,
+                articleId = conversationId,
+                expiresInDays = expirationDays,
+                burnAfterRead = burnAfterRead,
+                apiToken = apiToken
+            ).fold(
+                onSuccess = { response ->
+                    _shareResult.value = conversationId to response
+                },
+                onFailure = { error ->
+                    // TODO: Show error toast
+                    android.util.Log.e(TAG, "Share failed", error)
+                }
+            )
+
+            _shareInProgress.value = null
+        }
+    }
+
+    fun clearShareResult() {
+        _shareResult.value = null
     }
 }
