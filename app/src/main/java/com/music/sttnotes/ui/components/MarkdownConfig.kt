@@ -13,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -24,12 +26,21 @@ import com.mikepenz.markdown.compose.components.MarkdownComponent
 import com.mikepenz.markdown.compose.components.MarkdownComponents
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.MarkdownParagraph
+import com.mikepenz.markdown.compose.extendedspans.RoundedCornerSpanPainter
+import com.mikepenz.markdown.compose.extendedspans.ExtendedSpans
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.markdownAnnotator
 import com.music.sttnotes.ui.theme.EInkBlack
 import com.music.sttnotes.ui.theme.EInkGrayLight
 import com.music.sttnotes.ui.theme.EInkGrayLighter
 import com.music.sttnotes.ui.theme.EInkGrayMedium
+import org.intellij.markdown.MarkdownElementTypes
+import org.intellij.markdown.ast.ASTNode
+import org.intellij.markdown.flavours.gfm.GFMElementTypes
+
+// Light blue color for highlights - same as text selection
+val HighlightBackgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
 
 /**
  * E-Ink optimized Markdown typography for Knowledge Base detail view
@@ -207,6 +218,37 @@ fun einkMarkdownColors() = markdownColor(
     linkText = EInkBlack,
     dividerColor = EInkGrayMedium
 )
+
+/**
+ * Annotator with highlight support for ==text== syntax
+ * Renders highlighted text with light blue background
+ */
+@Composable
+fun einkMarkdownAnnotator() = markdownAnnotator { content, child ->
+    // For inline code that starts with ⟨hl⟩, render with highlight background instead of code background
+    if (child.type == MarkdownElementTypes.CODE_SPAN) {
+        val text = content.substring(child.startOffset, child.endOffset)
+        // Check if this is our highlight marker
+        if (text.contains("⟨hl⟩")) {
+            // Extract just the text content without the backticks and marker
+            val cleanText = text.removePrefix("`").removeSuffix("`").removePrefix("⟨hl⟩")
+            // Apply light blue background
+            pushStyle(SpanStyle(background = HighlightBackgroundColor, color = EInkBlack))
+            append(cleanText)
+            pop()
+            return@markdownAnnotator true // consume this node
+        }
+    }
+    false // let default handling process it
+}
+
+/**
+ * Process markdown text to convert ==highlight== syntax to our custom format
+ * Converts ==text== to `⟨hl⟩text` which the annotator will render with highlight background
+ */
+fun preprocessMarkdownHighlights(markdown: String): String {
+    return markdown.replace(Regex("==([^=]+?)=="), "`⟨hl⟩$1`")
+}
 
 /**
  * Custom paragraph component with proper spacing between paragraphs

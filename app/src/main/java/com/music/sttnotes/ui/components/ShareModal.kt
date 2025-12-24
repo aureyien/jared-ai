@@ -1,5 +1,7 @@
 package com.music.sttnotes.ui.components
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -7,13 +9,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import com.music.sttnotes.data.i18n.rememberStrings
 import com.music.sttnotes.data.share.ShareResponse
 import com.music.sttnotes.ui.theme.EInkBlack
@@ -29,6 +34,11 @@ fun ShareResultModal(
 ) {
     val strings = rememberStrings()
     val clipboardManager = LocalClipboardManager.current
+
+    // Generate QR code locally from shareUrl
+    val qrBitmap = remember(shareResponse.shareUrl) {
+        generateQrCode(shareResponse.shareUrl, size = 512)
+    }
 
     EInkModal(
         onDismiss = onDismiss,
@@ -46,9 +56,9 @@ fun ShareResultModal(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // QR Code
-            AsyncImage(
-                model = shareResponse.qrCodeUrl,
+            // QR Code (generated locally)
+            Image(
+                bitmap = qrBitmap.asImageBitmap(),
                 contentDescription = "QR Code",
                 modifier = Modifier
                     .size(200.dp)
@@ -111,4 +121,22 @@ private fun formatDate(isoDate: String): String {
     } catch (e: Exception) {
         isoDate
     }
+}
+
+/**
+ * Generate QR code bitmap from URL
+ * @param content URL to encode in QR code
+ * @param size Size of the QR code in pixels
+ * @return Bitmap of the QR code
+ */
+private fun generateQrCode(content: String, size: Int = 512): Bitmap {
+    val writer = QRCodeWriter()
+    val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size)
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
+    for (x in 0 until size) {
+        for (y in 0 until size) {
+            bitmap.setPixel(x, y, if (bitMatrix[x, y]) 0xFF000000.toInt() else 0xFFFFFFFF.toInt())
+        }
+    }
+    return bitmap
 }

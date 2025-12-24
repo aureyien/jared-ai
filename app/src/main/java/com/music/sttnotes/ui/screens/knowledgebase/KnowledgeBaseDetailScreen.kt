@@ -84,9 +84,11 @@ import com.mikepenz.markdown.m3.Markdown
 import com.music.sttnotes.ui.components.convertCheckboxesToUnicode
 import com.music.sttnotes.ui.components.EInkButton
 import com.music.sttnotes.ui.components.EInkChip
+import com.music.sttnotes.ui.components.einkMarkdownAnnotator
 import com.music.sttnotes.ui.components.einkMarkdownColors
 import com.music.sttnotes.ui.components.einkMarkdownComponents
 import com.music.sttnotes.ui.components.einkMarkdownTypography
+import com.music.sttnotes.ui.components.preprocessMarkdownHighlights
 import com.music.sttnotes.ui.components.EInkFormModal
 import com.music.sttnotes.ui.components.EInkIconButton
 import com.music.sttnotes.ui.components.EInkLoadingIndicator
@@ -502,17 +504,25 @@ fun KnowledgeBaseDetailScreen(
                                 // Preview mode: Markdown renderer with text selection and checkbox support
                                 // Convert grid preview font size (7-12sp) to content multiplier (0.778-1.333)
                                 val fontMultiplier = kbPreviewFontSize / 9f // 9sp is baseline (1.0x)
-                                SelectionContainer {
-                                    Markdown(
-                                        content = convertCheckboxesToUnicode(fileContent ?: ""),
-                                        colors = einkMarkdownColors(),
-                                        typography = einkMarkdownTypography(fontMultiplier),
-                                        components = einkMarkdownComponents(),
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                                            .verticalScroll(scrollState)
+                                CompositionLocalProvider(
+                                    LocalTextSelectionColors provides TextSelectionColors(
+                                        handleColor = Color(0xFF64B5F6),
+                                        backgroundColor = Color(0xFF64B5F6).copy(alpha = 0.4f)
                                     )
+                                ) {
+                                    SelectionContainer {
+                                        Markdown(
+                                            content = preprocessMarkdownHighlights(convertCheckboxesToUnicode(fileContent ?: "")),
+                                            colors = einkMarkdownColors(),
+                                            typography = einkMarkdownTypography(fontMultiplier),
+                                            components = einkMarkdownComponents(),
+                                            annotator = einkMarkdownAnnotator(),
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(horizontal = 20.dp, vertical = 16.dp)
+                                                .verticalScroll(scrollState)
+                                        )
+                                    }
                                 }
                             }
                         }

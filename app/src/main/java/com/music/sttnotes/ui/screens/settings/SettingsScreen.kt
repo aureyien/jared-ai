@@ -561,6 +561,23 @@ fun SettingsScreen(
                             modifier = Modifier.widthIn(min = 60.dp)
                         )
                     }
+
+                    // Burn After Read switch
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Burn After Read",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Switch(
+                            checked = uiState.shareBurnAfterRead,
+                            onCheckedChange = viewModel::setShareBurnAfterRead
+                        )
+                    }
                 } else {
                     // Show hint when not activated
                     Text(

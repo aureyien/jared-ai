@@ -111,6 +111,9 @@ dependencies {
     // Coil for QR code image loading
     implementation("io.coil-kt:coil-compose:2.5.0")
 
+    // ZXing for QR code generation
+    implementation("com.google.zxing:core:3.5.2")
+
     // whisper.cpp module
     implementation(project(":whisper"))
 

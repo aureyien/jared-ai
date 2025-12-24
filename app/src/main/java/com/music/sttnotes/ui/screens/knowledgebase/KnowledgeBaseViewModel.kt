@@ -279,11 +279,33 @@ class KnowledgeBaseViewModel @Inject constructor(
         return result
     }
 
+    /**
+     * Move a file to a different folder
+     */
+    suspend fun moveFile(sourceFolder: String, filename: String, destFolder: String): Result<Unit> {
+        val result = llmOutputRepository.moveFile(sourceFolder, filename, destFolder)
+        if (result.isSuccess) {
+            loadFolders()
+        }
+        return result
+    }
+
     fun deleteFolder(folder: String) {
         viewModelScope.launch {
             llmOutputRepository.deleteFolder(folder)
             loadFolders()
         }
+    }
+
+    /**
+     * Create a new empty folder and return the folder name
+     */
+    suspend fun createFolder(folderName: String): Result<String> {
+        val result = llmOutputRepository.createFolder(folderName)
+        if (result.isSuccess) {
+            loadFolders()
+        }
+        return result
     }
 
     /**
@@ -571,12 +593,14 @@ Use proper markdown formatting (headers, bullet points, bold for emphasis). Be t
             }
 
             val expirationDays = apiConfig.shareExpirationDays.first()
+            val burnAfterRead = apiConfig.shareBurnAfterRead.first()
 
             shareService.createShare(
                 title = filename.removeSuffix(".md"),
                 content = content,
                 articleId = fileId,
                 expiresInDays = expirationDays,
+                burnAfterRead = burnAfterRead,
                 apiToken = apiToken
             ).fold(
                 onSuccess = { response ->

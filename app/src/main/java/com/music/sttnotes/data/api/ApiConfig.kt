@@ -44,6 +44,7 @@ class ApiConfig @Inject constructor(
         private val SHARE_ENABLED = stringPreferencesKey("share_enabled")
         private val SHARE_API_TOKEN = stringPreferencesKey("share_api_token")
         private val SHARE_EXPIRATION_DAYS = stringPreferencesKey("share_expiration_days")
+        private val SHARE_BURN_AFTER_READ = stringPreferencesKey("share_burn_after_read")
         private val SELECTED_WHISPER_MODEL = stringPreferencesKey("selected_whisper_model")
 
         const val DEFAULT_CHAT_FONT_SIZE = 14f
@@ -106,6 +107,9 @@ class ApiConfig @Inject constructor(
     val shareExpirationDays: Flow<Int> = context.apiDataStore.data.map {
         it[SHARE_EXPIRATION_DAYS]?.toIntOrNull() ?: DEFAULT_SHARE_EXPIRATION_DAYS
     }
+    val shareBurnAfterRead: Flow<Boolean> = context.apiDataStore.data.map {
+        it[SHARE_BURN_AFTER_READ]?.toBoolean() ?: true
+    }
     val selectedWhisperModel: Flow<String?> = context.apiDataStore.data.map {
         it[SELECTED_WHISPER_MODEL]
     }
@@ -164,6 +168,10 @@ class ApiConfig @Inject constructor(
 
     suspend fun setShareExpirationDays(days: Int) {
         context.apiDataStore.edit { it[SHARE_EXPIRATION_DAYS] = days.toString() }
+    }
+
+    suspend fun setShareBurnAfterRead(enabled: Boolean) {
+        context.apiDataStore.edit { it[SHARE_BURN_AFTER_READ] = enabled.toString() }
     }
 
     suspend fun setSelectedWhisperModel(modelName: String) {

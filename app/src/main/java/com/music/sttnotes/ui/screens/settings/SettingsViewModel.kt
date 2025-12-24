@@ -36,6 +36,7 @@ data class SettingsUiState(
     val shareEnabled: Boolean = false,
     val shareApiToken: String = "",
     val shareExpirationDays: Int = ApiConfig.DEFAULT_SHARE_EXPIRATION_DAYS,
+    val shareBurnAfterRead: Boolean = true,
     val volumeButtonScrollEnabled: Boolean = false,
     val volumeButtonScrollDistance: Float = 0.8f,
     val dashboardKbArticleCount: Int = 5
@@ -123,9 +124,10 @@ class SettingsViewModel @Inject constructor(
                     apiConfig.appLanguage,
                     apiConfig.shareEnabled,
                     apiConfig.shareApiToken,
-                    apiConfig.shareExpirationDays
-                ) { fontSize, appLang, shareEnabled, shareToken, shareDays ->
-                    arrayOf(fontSize, appLang, shareEnabled, shareToken, shareDays)
+                    apiConfig.shareExpirationDays,
+                    apiConfig.shareBurnAfterRead
+                ) { values: Array<Any?> ->
+                    values // [fontSize, appLang, shareEnabled, shareToken, shareDays, shareBurn]
                 },
                 combine(
                     uiPreferences.volumeButtonScrollEnabled,
@@ -151,6 +153,7 @@ class SettingsViewModel @Inject constructor(
                     shareEnabled = third[2] as Boolean,
                     shareApiToken = (third[3] as? String) ?: "",
                     shareExpirationDays = third[4] as Int,
+                    shareBurnAfterRead = third[5] as Boolean,
                     volumeButtonScrollEnabled = fourth[0] as Boolean,
                     volumeButtonScrollDistance = fourth[1] as Float,
                     dashboardKbArticleCount = fourth[2] as Int
@@ -225,6 +228,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setShareExpirationDays(days: Int) {
         viewModelScope.launch { apiConfig.setShareExpirationDays(days) }
+    }
+
+    fun setShareBurnAfterRead(enabled: Boolean) {
+        viewModelScope.launch { apiConfig.setShareBurnAfterRead(enabled) }
     }
 
     fun setVolumeButtonScrollEnabled(enabled: Boolean) {
